@@ -3,12 +3,32 @@
 #include <private/qzipwriter_p.h>
 
 #include <QBuffer>
+#include <QFont>
+#include <QFontDatabase>
 #include <QImage>
 #include <QPageSize>
 #include <QPainter>
 #include <QPdfWriter>
 
 namespace studylab::test {
+
+namespace {
+
+/// Police du texte des PDF de test, chargée depuis les sources : sans elle, un PDF écrit sous
+/// Windows en mode « offscreen » ne contient aucun glyphe (ni texte sélectionnable, ni recherche).
+QFont fixtureFont()
+{
+    static const QString family = [] {
+        const int id = QFontDatabase::addApplicationFont(QStringLiteral(STUDYLAB_TEST_FONT));
+        const QStringList families = id >= 0 ? QFontDatabase::applicationFontFamilies(id) : QStringList();
+        return families.isEmpty() ? QString() : families.first();
+    }();
+    QFont font(family.isEmpty() ? QStringLiteral("Sans Serif") : family);
+    font.setPointSizeF(11);
+    return font;
+}
+
+}  // namespace
 
 bool writePdf(const QString& path, const PdfSpec& spec)
 {
@@ -20,6 +40,7 @@ bool writePdf(const QString& path, const PdfSpec& spec)
     QPainter p;
     if (!p.begin(&w))
         return false;
+    p.setFont(fixtureFont());
     for (int i = 0; i < spec.pages; ++i) {
         if (i > 0)
             w.newPage();

@@ -19,6 +19,8 @@ target_include_directories(tst_mainwindow PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
 add_library(studylab_test_support STATIC support/Fixtures.h support/Fixtures.cpp)
 target_include_directories(studylab_test_support PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(studylab_test_support PUBLIC Qt6::Gui PRIVATE Qt6::GuiPrivate)
+# Police embarquée pour les PDF de test : la plateforme « offscreen » sous Windows ne trouve aucune police système.
+target_compile_definitions(studylab_test_support PRIVATE STUDYLAB_TEST_FONT="${CMAKE_SOURCE_DIR}/src/ui/resources/fonts/Inter-Regular.otf")
 
 studylab_add_test(tst_import SOURCES integration/tst_import.cpp LIBS studylab_library studylab_test_support)
 studylab_add_test(tst_library_ui SOURCES ui/tst_library_ui.cpp ../src/app/Bootstrap.cpp LIBS studylab_ui studylab_test_support)
