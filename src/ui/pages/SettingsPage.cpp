@@ -1,6 +1,7 @@
 #include "ui/pages/SettingsPage.h"
 
 #include "data/sqlite/Database.h"
+#include "services/backup/BackupService.h"
 #include "services/settings/SettingsService.h"
 #include "ui/components/SegmentedControl.h"
 #include "ui/components/ToggleSwitch.h"
@@ -10,12 +11,15 @@
 
 #include <QComboBox>
 #include <QCoreApplication>
+#include <QApplication>
 #include <QDateTime>
 #include <QDesktopServices>
 #include <QDir>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
+#include <QLocale>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QStackedWidget>
@@ -145,25 +149,140 @@ QWidget* SettingsPage::buildData()
     auto* card = makeCard();
     auto* v = static_cast<QVBoxLayout*>(card->layout());
     v->setSpacing(0);
-
     auto* openBtn = new QPushButton(tr("Ouvrir"));
     connect(openBtn, &QPushButton::clicked, this,
             [this] { QDesktopServices::openUrl(QUrl::fromLocalFile(m_ctx.paths.dataDir())); });
     v->addWidget(makeSettingRow(tr("Dossier des données"), QDir::toNativeSeparators(m_ctx.paths.dataDir()), openBtn));
-    v->addWidget(makeSeparator());
+    scaffold->body()->addWidget(card);
 
-    auto* backupBtn = new QPushButton(tr("Créer une sauvegarde"));
-    backupBtn->setProperty("variant", QStringLiteral("primary"));
-    connect(backupBtn, &QPushButton::clicked, this, &SettingsPage::createBackup);
-    v->addWidget(makeSettingRow(tr("Sauvegarde manuelle"),
-                                tr("Copie complète et cohérente de la base dans le dossier « backups »."), backupBtn));
+    // Sauvegardes
+    auto* backups = makeCard();
+    auto* b = static_cast<QVBoxLayout*>(backups->layout());
+    b->setSpacing(8);
+    m_backupButton = new QPushButton(tr("Créer une sauvegarde"));
+    m_backupButton->setProperty("variant", QStringLiteral("primary"));
+    connect(m_backupButton, &QPushButton::clicked, this, &SettingsPage::createBackup);
+    b->addWidget(makeSettingRow(
+        tr("Sauvegardes"),
+        tr("Copie complète de la base, automatique chaque jour au démarrage et avant chaque mise à jour. "
+           "Sont conservées : toutes celles de la semaine, une par semaine pendant un mois, une par mois pendant "
+           "six mois. Les sauvegardes manuelles sont gardées."),
+        m_backupButton));
+    m_lastBackup = makeLabel(QString(), "muted");
+    m_lastBackup->setWordWrap(true);
+    b->addWidget(m_lastBackup);
     m_backupStatus = makeLabel(QString(), "faint");
     m_backupStatus->setWordWrap(true);
-    v->addWidget(m_backupStatus);
+    b->addWidget(m_backupStatus);
 
-    scaffold->body()->addWidget(card);
+    m_backups = new QListWidget;
+    m_backups->setObjectName(QStringLiteral("BackupList"));
+    m_backups->setAccessibleName(tr("Sauvegardes disponibles"));
+    m_backups->setMinimumHeight(m_ctx.theme.px(180));
+    b->addWidget(m_backups);
+
+    auto* actions = new QHBoxLayout;
+    m_restoreButton = new QPushButton(tr("Restaurer…"));
+    m_restoreButton->setEnabled(false);
+    m_restoreButton->setToolTip(tr("Remplacer la base par la sauvegarde choisie (au redémarrage)"));
+    auto* folder = new QPushButton(tr("Afficher le dossier"));
+    connect(folder, &QPushButton::clicked, this,
+            [this] { QDesktopServices::openUrl(QUrl::fromLocalFile(m_ctx.paths.backupsDir())); });
+    actions->addWidget(m_restoreButton);
+    actions->addWidget(folder);
+    actions->addStretch(1);
+    b->addLayout(actions);
+    connect(m_backups, &QListWidget::currentRowChanged, this,
+            [this](int row) { m_restoreButton->setEnabled(row >= 0 && !m_ctx.backups.pendingRestore()); });
+    connect(m_restoreButton, &QPushButton::clicked, this, &SettingsPage::restoreSelected);
+
+    auto* pendingRow = new QHBoxLayout;
+    m_pendingLabel = makeLabel(QString(), "muted");
+    m_pendingLabel->setWordWrap(true);
+    m_cancelRestore = new QPushButton(tr("Annuler la restauration"));
+    m_cancelRestore->setProperty("variant", QStringLiteral("ghost"));
+    connect(m_cancelRestore, &QPushButton::clicked, this, [this] {
+        m_ctx.backups.cancelPendingRestore();
+        refreshBackups();
+    });
+    pendingRow->addWidget(m_pendingLabel, 1);
+    pendingRow->addWidget(m_cancelRestore);
+    b->addLayout(pendingRow);
+
+    scaffold->body()->addWidget(backups);
     scaffold->body()->addStretch(1);
+    refreshBackups();
     return scaffold;
+}
+
+void SettingsPage::refreshBackups()
+{
+    const QLocale locale(QLocale::French, QLocale::France);
+    const QList<BackupInfo> list = m_ctx.backups.list();
+    m_backups->clear();
+    for (const BackupInfo& info : list) {
+        auto* item = new QListWidgetItem(tr("%1 · %2 · %3")
+                                             .arg(locale.toString(info.createdAt, QStringLiteral("dd/MM/yyyy HH:mm")),
+                                                  backupKindLabel(info.kind), locale.formattedDataSize(info.size, 1, QLocale::DataSizeTraditionalFormat)));
+        item->setData(Qt::UserRole, info.path);
+        item->setToolTip(QDir::toNativeSeparators(info.path));
+        m_backups->addItem(item);
+    }
+    if (list.isEmpty()) {
+        m_lastBackup->setText(tr("Aucune sauvegarde pour l'instant."));
+    } else {
+        const BackupInfo& last = list.first();
+        m_lastBackup->setText(tr("Dernière sauvegarde : %1 (%2).")
+                                  .arg(locale.toString(last.createdAt, QStringLiteral("dddd d MMMM yyyy 'à' HH:mm")),
+                                       backupKindLabel(last.kind).toLower()));
+    }
+    const auto pending = m_ctx.backups.pendingRestore();
+    m_pendingLabel->setVisible(bool(pending));
+    m_cancelRestore->setVisible(bool(pending));
+    if (pending) {
+        const auto info = BackupService::parse(*pending);
+        m_pendingLabel->setText(
+            tr("Restauration programmée au prochain démarrage : sauvegarde du %1.")
+                .arg(info ? locale.toString(info->createdAt, QStringLiteral("dd/MM/yyyy HH:mm")) : QDir::toNativeSeparators(*pending)));
+    }
+    m_restoreButton->setEnabled(m_backups->currentRow() >= 0 && !pending);
+}
+
+void SettingsPage::restoreSelected()
+{
+    QListWidgetItem* item = m_backups->currentItem();
+    if (!item)
+        return;
+    const auto info = BackupService::parse(item->data(Qt::UserRole).toString());
+    if (!info)
+        return;
+    int answer = 0;
+    if (m_confirmRestore) {
+        answer = m_confirmRestore(*info);
+    } else {
+        QMessageBox box(QMessageBox::Question, tr("Restaurer une sauvegarde"),
+                        tr("Remplacer toutes vos données par la sauvegarde du %1 ?")
+                            .arg(QLocale(QLocale::French, QLocale::France).toString(info->createdAt, QStringLiteral("dddd d MMMM yyyy 'à' HH:mm"))),
+                        QMessageBox::NoButton, window());
+        box.setInformativeText(tr("La restauration s'applique au démarrage de StudyLab. Les données actuelles sont "
+                                  "d'abord copiées dans le dossier des sauvegardes ; rien n'est perdu."));
+        auto* now = box.addButton(tr("Redémarrer maintenant"), QMessageBox::AcceptRole);
+        auto* later = box.addButton(tr("Au prochain démarrage"), QMessageBox::ActionRole);
+        box.addButton(tr("Annuler"), QMessageBox::RejectRole);
+        box.exec();
+        answer = box.clickedButton() == now ? 2 : box.clickedButton() == later ? 1 : 0;
+    }
+    if (answer == 0)
+        return;
+    if (auto r = m_ctx.backups.scheduleRestore(info->path); !r) {
+        m_backupStatus->setText(tr("Restauration impossible : %1").arg(r.error().message));
+        return;
+    }
+    refreshBackups();
+    if (answer == 2) {
+        qApp->setProperty(kRestartProperty, true);
+        window()->close();
+    }
 }
 
 QWidget* SettingsPage::buildAbout()
@@ -217,12 +336,10 @@ void SettingsPage::syncFromSettings()
 
 void SettingsPage::createBackup()
 {
-    const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"));
-    const QString file = m_ctx.paths.backupsDir() + QStringLiteral("/studylab-manuelle-%1.db").arg(stamp);
-    QDir().mkpath(m_ctx.paths.backupsDir());
-    auto r = m_ctx.db.backupTo(file);
-    m_backupStatus->setText(r ? tr("Sauvegarde créée : %1").arg(QDir::toNativeSeparators(file))
+    auto r = m_ctx.backups.create(BackupKind::Manual);
+    m_backupStatus->setText(r ? tr("Sauvegarde créée : %1").arg(QDir::toNativeSeparators(r.value().path))
                               : tr("Échec de la sauvegarde : %1").arg(r.error().message));
+    refreshBackups();
 }
 
 }  // namespace studylab::ui

@@ -1,8 +1,12 @@
+#include "support/WebEngineSetup.h"
 #include "Bootstrap.h"
 
 #include "data/sqlite/Database.h"
 #include "engines/pdf/PdfRenderQueue.h"
 #include "services/annotations/AnnotationService.h"
+#include "services/backup/BackupService.h"
+#include "services/comments/CommentService.h"
+#include "services/search/SearchService.h"
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
 #include "support/Fixtures.h"
@@ -46,6 +50,9 @@ class TstPdfReader : public QObject {
         std::unique_ptr<ui::ThemeManager> theme;
         std::unique_ptr<LibraryService> library;
         std::unique_ptr<AnnotationService> annotations;
+        std::unique_ptr<CommentService> comments;
+        std::unique_ptr<SearchService> search;
+        std::unique_ptr<BackupService> backups;
         std::unique_ptr<AppContext> ctx;
         Env()
         {
@@ -57,7 +64,10 @@ class TstPdfReader : public QObject {
             theme->apply();
             library = std::make_unique<LibraryService>(*db, paths);
             annotations = std::make_unique<AnnotationService>(*db);
-            ctx = std::make_unique<AppContext>(AppContext{paths, *db, *settings, *theme, *library, *annotations});
+            comments = std::make_unique<CommentService>(*db);
+            search = std::make_unique<SearchService>(*db);
+            backups = std::make_unique<BackupService>(paths, *db);
+            ctx = std::make_unique<AppContext>(AppContext{paths, *db, *settings, *theme, *library, *annotations, *comments, *search, *backups});
         }
         qint64 import(const QString& file)
         {

@@ -21,6 +21,8 @@ public:
 
     /// Ouvre un document (ou active son onglet s'il est déjà ouvert). PDF et EPUB.
     void openDocument(qint64 documentId);
+    /// Ouvre le document et affiche l'annotation ou le commentaire (résultat de recherche).
+    void openItem(qint64 documentId, bool comment, qint64 itemId);
     void closeTab(int index);
     int tabCount() const;
     ReaderTab* currentTab() const;

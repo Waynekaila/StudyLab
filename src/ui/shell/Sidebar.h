@@ -5,6 +5,7 @@
 
 class QButtonGroup;
 class QLabel;
+class QPushButton;
 class QToolButton;
 
 namespace studylab::ui {
@@ -26,9 +27,11 @@ public:
     void setCurrent(const QString& id);
     QString current() const;
     QToolButton* button(const QString& id) const;
+    QPushButton* searchButton() const { return m_search; }
 
 signals:
     void navigated(const QString& id);
+    void searchRequested();
 
 private:
     void refreshIcons();
@@ -38,6 +41,7 @@ private:
     QList<QToolButton*> m_buttons;
     QButtonGroup* m_group;
     QLabel* m_logo;
+    QPushButton* m_search;
     QLabel* m_footerIcon;
 };
 

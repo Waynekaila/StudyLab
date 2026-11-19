@@ -1,7 +1,11 @@
+#include "support/WebEngineSetup.h"
 #include "Bootstrap.h"
 
 #include "data/sqlite/Database.h"
 #include "services/annotations/AnnotationService.h"
+#include "services/backup/BackupService.h"
+#include "services/comments/CommentService.h"
+#include "services/search/SearchService.h"
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
 #include "ui/components/SegmentedControl.h"
@@ -89,7 +93,10 @@ private slots:
 
         LibraryService library(database, paths);
         AnnotationService annotations(database);
-        AppContext ctx{paths, database, settings, theme, library, annotations};
+        CommentService comments(database);
+        SearchService search(database);
+        BackupService backups(paths, database);
+        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups};
         ui::MainWindow window(ctx);
         window.resize(1280, 820);
         window.show();
@@ -150,7 +157,10 @@ private slots:
         theme.apply();
         LibraryService library(database, paths);
         AnnotationService annotations(database);
-        AppContext ctx{paths, database, settings, theme, library, annotations};
+        CommentService comments(database);
+        SearchService search(database);
+        BackupService backups(paths, database);
+        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups};
         ui::MainWindow window(ctx);
         QCOMPARE(window.currentPage(), QStringLiteral("settings"));
     }
@@ -166,7 +176,10 @@ private slots:
         theme.apply();
         LibraryService library(database, paths);
         AnnotationService annotations(database);
-        AppContext ctx{paths, database, settings, theme, library, annotations};
+        CommentService comments(database);
+        SearchService search(database);
+        BackupService backups(paths, database);
+        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups};
         ui::SettingsPage page(ctx);
         QPushButton* backup = nullptr;
         for (auto* b : page.findChildren<QPushButton*>()) {
@@ -175,8 +188,10 @@ private slots:
         }
         QVERIFY(backup);
         backup->click();
-        const QStringList files = QDir(paths.backupsDir()).entryList({QStringLiteral("*.db")});
+        // Sauvegarde quotidienne du démarrage + sauvegarde manuelle
+        const QStringList files = QDir(paths.backupsDir()).entryList({QStringLiteral("studylab-manuelle-*.db")});
         QCOMPARE(files.size(), 1);
+        QCOMPARE(QDir(paths.backupsDir()).entryList({QStringLiteral("studylab-auto-*.db")}).size(), 1);
         auto copy = db::Database::open(paths.backupsDir() + QLatin1Char('/') + files.first(), db::Database::Mode::ReadOnly);
         QVERIFY(copy.ok());
         QVERIFY(copy.value()->queryInt(QStringLiteral("SELECT max(version) FROM schema_migrations")).value() >= 1);

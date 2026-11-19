@@ -3,6 +3,7 @@
 #include "core/Log.h"
 #include "data/migrations/Migrator.h"
 #include "data/sqlite/Database.h"
+#include "services/backup/BackupService.h"
 
 #include <QDateTime>
 #include <QDir>
@@ -17,6 +18,11 @@ Result<StartupReport> openAndMigrate(const AppPaths& paths)
         return Error::make(Error::Code::Io, QStringLiteral("Impossible de créer le dossier de données : %1").arg(paths.dataDir()));
 
     report.previousRunCrashed = QFile::exists(paths.runningMarkerFile());
+
+    if (auto restored = BackupService::applyPendingRestore(paths); restored)
+        report.restoredFrom = restored.value();
+    else
+        report.restoreError = restored.error().message;
 
     auto opened = db::Database::open(paths.databaseFile());
     if (!opened)
@@ -39,8 +45,9 @@ Result<StartupReport> openAndMigrate(const AppPaths& paths)
 
     db::Database* database = report.db.get();
     auto version = migrator.migrate(*database, [&](int from, int to) -> Result<void> {
-        const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"));
-        const QString file = paths.backupsDir() + QStringLiteral("/studylab-avant-migration-v%1-v%2-%3.db").arg(from).arg(to).arg(stamp);
+        const QString file = paths.backupsDir() + QLatin1Char('/')
+                             + BackupService::fileNameFor(BackupKind::BeforeMigration, QDateTime::currentDateTime(),
+                                                          QStringLiteral("v%1-v%2").arg(from).arg(to));
         auto r = database->backupTo(file);
         if (r)
             report.preMigrationBackup = file;
@@ -49,7 +56,29 @@ Result<StartupReport> openAndMigrate(const AppPaths& paths)
     if (!version)
         return version.error();
     report.schemaVersion = version.value();
+
+    // Sauvegarde quotidienne, jamais d'une base signalée endommagée (la rotation pourrait évincer une bonne copie).
+    if (report.integrityProblems.isEmpty()) {
+        BackupService backups(paths, *database);
+        auto due = backups.backupIfDue();
+        if (!due)
+            qCWarning(lcApp) << "Sauvegarde automatique impossible :" << due.error().message;
+        else if (due.value())
+            report.automaticBackup = due.value()->path;
+    }
     return report;
+}
+
+Result<QString> restoreLatestBackup(const AppPaths& paths)
+{
+    for (const BackupInfo& b : BackupService::list(paths.backupsDir())) {
+        if (b.kind == BackupKind::BeforeRestore || !BackupService::validate(b.path))
+            continue;
+        if (auto r = BackupService::restoreNow(paths, b.path); !r)
+            return r.error();
+        return b.path;
+    }
+    return Error::make(Error::Code::NotFound, QStringLiteral("Aucune sauvegarde saine n'a été trouvée."));
 }
 
 void markRunning(const AppPaths& paths)

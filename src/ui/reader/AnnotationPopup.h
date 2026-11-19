@@ -29,6 +29,7 @@ public:
     QToolButton* colorButton(AnnotationColor c) const;
     QToolButton* typeButton(AnnotationType t) const;
     QPushButton* noteButton() const { return m_note; }
+    QPushButton* commentButton() const { return m_comment; }
     QPushButton* copyButton() const { return m_copy; }
     QPushButton* deleteButton() const { return m_delete; }
 
@@ -36,6 +37,7 @@ signals:
     void colorPicked(studylab::AnnotationColor color);
     void typePicked(studylab::AnnotationType type);
     void noteRequested();
+    void commentRequested();
     void copyRequested();
     void deleteRequested();
 
@@ -52,6 +54,7 @@ private:
     QToolButton* m_strike;
     QToolButton* m_highlight;
     QPushButton* m_note;
+    QPushButton* m_comment;
     QPushButton* m_copy;
     QPushButton* m_delete;
     QFrame* m_sep;

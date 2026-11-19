@@ -8,6 +8,8 @@
 #include <QRegularExpression>
 #include <QSaveFile>
 
+#include <algorithm>
+
 namespace studylab {
 
 namespace {
@@ -166,6 +168,12 @@ QString MarkdownExporter::documentNote(const DocumentRecord& doc, const QList<An
                   .arg(count == 1 ? tr("1 annotation") : tr("%1 annotations").arg(count), documentBaseName(doc));
     else
         md << tr("Aucune annotation.");
+    const int comments = int(options.comments.size());
+    if (comments > 0) {
+        md << QString() << QStringLiteral("## ") + tr("Commentaires") << QString();
+        md << tr("%1 — voir [[%2/Commentaires|Commentaires]].")
+                  .arg(comments == 1 ? tr("1 commentaire") : tr("%1 commentaires").arg(comments), documentBaseName(doc));
+    }
     return md.join(QLatin1Char('\n')) + QLatin1Char('\n');
 }
 
@@ -233,6 +241,78 @@ QString MarkdownExporter::annotationsNote(const DocumentRecord& doc, const QList
     return md.join(QLatin1Char('\n')) + QLatin1Char('\n');
 }
 
+namespace {
+QString calloutFor(CommentKind kind)
+{
+    switch (kind) {
+    case CommentKind::Question: return QStringLiteral("question");
+    case CommentKind::Explanation: return QStringLiteral("info");
+    case CommentKind::Reference: return QStringLiteral("cite");
+    case CommentKind::Summary: return QStringLiteral("abstract");
+    case CommentKind::Reflection: break;
+    }
+    return QStringLiteral("note");
+}
+}  // namespace
+
+QString MarkdownExporter::commentsNote(const DocumentRecord& doc, const QList<CommentRecord>& comments,
+                                       const Options& options)
+{
+    const QString base = documentBaseName(doc);
+    QStringList md;
+    md << QStringLiteral("---") << QStringLiteral("type: comments")
+       << QStringLiteral("document: ") + yamlString(QStringLiteral("[[%1]]").arg(base))
+       << QStringLiteral("document_uuid: ") + doc.uuid
+       << QStringLiteral("exported: ") + options.date.toString(Qt::ISODate) << QStringLiteral("---") << QString();
+    md << QStringLiteral("# ") + tr("Commentaires — %1").arg(doc.title) << QString();
+    md << tr("Source : [[%1]] · %2 · exporté le %3")
+              .arg(base, comments.size() == 1 ? tr("1 commentaire") : tr("%1 commentaires").arg(comments.size()),
+                   options.date.toString(QStringLiteral("dd/MM/yyyy")));
+
+    QList<CommentRecord> sorted = comments;
+    std::stable_sort(sorted.begin(), sorted.end(),
+                     [](const CommentRecord& x, const CommentRecord& y) { return x.sortKey < y.sortKey; });
+    QString currentGroup;
+    bool firstGroup = true;
+    for (const CommentRecord& c : sorted) {
+        QString group;
+        if (c.anchor == CommentAnchor::Free || c.unitIndex < 0) {
+            group = tr("Commentaires généraux");
+        } else {
+            group = options.chapterOf ? options.chapterOf(c.unitIndex) : QString();
+            if (group.isEmpty()) {
+                AnnotationRecord probe;
+                probe.unitIndex = c.unitIndex;
+                probe.pageLabel = c.pageLabel;
+                probe.locator = c.locator;
+                group = annotationGroupFallback(probe);
+            }
+        }
+        if (firstGroup || group != currentGroup) {
+            md << QString() << QStringLiteral("## ") + group;
+            currentGroup = group;
+            firstGroup = false;
+        }
+        QStringList head{commentKindLabel(c.kind)};
+        const QString where = commentLocation(c);
+        if (!where.isEmpty())
+            head << where;
+        if (c.kind == CommentKind::Question)
+            head << (c.resolved ? tr("résolue") : tr("ouverte"));
+        md << QString() << QStringLiteral("> [!%1] %2").arg(calloutFor(c.kind), head.join(QStringLiteral(" · ")));
+        if (!c.quote.isEmpty()) {
+            QString line = QStringLiteral("> *« %1 »*").arg(normalizeQuote(c.quote));
+            md << line;
+            md << QStringLiteral(">");
+        }
+        md << quoteBlock(c.body.trimmed());
+        md << QStringLiteral("^com-") + shortId(c.uuid);
+    }
+    if (sorted.isEmpty())
+        md << QString() << tr("Aucun commentaire.");
+    return md.join(QLatin1Char('\n')) + QLatin1Char('\n');
+}
+
 QJsonObject MarkdownExporter::metadata(const DocumentRecord& doc, const QList<AnnotationRecord>& annotations,
                                        const Options& options)
 {
@@ -271,10 +351,28 @@ QJsonObject MarkdownExporter::metadata(const DocumentRecord& doc, const QList<An
             {QStringLiteral("updatedAt"), a.updatedAt},
         });
     }
+    QJsonArray coms;
+    for (const auto& c : options.comments) {
+        coms.append(QJsonObject{
+            {QStringLiteral("uuid"), c.uuid},
+            {QStringLiteral("kind"), commentKindKey(c.kind)},
+            {QStringLiteral("anchor"), commentAnchorKey(c.anchor)},
+            {QStringLiteral("annotation"), c.annotationId > 0 ? QJsonValue(c.annotationId) : QJsonValue()},
+            {QStringLiteral("unit"), c.unitIndex >= 0 ? QJsonValue(c.unitIndex) : QJsonValue()},
+            {QStringLiteral("locator"), c.locator.isEmpty() ? QJsonValue() : QJsonValue(c.locator)},
+            {QStringLiteral("quote"), c.quote},
+            {QStringLiteral("body"), c.body},
+            {QStringLiteral("resolved"), c.resolved},
+            {QStringLiteral("links"), QJsonArray::fromStringList(wikiLinkTargets(c.body))},
+            {QStringLiteral("createdAt"), c.createdAt},
+            {QStringLiteral("updatedAt"), c.updatedAt},
+        });
+    }
     return QJsonObject{{QStringLiteral("studylabExport"), 1},
                        {QStringLiteral("exportedAt"), options.date.toString(Qt::ISODate)},
                        {QStringLiteral("document"), d},
-                       {QStringLiteral("annotations"), anns}};
+                       {QStringLiteral("annotations"), anns},
+                       {QStringLiteral("comments"), coms}};
 }
 
 Result<QString> MarkdownExporter::exportDocument(const QString& targetDir, const DocumentRecord& doc,
@@ -289,6 +387,13 @@ Result<QString> MarkdownExporter::exportDocument(const QString& targetDir, const
         return r.error();
     if (auto r = writeText(folder + QStringLiteral("/Annotations.md"), annotationsNote(doc, annotations, options)); !r)
         return r.error();
+    const QString commentsFile = folder + QStringLiteral("/Commentaires.md");
+    if (!options.comments.isEmpty()) {
+        if (auto r = writeText(commentsFile, commentsNote(doc, options.comments, options)); !r)
+            return r.error();
+    } else {
+        QFile::remove(commentsFile);  // export précédent
+    }
     const QByteArray json = QJsonDocument(metadata(doc, annotations, options)).toJson(QJsonDocument::Indented);
     if (auto r = writeText(folder + QStringLiteral("/metadata.json"), QString::fromUtf8(json)); !r)
         return r.error();

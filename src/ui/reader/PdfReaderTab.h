@@ -99,6 +99,9 @@ private:
     void refreshIcons();
     void pushMarks() override;
     void copySelection() override;
+    std::optional<CommentTarget> selectionTarget() const override;
+    CommentTarget positionTarget() const override;
+    void revealLocator(const QJsonObject& locator) override;
     void showEditPopup(qint64 id) override;
     void updateBookmarkButton() override;
     void buildChapters();

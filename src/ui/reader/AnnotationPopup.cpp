@@ -73,9 +73,12 @@ AnnotationPopup::AnnotationPopup(ThemeManager& theme, QWidget* parent) : QFrame(
         return b;
     };
     m_note = textButton(tr("Note"));
+    m_comment = textButton(tr("Commenter"));
+    m_comment->setToolTip(tr("Commentaire Markdown dans le volet Commentaires"));
     m_copy = textButton(tr("Copier"));
     m_delete = textButton(tr("Supprimer"));
     connect(m_note, &QPushButton::clicked, this, &AnnotationPopup::noteRequested);
+    connect(m_comment, &QPushButton::clicked, this, &AnnotationPopup::commentRequested);
     connect(m_copy, &QPushButton::clicked, this, &AnnotationPopup::copyRequested);
     connect(m_delete, &QPushButton::clicked, this, &AnnotationPopup::deleteRequested);
 
@@ -93,7 +96,8 @@ void AnnotationPopup::refreshIcons()
     m_highlight->setIcon(Icons::stateful(QStringLiteral("highlighter"), pal.text2, pal.primaryStrong, 18));
     m_underline->setIcon(Icons::stateful(QStringLiteral("underline"), pal.text2, pal.primaryStrong, 18));
     m_strike->setIcon(Icons::stateful(QStringLiteral("strikethrough"), pal.text2, pal.primaryStrong, 18));
-    m_note->setIcon(Icons::get(QStringLiteral("message-square"), pal.text2, 16));
+    m_note->setIcon(Icons::get(QStringLiteral("note"), pal.text2, 16));
+    m_comment->setIcon(Icons::get(QStringLiteral("message-square"), pal.text2, 16));
     m_copy->setIcon(Icons::get(QStringLiteral("copy"), pal.text2, 16));
     m_delete->setIcon(Icons::get(QStringLiteral("trash"), pal.danger, 16));
 }
@@ -135,6 +139,7 @@ void AnnotationPopup::showFor(Mode mode, const QRect& anchor, AnnotationColor co
     m_sep->setVisible(type != AnnotationType::Bookmark && (!edit || textual));
     m_note->setText(edit && hasNote ? tr("Modifier la note") : tr("Note"));
     m_note->setVisible(type != AnnotationType::Bookmark);
+    m_comment->setVisible(type != AnnotationType::Bookmark);
     m_copy->setVisible(!edit || textual);
     m_delete->setVisible(edit);
     adjustSize();

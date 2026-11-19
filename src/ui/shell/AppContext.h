@@ -4,7 +4,10 @@
 
 namespace studylab {
 class AnnotationService;
+class BackupService;
+class CommentService;
 class LibraryService;
+class SearchService;
 class SettingsService;
 namespace db {
 class Database;
@@ -21,6 +24,9 @@ struct AppContext {
     ui::ThemeManager& theme;
     LibraryService& library;
     AnnotationService& annotations;
+    CommentService& comments;
+    SearchService& search;
+    BackupService& backups;
 };
 
 }  // namespace studylab

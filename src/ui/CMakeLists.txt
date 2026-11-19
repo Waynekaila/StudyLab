@@ -7,9 +7,11 @@ add_library(studylab_ui STATIC
     components/FadeStackedWidget.h components/FadeStackedWidget.cpp
     components/Widgets.h components/Widgets.cpp
     components/FlowLayout.h components/FlowLayout.cpp
+    components/MarkdownHighlighter.h components/MarkdownHighlighter.cpp
     shell/AppContext.h
     shell/Sidebar.h shell/Sidebar.cpp
     shell/MainWindow.h shell/MainWindow.cpp
+    shell/SearchPalette.h shell/SearchPalette.cpp
     pages/PageScaffold.h pages/PageScaffold.cpp
     pages/HomePage.h pages/HomePage.cpp
     pages/SettingsPage.h pages/SettingsPage.cpp
@@ -29,8 +31,10 @@ add_library(studylab_ui STATIC
     reader/ReaderTab.h reader/ReaderTab.cpp
     reader/EpubWeb.h reader/EpubWeb.cpp
     reader/EpubView.h reader/EpubView.cpp
-    reader/EpubReaderTab.h reader/EpubReaderTab.cpp)
-target_link_libraries(studylab_ui PUBLIC studylab_library studylab_annotations studylab_export studylab_settings studylab_epub studylab_data studylab_core Qt6::Widgets Qt6::Svg Qt6::WebEngineWidgets Qt6::WebChannel)
+    reader/EpubReaderTab.h reader/EpubReaderTab.cpp
+    reader/MarkdownView.h reader/MarkdownView.cpp
+    reader/CommentsPane.h reader/CommentsPane.cpp)
+target_link_libraries(studylab_ui PUBLIC studylab_library studylab_annotations studylab_comments studylab_search studylab_backup studylab_export studylab_settings studylab_epub studylab_data studylab_core Qt6::Widgets Qt6::Svg Qt6::WebEngineWidgets Qt6::WebChannel)
 studylab_set_warnings(studylab_ui)
 
 file(GLOB STUDYLAB_ICONS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS resources/icons/*.svg)
@@ -52,9 +56,11 @@ qt_add_resources(studylab_ui "theme"
         resources/theme/chevron-down-light.svg
         resources/theme/chevron-down-dark.svg)
 
-# Lecteur EPUB : foliate-js (MIT, version figée dans foliate/VERSION) et notre adaptateur.
+# Lecteur EPUB : foliate-js (MIT, version figée dans foliate/VERSION) et notre adaptateur ;
+# rendu Markdown des commentaires : markdown-it et KaTeX (MIT, versions dans markdown/vendor/VERSION).
 file(GLOB_RECURSE STUDYLAB_EPUB_READER RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS
-    resources/epub-reader/*.js resources/epub-reader/*.html resources/epub-reader/*.css)
+    resources/epub-reader/*.js resources/epub-reader/*.html resources/epub-reader/*.css
+    resources/epub-reader/*.woff2)
 qt_add_resources(studylab_ui "epub_reader"
     PREFIX "/epub-reader"
     BASE resources/epub-reader

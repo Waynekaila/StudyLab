@@ -125,6 +125,13 @@ ReaderTab* ReaderPage::tabFor(qint64 documentId) const
     return nullptr;
 }
 
+void ReaderPage::openItem(qint64 documentId, bool comment, qint64 itemId)
+{
+    openDocument(documentId);
+    if (ReaderTab* tab = tabFor(documentId))
+        tab->revealItem(comment, itemId);
+}
+
 void ReaderPage::openDocument(qint64 documentId)
 {
     if (auto* existing = tabFor(documentId)) {

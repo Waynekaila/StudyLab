@@ -1,7 +1,11 @@
+#include "support/WebEngineSetup.h"
 #include "Bootstrap.h"
 
 #include "data/sqlite/Database.h"
 #include "services/annotations/AnnotationService.h"
+#include "services/backup/BackupService.h"
+#include "services/comments/CommentService.h"
+#include "services/search/SearchService.h"
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
 #include "support/Fixtures.h"
@@ -35,14 +39,6 @@ using namespace studylab;
 using namespace studylab::test;
 
 namespace {
-// Qt WebEngine : le schéma du lecteur se déclare avant la création de QApplication.
-const bool kSchemes = [] {
-    // Conteneurs de CI exécutés en root : le bac à sable de Chromium y est indisponible.
-    if (qEnvironmentVariableIsEmpty("QTWEBENGINE_DISABLE_SANDBOX"))
-        qputenv("QTWEBENGINE_DISABLE_SANDBOX", "1");
-    ui::registerReaderSchemes();
-    return true;
-}();
 
 constexpr int kTimeout = 30000;
 
@@ -106,6 +102,9 @@ class TstEpubReader : public QObject {
         std::unique_ptr<ui::ThemeManager> theme;
         std::unique_ptr<LibraryService> library;
         std::unique_ptr<AnnotationService> annotations;
+        std::unique_ptr<CommentService> comments;
+        std::unique_ptr<SearchService> search;
+        std::unique_ptr<BackupService> backups;
         std::unique_ptr<AppContext> ctx;
         Env()
         {
@@ -117,7 +116,10 @@ class TstEpubReader : public QObject {
             theme->apply();
             library = std::make_unique<LibraryService>(*db, paths);
             annotations = std::make_unique<AnnotationService>(*db);
-            ctx = std::make_unique<AppContext>(AppContext{paths, *db, *settings, *theme, *library, *annotations});
+            comments = std::make_unique<CommentService>(*db);
+            search = std::make_unique<SearchService>(*db);
+            backups = std::make_unique<BackupService>(paths, *db);
+            ctx = std::make_unique<AppContext>(AppContext{paths, *db, *settings, *theme, *library, *annotations, *comments, *search, *backups});
         }
         qint64 import(const QString& file)
         {
@@ -164,7 +166,7 @@ private slots:
         QCoreApplication::setOrganizationName(QStringLiteral("StudyLabTests"));
         QSettings::setDefaultFormat(QSettings::IniFormat);
         qRegisterMetaType<ImportReport>();
-        QVERIFY(kSchemes);
+        QVERIFY(kWebEngineReady);
 
         EpubSpec spec;
         spec.title = QStringLiteral("Thermodynamique en poche");
