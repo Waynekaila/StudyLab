@@ -4,6 +4,7 @@
 
 #include "services/settings/SettingsService.h"
 #include "ui/components/FadeStackedWidget.h"
+#include "ui/graph/GraphPage.h"
 #include "ui/library/LibraryPage.h"
 #include "ui/notes/NotesPage.h"
 #include "ui/organize/CollectionsPage.h"
@@ -50,6 +51,7 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
                                 {QStringLiteral("notes"), QStringLiteral("note"), tr("Mes notes")},
                                 {QStringLiteral("subjects"), QStringLiteral("folder"), tr("Matières")},
                                 {QStringLiteral("collections"), QStringLiteral("layers"), tr("Collections")},
+                                {QStringLiteral("graph"), QStringLiteral("graph"), tr("Graphe")},
                                 {QStringLiteral("settings"), QStringLiteral("settings"), tr("Paramètres")},
                             },
                             root);
@@ -116,6 +118,15 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
     connect(subjects, &SubjectsPage::openNoteRequested, this, openNote);
     connect(collections, &CollectionsPage::openDocumentRequested, this, openDoc);
     connect(collections, &CollectionsPage::openNoteRequested, this, openNote);
+    auto* graph = new GraphPage(ctx, m_stack);
+    addPage(QStringLiteral("graph"), graph);
+    connect(graph, &GraphPage::openDocumentRequested, this, openDoc);
+    connect(graph, &GraphPage::openNoteRequested, this, openNote);
+    connect(graph, &GraphPage::createNoteRequested, this, [this, notes](const QString& title) {
+        navigateTo(QStringLiteral("notes"));
+        notes->followLink(title);
+    });
+    connect(graph, &GraphPage::notesRequested, this, [this] { navigateTo(QStringLiteral("notes")); });
     connect(notes, &NotesPage::appLinkActivated, this, [this](const QString& link) {
         auto opened = openLink(link);
         if (!opened)

@@ -14,6 +14,10 @@
   page de matière (chiffres clés, documents, notes) ; collections manuelles, listes de lecture, projets et
   collections intelligentes à règles (matière, statut, format, tag, favori, ajouté, annoté ou ouvert récemment),
   avec aperçu du nombre de résultats ; rattachement depuis la bibliothèque et les notes.
+- **Graphe de connaissances** (itération V1-4) : documents, notes et concepts (notes de type « Concept ») reliés
+  par les `[[liens]]` et la provenance des notes de lecture, couleur de la matière ; filtres par type et matière, liens
+  non résolus, profondeur du voisinage, étiquettes, regroupement par matière ; fiche du nœud (Ouvrir, Centrer,
+  Isoler, « Créer la note » pour un lien non résolu) ; disposition force-dirigée calculée en arrière-plan.
 - **Export de la bibliothèque** : les notes sont jointes (toutes pour la bibliothèque entière, celles tirées des
   documents pour une sélection) dans `Notes/<dossier>/`, avec leurs images dans `_attachments/` ; la fiche de
   chaque document a son titre en alias, pour que `[[Titre]]` y mène dans Obsidian.

@@ -70,7 +70,7 @@ Même rythme que le MVP : une PR par itération, testée sur les deux OS par la 
 | V1-1 ✅ | **Espace de notes** : arborescence par dossiers virtuels, 8 types avec modèles, éditeur Markdown (Source / Partagé / Aperçu), front matter YAML, images collées, plan, `[[liens]]` entre notes, rétroliens et liens non résolus (« créer ») |
 | V1-2 ✅ | Notes depuis la lecture (annotation, sélection d'annotations, commentaire, document) avec provenance ; autocomplétion des `[[liens]]` ; liens vers documents et annotations ; notes dans l'export Markdown |
 | V1-3 ✅ | Matières hiérarchiques (page dédiée), collections manuelles et intelligentes |
-| V1-4 | Graphe de connaissances interactif |
+| V1-4 ✅ | Graphe de connaissances interactif |
 | V1-5 | Recherche universelle : texte intégral des PDF/EPUB indexé en tâche de fond, notes, palette Ctrl K enrichie |
 | V1-6 | Références bibliographiques (CSL-JSON, BibTeX, `[[@clé]]`), import d'un coffre Obsidian, lecture TXT/Markdown |
 | V1-7 | OCR facultatif (Tesseract), export HTML/PDF d'une note ou d'une matière → **V1 0.2** |
