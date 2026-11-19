@@ -41,8 +41,11 @@ bool InstanceChannel::sendToRunning(const QString& dataDir, const QStringList& m
 {
     QLocalSocket socket;
     socket.connectToServer(serverName(dataDir));
-    if (!socket.waitForConnected(timeoutMs))
+    if (!socket.waitForConnected(timeoutMs)) {
+        if (socket.error() != QLocalSocket::ServerNotFoundError && socket.error() != QLocalSocket::ConnectionRefusedError)
+            qWarning("Instance déjà ouverte injoignable : %s", qPrintable(socket.errorString()));
         return false;
+    }
     QByteArray payload;
     for (const QString& m : messages)
         payload += m.toUtf8().replace('\n', ' ') + '\n';
@@ -51,8 +54,10 @@ bool InstanceChannel::sendToRunning(const QString& dataDir, const QStringList& m
     socket.flush();
     // Sous Windows, une écriture déjà terminée laisse bytesToWrite() à 0 et waitForBytesWritten() renvoie faux.
     while (socket.bytesToWrite() > 0)
-        if (!socket.waitForBytesWritten(timeoutMs))
+        if (!socket.waitForBytesWritten(timeoutMs)) {
+            qWarning("Envoi à l'instance ouverte impossible : %s", qPrintable(socket.errorString()));
             return false;
+        }
     socket.disconnectFromServer();
     if (socket.state() != QLocalSocket::UnconnectedState)
         socket.waitForDisconnected(timeoutMs);
@@ -65,7 +70,11 @@ bool InstanceChannel::listen()
         return true;
     if (!m_server) {
         m_server = new QLocalServer(this);
+#ifndef Q_OS_WIN
+        // Socket Unix réservé à l'utilisateur. Sous Windows, l'ACL par défaut du tube nommé n'autorise déjà
+        // l'écriture qu'au créateur (et aux administrateurs), et UserAccessOption refuse les processus élevés.
         m_server->setSocketOptions(QLocalServer::UserAccessOption);
+#endif
         connect(m_server, &QLocalServer::newConnection, this, &InstanceChannel::onNewConnection);
     }
     if (m_server->listen(m_name))
