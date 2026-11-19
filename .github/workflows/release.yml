@@ -8,20 +8,47 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Étiquette existante à publier (ex. v0.1.0)
+        description: Étiquette à publier (ex. v0.1.0)
         required: true
+        type: string
+      commit:
+        description: Commit à étiqueter si l'étiquette n'existe pas encore (SHA complet ou abrégé)
+        required: false
         type: string
 
 permissions:
   contents: write
 
 jobs:
+  tag:
+    # Lancé à la main : crée l'étiquette annotée sur le commit indiqué si elle n'existe pas encore.
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag || github.ref_name }}
+      COMMIT: ${{ inputs.commit }}
+    steps:
+      - name: Étiquette
+        run: |
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" > /dev/null 2>&1; then
+            echo "$TAG existe déjà"
+            exit 0
+          fi
+          test -n "$COMMIT" || { echo "$TAG n'existe pas : indiquer le commit à étiqueter"; exit 1; }
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$COMMIT" --jq .sha)
+          obj=$(gh api "repos/$GITHUB_REPOSITORY/git/tags" -f tag="$TAG" -f message="StudyLab ${TAG#v}" \
+                -f object="$sha" -f type=commit --jq .sha)
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$obj" > /dev/null
+          echo "$TAG → $sha"
+
   debian:
+    needs: tag
     uses: ./.github/workflows/build-debian.yml
     with:
       ref: ${{ inputs.tag || github.ref_name }}
 
   windows:
+    needs: tag
     uses: ./.github/workflows/build-windows.yml
     with:
       ref: ${{ inputs.tag || github.ref_name }}
