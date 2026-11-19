@@ -13,7 +13,7 @@ winget install --id Ninja-build.Ninja --exact --silent --accept-package-agreemen
 
 Write-Host "Installation de Qt $QtVersion (MSVC 2022 x64) dans $QtDir via aqtinstall…"
 python -m pip install --upgrade aqtinstall
-python -m aqt install-qt windows desktop $QtVersion win64_msvc2022_64 -m qtpdf --outputdir $QtDir
+python -m aqt install-qt windows desktop $QtVersion win64_msvc2022_64 -m qtpdf qtwebengine qtwebchannel qtpositioning --outputdir $QtDir
 
 $qtPath = Join-Path $QtDir "$QtVersion\msvc2022_64"
 Write-Host ""

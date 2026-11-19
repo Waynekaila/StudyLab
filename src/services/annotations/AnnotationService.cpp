@@ -28,6 +28,9 @@ Result<AnnotationRecord> AnnotationService::create(AnnotationRecord record)
     if (const auto loc = PdfLocator::fromJson(record.locator)) {
         record.unitIndex = loc->page;
         record.sortKey = annotationSortKey(loc->page, loc->relativeY());
+    } else if (const auto epub = EpubLocator::fromJson(record.locator)) {
+        record.unitIndex = epub->section;
+        record.sortKey = annotationSortKey(epub->section, epub->fraction);
     } else {
         record.sortKey = annotationSortKey(record.unitIndex, 0.0);
     }

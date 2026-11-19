@@ -1,9 +1,7 @@
 #pragma once
 
-#include "core/Result.h"
-#include "core/domain/Annotation.h"
-#include "core/domain/Document.h"
 #include "ui/reader/PdfView.h"
+#include "ui/reader/ReaderTab.h"
 
 #include <QTimer>
 #include <QWidget>
@@ -43,17 +41,15 @@ class ThumbnailModel;
 
 /// Un document PDF ouvert dans un onglet : barre d'outils, miniatures/sommaire, vue, recherche.
 /// Le fichier n'est chargé qu'au premier affichage de l'onglet (restauration rapide de nombreux onglets).
-class PdfReaderTab : public QWidget {
+class PdfReaderTab : public ReaderTab {
     Q_OBJECT
 public:
     PdfReaderTab(AppContext& ctx, qint64 documentId, QWidget* parent = nullptr);
     ~PdfReaderTab() override;
 
-    qint64 documentId() const { return m_documentId; }
-    QString title() const { return m_record.title; }
     /// Charge le fichier si ce n'est pas déjà fait. Demande le mot de passe si nécessaire.
     Result<void> ensureLoaded();
-    bool isLoaded() const { return m_loaded; }
+    bool isLoaded() const override { return m_loaded; }
 
     PdfView* view() const { return m_view; }
     QLineEdit* pageEdit() const { return m_pageEdit; }
@@ -68,46 +64,25 @@ public:
     void findNext();
     void findPrevious();
     /// Mode sans distraction : seule la page reste visible.
-    void setFocusMode(bool on);
+    void setFocusMode(bool on) override;
     /// Enregistre immédiatement la position (fermeture de l'onglet ou de l'application).
-    void savePosition();
+    void savePosition() override;
 
     /// Mot de passe fourni à l'avance (tests) ; sinon une boîte de dialogue le demande.
     void setPasswordProvider(std::function<QString(int attempt)> provider) { m_passwordProvider = std::move(provider); }
 
     // Annotations
-    using NoteEditor = std::function<std::optional<QString>(const QString& quote, const QString& current)>;
-    /// Saisie des notes fournie à l'avance (tests) ; sinon une boîte de dialogue.
-    void setNoteEditor(NoteEditor editor) { m_noteEditor = std::move(editor); }
     /// Annote la sélection courante (une annotation par page couverte) puis efface la sélection.
-    Result<QList<AnnotationRecord>> annotateSelection(AnnotationType type, AnnotationColor color);
+    Result<QList<AnnotationRecord>> annotateSelection(AnnotationType type, AnnotationColor color) override;
     Result<AnnotationRecord> addArea(int page, const QRectF& normalizedRect);
     Result<AnnotationRecord> addNote(int page, const QPointF& normalizedPoint, const QString& text);
-    void toggleBookmark();
-    void deleteAnnotation(qint64 id);
-    /// Rétablit la dernière annotation supprimée (Ctrl+Z).
-    bool undoDelete();
-    void editNote(qint64 id);
-    void revealAnnotation(qint64 id);
-    /// Exporte les annotations du document en Markdown dans le dossier donné ; renvoie le dossier créé.
-    Result<QString> exportMarkdown(const QString& directory);
-    const QList<AnnotationRecord>& annotations() const { return m_records; }
-    AnnotationColor currentColor() const { return m_color; }
-    void setCurrentColor(AnnotationColor color);
+    void toggleBookmark() override;
+    void revealAnnotation(qint64 id) override;
     /// Titre du chapitre (sommaire) contenant la page, vide si le document n'a pas de sommaire.
-    QString chapterOf(int page) const;
+    QString chapterOf(int page) const override;
 
-    AnnotationsPane* annotationsPane() const { return m_pane; }
-    AnnotationPopup* popup() const { return m_popup; }
     QToolButton* toolButtonFor(PdfView::Tool tool) const;
     QToolButton* bookmarkButton() const { return m_bookmarkButton; }
-    QToolButton* colorButton(AnnotationColor color) const;
-    QToolButton* paneToggle() const { return m_paneToggle; }
-
-signals:
-    void focusModeToggled(bool on);
-    void fullScreenToggled();
-    void loadFailed(const QString& message);
 
 protected:
     void showEvent(QShowEvent* event) override;
@@ -122,25 +97,13 @@ private:
     void updateSearchCount();
     void restoreState();
     void refreshIcons();
-    void reloadAnnotations();
-    void pushMarks();
+    void pushMarks() override;
+    void copySelection() override;
+    void showEditPopup(qint64 id) override;
+    void updateBookmarkButton() override;
     void buildChapters();
     void onSelectionFinished();
-    void showEditPopup(qint64 id);
-    void showAnnotationMenu(qint64 id, QPoint globalPos);
-    void exportWithDialog();
-    void setPaneVisible(bool on);
-    void updateBookmarkButton();
-    void reportError(const Error& error);
-    std::optional<QString> askNote(const QString& quote, const QString& current);
 
-    AppContext& m_ctx;
-    LibraryService& m_library;
-    AnnotationService& m_annotations;
-    SettingsService& m_settings;
-    ThemeManager& m_theme;
-    qint64 m_documentId;
-    DocumentRecord m_record;
     bool m_loaded = false;
     bool m_loadFailed = false;
     std::unique_ptr<QPdfDocument> m_doc;
@@ -177,22 +140,12 @@ private:
     QWidget* m_errorBox = nullptr;
     QTimer m_saveTimer;
     QTimer m_searchDebounce;
-    bool m_focusMode = false;
     bool m_findPending = false;
 
     // Annotations
-    QList<AnnotationRecord> m_records;
-    QList<qint64> m_deleted;  ///< pile d'annulation
-    AnnotationColor m_color = AnnotationColor::Yellow;
-    NoteEditor m_noteEditor;
     QList<QPair<int, QString>> m_chapters;  ///< (page, titre), triés par page
-    AnnotationsPane* m_pane = nullptr;
-    AnnotationPopup* m_popup = nullptr;
-    qint64 m_popupAnnotation = 0;
     QHash<int, QToolButton*> m_toolButtons;  ///< par PdfView::Tool
-    QList<QToolButton*> m_colorButtons;
     QToolButton* m_bookmarkButton = nullptr;
-    QToolButton* m_paneToggle = nullptr;
 };
 
 }  // namespace studylab::ui

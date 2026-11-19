@@ -164,6 +164,54 @@ double PdfLocator::relativeY() const
     return rects.isEmpty() ? 0.0 : std::clamp(bounds().top(), 0.0, 0.999);
 }
 
+QJsonObject EpubLocator::toJson() const
+{
+    QJsonObject o;
+    o.insert(QStringLiteral("kind"), QStringLiteral("epub"));
+    o.insert(QStringLiteral("cfi"), cfi);
+    o.insert(QStringLiteral("section"), section);
+    o.insert(QStringLiteral("fraction"), round4(fraction));
+    o.insert(QStringLiteral("progress"), round4(progress));
+    if (!exact.isEmpty()) {
+        o.insert(QStringLiteral("textQuote"), QJsonObject{{QStringLiteral("exact"), exact},
+                                                          {QStringLiteral("prefix"), prefix},
+                                                          {QStringLiteral("suffix"), suffix}});
+    }
+    return o;
+}
+
+std::optional<EpubLocator> EpubLocator::fromJson(const QJsonObject& o)
+{
+    if (o.value(QStringLiteral("kind")).toString() != QLatin1String("epub")
+        || !o.value(QStringLiteral("cfi")).toString().startsWith(QLatin1String("epubcfi(")))
+        return std::nullopt;
+    EpubLocator l;
+    l.cfi = o.value(QStringLiteral("cfi")).toString();
+    l.section = o.value(QStringLiteral("section")).toInt();
+    l.fraction = o.value(QStringLiteral("fraction")).toDouble();
+    l.progress = o.value(QStringLiteral("progress")).toDouble();
+    const QJsonObject q = o.value(QStringLiteral("textQuote")).toObject();
+    l.exact = q.value(QStringLiteral("exact")).toString();
+    l.prefix = q.value(QStringLiteral("prefix")).toString();
+    l.suffix = q.value(QStringLiteral("suffix")).toString();
+    return l;
+}
+
+QString annotationLocation(const AnnotationRecord& r)
+{
+    if (const auto epub = EpubLocator::fromJson(r.locator))
+        return QStringLiteral("%1 %").arg(qRound(epub->progress * 100));
+    return QStringLiteral("p. %1").arg(r.pageLabel.isEmpty() ? QString::number(r.unitIndex + 1) : r.pageLabel);
+}
+
+QString annotationGroupFallback(const AnnotationRecord& r)
+{
+    if (EpubLocator::fromJson(r.locator))
+        return QCoreApplication::translate("Annotation", "Section %1").arg(r.unitIndex + 1);
+    return QCoreApplication::translate("Annotation", "Page %1")
+        .arg(r.pageLabel.isEmpty() ? QString::number(r.unitIndex + 1) : r.pageLabel);
+}
+
 double annotationSortKey(int unitIndex, double relativeY)
 {
     return unitIndex + std::clamp(relativeY, 0.0, 0.999);

@@ -25,6 +25,8 @@ struct EpubSpec {
     bool epub3 = true;
     bool withCover = true;
     bool drm = false;
+    /// Titres des chapitres pour la table des matières (nav EPUB 3 ou NCX EPUB 2) ; vide : pas de sommaire.
+    QStringList tocTitles;
 };
 
 /// Génère un EPUB 2 ou 3 minimal mais conforme (mimetype non compressé en premier).

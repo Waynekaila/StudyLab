@@ -4,6 +4,7 @@
 #include "engines/document/DocumentMetadata.h"
 
 #include <QByteArray>
+#include <QHash>
 #include <QList>
 #include <QString>
 
@@ -42,6 +43,8 @@ public:
 
     /// Contenu d'un fichier de l'archive (chemin complet), vide s'il n'existe pas.
     QByteArray fileData(const QString& pathInArchive) const;
+    /// Taille décompressée de chaque fichier de l'archive (chemin complet → octets).
+    QHash<QString, qint64> fileSizes() const;
 
 private:
     EpubPackage() = default;

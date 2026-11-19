@@ -494,7 +494,7 @@ private slots:
         auto* reader = qobject_cast<ui::ReaderPage*>(window.page(QStringLiteral("reader")));
         reader->openDocument(id);
         QTRY_VERIFY(reader->currentTab()->isLoaded());
-        auto* tab = reader->currentTab();
+        auto* tab = qobject_cast<ui::PdfReaderTab*>(reader->currentTab());
         tab->setNoteEditor([](const QString&, const QString&) { return std::optional<QString>(); });
         auto* view = tab->view();
         view->goToPage(0);

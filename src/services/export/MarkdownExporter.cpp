@@ -94,7 +94,7 @@ QString MarkdownExporter::yamlString(const QString& s)
 
 QString MarkdownExporter::pageRef(const AnnotationRecord& a)
 {
-    return QStringLiteral("p. %1").arg(a.pageLabel.isEmpty() ? QString::number(a.unitIndex + 1) : a.pageLabel);
+    return annotationLocation(a);
 }
 
 QString MarkdownExporter::documentNote(const DocumentRecord& doc, const QList<AnnotationRecord>& annotations,
@@ -205,7 +205,7 @@ QString MarkdownExporter::annotationsNote(const DocumentRecord& doc, const QList
     for (const auto& a : items) {
         QString group = options.chapterOf ? options.chapterOf(a.unitIndex) : QString();
         if (group.isEmpty())
-            group = tr("Page %1").arg(a.pageLabel.isEmpty() ? QString::number(a.unitIndex + 1) : a.pageLabel);
+            group = annotationGroupFallback(a);
         if (firstGroup || group != currentGroup) {
             md << QString() << QStringLiteral("## ") + group;
             currentGroup = group;

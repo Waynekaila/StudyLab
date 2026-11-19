@@ -255,6 +255,10 @@ QFrame#ToolGroup { background: %{surface2}; border: 1px solid %{borderSoft}; bor
 QToolButton[swatch="true"] { padding: %{p2}; }
 QToolButton[swatch="true"]:checked { background: transparent; }
 QFrame#AnnotationPopup { background: %{surface}; border: 1px solid %{border}; border-radius: 10px; }
+QFrame#TypographyPanel { background: %{surface}; border: 1px solid %{border}; border-radius: 12px; }
+QToolButton[readingTheme="true"] { border: 2px solid transparent; border-radius: 9px; padding: 1px; background: transparent; }
+QToolButton[readingTheme="true"]:checked { border-color: %{primary}; }
+QLabel#EpubChapter { font-weight: 600; }
 QFrame#AnnotationsPane { background: %{surface2}; border: none; border-left: 1px solid %{borderSoft}; }
 QListView#AnnotationList { background: transparent; border: none; outline: none; }
 QLabel#CountBadge { background: %{sunken}; color: %{text2}; border-radius: 9px; padding: 1px %{p7}; font-size: %{fs11}; }

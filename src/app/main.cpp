@@ -7,6 +7,7 @@
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
 #include "ui/shell/AppContext.h"
+#include "ui/reader/EpubWeb.h"
 #include "ui/shell/MainWindow.h"
 #include "ui/theme/ThemeManager.h"
 
@@ -21,6 +22,7 @@ int main(int argc, char* argv[])
     QApplication::setApplicationName(QStringLiteral("StudyLab"));
     QApplication::setApplicationVersion(QStringLiteral(STUDYLAB_VERSION));
     QApplication::setDesktopFileName(QStringLiteral("studylab"));
+    ui::registerReaderSchemes();  // avant QApplication (Qt WebEngine)
     QApplication app(argc, argv);
 
     const AppPaths paths = AppPaths::standard();

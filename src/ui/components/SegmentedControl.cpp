@@ -35,6 +35,12 @@ void SegmentedControl::setCurrentIndex(int index)
         b->setChecked(true);
 }
 
+void SegmentedControl::setSegmentText(int index, const QString& text)
+{
+    if (auto* b = qobject_cast<QPushButton*>(m_group->button(index)))
+        b->setText(text);
+}
+
 void SegmentedControl::setSegmentIcon(int index, const QIcon& icon)
 {
     auto* b = qobject_cast<QPushButton*>(m_group->button(index));

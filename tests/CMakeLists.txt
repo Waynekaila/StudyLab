@@ -30,3 +30,6 @@ studylab_add_test(tst_pdf_reader SOURCES ui/tst_pdf_reader.cpp ../src/app/Bootst
 target_include_directories(tst_pdf_reader PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
 studylab_add_test(tst_annotations_ui SOURCES ui/tst_annotations_ui.cpp ../src/app/Bootstrap.cpp LIBS studylab_ui studylab_test_support)
 target_include_directories(tst_annotations_ui PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
+studylab_add_test(tst_epub_reader SOURCES ui/tst_epub_reader.cpp ../src/app/Bootstrap.cpp LIBS studylab_ui studylab_test_support)
+target_include_directories(tst_epub_reader PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
+set_tests_properties(tst_epub_reader PROPERTIES TIMEOUT 300)

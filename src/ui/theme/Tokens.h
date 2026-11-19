@@ -22,6 +22,14 @@ struct Palette {
     static Palette darkPalette();
 };
 
+/// Thèmes de page du lecteur EPUB (05-maquettes §4) : blanc, sépia, vert d'eau, sombre.
+enum class ReadingTheme { White, Sepia, Green, Dark };
+struct ReadingColors {
+    bool dark = false;
+    QColor bg, text, muted, link, selection;
+};
+ReadingColors readingColors(ReadingTheme theme);
+
 /// Rapport de contraste WCAG 2.x entre deux couleurs opaques (1 à 21).
 double contrastRatio(const QColor& a, const QColor& b);
 

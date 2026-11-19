@@ -20,3 +20,11 @@ Toute décision qui s'écarte des documents 01 à 08 est consignée ici, avec sa
 | 4 | Sur une page en thème sombre, les couleurs d'annotation restent celles du thème clair | La page PDF reste blanche : les teintes sombres y seraient illisibles | Oui |
 | 4 | L'export Markdown n'inclut pas encore de liens `studylab://` | Aucun gestionnaire d'URL n'est installé avant les installeurs (itération 7) ; un lien mort n'a pas sa place dans une note | Oui |
 | 4 | `Commentaires.md` est reporté à l'itération 6 | Il dépend du volet Commentaires | — |
+| 5 | Les fichiers d'un EPUB sont lus par `XMLHttpRequest` sur le schéma `studylab-epub://` (et non `fetch`) | `fetch` n'accepte les schémas personnalisés qu'à partir de Qt 6.6 ; Qt 6.4 (Ubuntu 24.04) reste pris en charge | Oui |
+| 5 | foliate-js est figé (`foliate/VERSION`) et complété de trois polyfills (`Object.groupBy`, `Map.groupBy`, `Promise.withResolvers`) | Chromium 102 de Qt 6.4 ne les a pas ; sans effet avec Qt 6.8 | Oui |
+| 5 | Les scripts des livres sont bloqués par la politique de sécurité (CSP) de la page du lecteur, héritée par les chapitres (documents `blob:`) | foliate-js a besoin de `allow-scripts` sur ses cadres pour ses propres écouteurs ; la CSP bloque les scripts en ligne et `blob:` du livre | — |
+| 5 | Réglages d'affichage du texte communs à tous les EPUB (pas par livre) | Un lecteur garde en général la même typographie ; le réglage par livre pourra s'ajouter sans migration (`reading_positions.view`) | Oui |
+| 5 | Polices proposées : celle du livre, Georgia (empattements) ou Inter (sans) ; Literata n'est pas embarquée | Évite ~1 Mo de polices dans l'exécutable pour le MVP | Oui |
+| 5 | Pas d'outil Zone ni de note ponctuelle dans les EPUB : une note s'attache à un passage | Le texte est recomposé : une zone ou un point n'a pas de position stable | — |
+| 5 | Emplacement d'une annotation EPUB affiché en pourcentage du livre (« 42 % ») ; groupe de repli « Section N » | Un EPUB n'a pas de pages fixes | — |
+| 5 | Signet EPUB : point CFI au début de la page affichée ; le bouton reflète un signet présent dans la page visible | Équivalent du signet de page des PDF | — |
