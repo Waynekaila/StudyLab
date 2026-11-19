@@ -11,13 +11,25 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | Phase | Contenu | État |
 |---|---|---|
 | 1 · Conception | Vision, architecture, choix des bibliothèques, schéma SQLite, maquettes, plan | ✅ Terminée — voir [`docs/design/`](docs/design/README.md) |
-| 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | 🚧 En cours — itération 5/7 (lecteur EPUB) |
+| 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | 🚧 En cours — itération 6/7 (commentaires, recherche, sauvegardes) |
 | 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | — |
 | 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | — |
 | 5 · Finalisation | Optimisation, packaging, documentation | — |
 
-### Ce qui fonctionne aujourd'hui (itération 5)
+### Ce qui fonctionne aujourd'hui (itération 6)
 
+- **Commentaires** (PDF et EPUB) : volet sous les annotations, rédigés en Markdown avec formules LaTeX (`$…$`,
+  `$$…$$`, rendu KaTeX hors ligne) et liens `[[…]]`. Quatre types (question, explication, réflexion, référence),
+  ancrés à un passage, à une annotation, à une page ou au document entier. Filtres (questions, explications, page ou
+  chapitre courant), recherche, aperçu, question marquée résolue, suppression avec « Annuler ». Le brouillon en
+  cours survit à une fermeture brutale. Bouton « Commenter » dans la barre flottante de sélection.
+- **Recherche universelle** (Ctrl + K) : métadonnées, annotations et commentaires de toute la bibliothèque, avec
+  extraits surlignés ; Entrée ouvre le document au bon endroit.
+- **Sauvegardes** : automatique chaque jour au démarrage, manuelle depuis *Paramètres › Données*, rotation
+  (semaine, mois, six mois ; les manuelles sont gardées), restauration au prochain démarrage ou immédiate avec
+  redémarrage, copie de sécurité avant chaque restauration. En cas de base endommagée au démarrage, StudyLab propose
+  de restaurer la dernière sauvegarde valide.
+- **Export Markdown** : `Commentaires.md` (callouts par type, identifiants `^com-…`) en plus des annotations.
 - **Lecteur EPUB** (EPUB 2 et 3) : table des matières avec le chapitre courant en évidence, pages ou défilement
   continu, progression et temps restant estimé dans le chapitre, chapitre précédent/suivant, historique,
   recherche dans tout le livre (accents et casse ignorés). Panneau **Affichage du texte** : police, taille,
@@ -60,8 +72,10 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | ![Lecteur PDF](docs/screenshots/iteration3-lecteur-pdf.png) | ![Lecteur PDF sombre, recherche](docs/screenshots/iteration3-lecteur-pdf-sombre.png) |
 | ![Annotations](docs/screenshots/iteration4-annotations.png) | ![Annotations sombre](docs/screenshots/iteration4-annotations-sombre.png) |
 | ![Lecteur EPUB, affichage du texte](docs/screenshots/iteration5-epub.png) | ![Lecteur EPUB sombre](docs/screenshots/iteration5-epub-sombre.png) |
+| ![Commentaires](docs/screenshots/iteration6-commentaires.png) | ![Commentaires sombre](docs/screenshots/iteration6-commentaires-sombre.png) |
+| ![Recherche universelle](docs/screenshots/iteration6-recherche.png) | ![Sauvegardes](docs/screenshots/iteration6-sauvegardes.png) |
 
-Les commentaires, la recherche universelle et la sauvegarde complète arrivent dans les itérations suivantes
+L'export complet de la bibliothèque, l'accueil et les installeurs arrivent à l'itération 7
 (plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md)).
 
 ## Compiler

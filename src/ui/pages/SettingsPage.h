@@ -4,17 +4,27 @@
 
 #include <QWidget>
 
+#include <functional>
+
 class QComboBox;
 class QLabel;
 class QListWidget;
+class QPushButton;
 class QStackedWidget;
 
+namespace studylab {
+struct BackupInfo;
+}
+
 namespace studylab::ui {
+
+/// Propriété de QApplication : relancer StudyLab après la fermeture (restauration d'une sauvegarde).
+inline constexpr char kRestartProperty[] = "studylabRestart";
 
 class SegmentedControl;
 class ToggleSwitch;
 
-/// Paramètres : Apparence, Données, À propos.
+/// Paramètres : Apparence, Bibliothèque et import, Données (sauvegardes, restauration), À propos.
 class SettingsPage : public QWidget {
     Q_OBJECT
 public:
@@ -26,6 +36,18 @@ public:
     ToggleSwitch* animationsSwitch() const { return m_animations; }
     SegmentedControl* importModeControl() const { return m_importMode; }
     QListWidget* categories() const { return m_categories; }
+    QListWidget* backupList() const { return m_backups; }
+    QPushButton* backupButton() const { return m_backupButton; }
+    QPushButton* restoreButton() const { return m_restoreButton; }
+    QPushButton* cancelRestoreButton() const { return m_cancelRestore; }
+    QLabel* backupStatus() const { return m_backupStatus; }
+    QLabel* pendingRestoreLabel() const { return m_pendingLabel; }
+
+    /// Confirmation d'une restauration : 0 annuler, 1 au prochain démarrage, 2 redémarrer maintenant.
+    /// Par défaut une boîte de dialogue ; les tests fournissent la réponse.
+    using RestoreConfirmer = std::function<int(const BackupInfo& backup)>;
+    void setRestoreConfirmer(RestoreConfirmer confirmer) { m_confirmRestore = std::move(confirmer); }
+    void refreshBackups();
 
 private:
     QWidget* buildAppearance();
@@ -34,6 +56,7 @@ private:
     QWidget* buildAbout();
     void syncFromSettings();
     void createBackup();
+    void restoreSelected();
 
     AppContext& m_ctx;
     QListWidget* m_categories = nullptr;
@@ -43,6 +66,13 @@ private:
     ToggleSwitch* m_animations = nullptr;
     SegmentedControl* m_importMode = nullptr;
     QLabel* m_backupStatus = nullptr;
+    QLabel* m_lastBackup = nullptr;
+    QListWidget* m_backups = nullptr;
+    QPushButton* m_backupButton = nullptr;
+    QPushButton* m_restoreButton = nullptr;
+    QPushButton* m_cancelRestore = nullptr;
+    QLabel* m_pendingLabel = nullptr;
+    RestoreConfirmer m_confirmRestore;
 };
 
 }  // namespace studylab::ui

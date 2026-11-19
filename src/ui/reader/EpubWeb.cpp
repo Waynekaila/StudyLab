@@ -81,6 +81,12 @@ QByteArray EpubSchemeHandler::mimeTypeFor(const QString& path)
         return "text/css";
     if (p.endsWith(QLatin1String(".svg")))
         return "image/svg+xml";
+    if (p.endsWith(QLatin1String(".woff2")))
+        return "font/woff2";
+    if (p.endsWith(QLatin1String(".woff")))
+        return "font/woff";
+    if (p.endsWith(QLatin1String(".ttf")) || p.endsWith(QLatin1String(".otf")))
+        return "font/ttf";
     if (p.endsWith(QLatin1String(".png")))
         return "image/png";
     if (p.endsWith(QLatin1String(".jpg")) || p.endsWith(QLatin1String(".jpeg")))

@@ -190,6 +190,15 @@ QListWidget#Categories { background: transparent; border: none; outline: none; }
 QListWidget#Categories::item { padding: %{p7} %{p10}; border-radius: 6px; color: %{text2}; margin: 1px 0; }
 QListWidget#Categories::item:hover { background: %{sunken}; }
 QListWidget#Categories::item:selected { background: %{primarySoft}; color: %{primaryStrong}; }
+QPushButton#SidebarSearch {
+    text-align: left; background: %{surface}; color: %{text3}; border: 1px solid %{borderSoft}; border-radius: 8px;
+    padding: %{p6} %{p10}; font-weight: 400;
+}
+QPushButton#SidebarSearch:hover { border-color: %{border}; color: %{text2}; }
+QFrame#SearchPalette { background: %{surface}; border: 1px solid %{border}; border-radius: 14px; }
+QListWidget#SearchResults { background: transparent; border: none; outline: none; }
+QListWidget#SearchResults::item { border-radius: 8px; }
+QListWidget#SearchResults::item:selected { background: %{primarySoft}; }
 QFrame#SubSidebar { background: %{surface2}; border: none; border-right: 1px solid %{borderSoft}; }
 
 QScrollBar:vertical { background: transparent; width: 10px; margin: 2px; }
@@ -261,6 +270,11 @@ QToolButton[readingTheme="true"]:checked { border-color: %{primary}; }
 QLabel#EpubChapter { font-weight: 600; }
 QFrame#AnnotationsPane { background: %{surface2}; border: none; border-left: 1px solid %{borderSoft}; }
 QListView#AnnotationList { background: transparent; border: none; outline: none; }
+QFrame#CommentsPane { background: %{surface2}; border: none; border-left: 1px solid %{borderSoft}; border-top: 1px solid %{borderSoft}; }
+QSplitter#ReaderSidePanel::handle { background: %{surface2}; }
+QSplitter#ReaderSidePanel::handle:hover { background: %{borderSoft}; }
+QFrame#CommentEditor { background: %{surface}; border: 1px solid %{border}; border-radius: 12px; }
+QPlainTextEdit#CommentText { background: transparent; border: none; padding: 0; selection-background-color: %{primarySoft}; }
 QLabel#CountBadge { background: %{sunken}; color: %{text2}; border-radius: 9px; padding: 1px %{p7}; font-size: %{fs11}; }
 QToolButton#FilterChip {
     background: %{surface}; color: %{text2}; border: 1px solid %{borderSoft}; border-radius: 12px;

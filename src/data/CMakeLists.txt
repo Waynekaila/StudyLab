@@ -5,7 +5,8 @@ add_library(studylab_data STATIC
     migrations/Migrator.h migrations/Migrator.cpp
     repositories/DocumentRepository.h repositories/DocumentRepository.cpp
     repositories/ReadingRepository.h repositories/ReadingRepository.cpp
-    repositories/AnnotationRepository.h repositories/AnnotationRepository.cpp)
+    repositories/AnnotationRepository.h repositories/AnnotationRepository.cpp
+    repositories/CommentRepository.h repositories/CommentRepository.cpp)
 target_link_libraries(studylab_data PUBLIC studylab_core studylab_sqlite3 Qt6::Core)
 studylab_set_warnings(studylab_data)
 

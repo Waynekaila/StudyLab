@@ -1,0 +1,51 @@
+/* Couleurs fournies par l'application (jetons du thème) via StudyLab.setTheme(). */
+:root {
+  --bg: #ffffff; --card: #f4f2fb; --card-border: #e6e2f3; --text: #24272e; --muted: #6b7080;
+  --border: #e3e5ea; --link: #4a63a8; --accent: #5b6fb3; --code-bg: rgba(0,0,0,.05);
+  --wiki: #5b6fb3; --font: "Inter", system-ui, sans-serif; --size: 13px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
+body { font: var(--size)/1.55 var(--font); -webkit-font-smoothing: antialiased; overflow-wrap: anywhere; }
+body.preview { padding: 2px 4px; }
+#root { padding: 0; }
+.empty { color: var(--muted); text-align: center; padding: 28px 12px; }
+
+.card { background: var(--card); border: 1px solid var(--card-border); border-radius: 10px; padding: 10px 12px 10px;
+        margin: 0 0 10px; cursor: pointer; position: relative; outline: none; }
+.card:hover { border-color: var(--accent); }
+.card.active { box-shadow: 0 0 0 2px var(--accent); }
+.card:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.card header { display: flex; align-items: center; gap: 6px; font-size: .92em; color: var(--muted); margin-bottom: 4px; }
+.card header .label { font-weight: 600; color: var(--text); }
+.card header .where { color: var(--muted); }
+.card header .date { margin-left: auto; color: var(--muted); font-size: .95em; white-space: nowrap; }
+.card header svg { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 2;
+                   stroke-linecap: round; stroke-linejoin: round; color: var(--muted); }
+.card .more { border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 0 2px; font-size: 15px;
+              line-height: 1; border-radius: 4px; visibility: hidden; }
+.card:hover .more, .card.active .more { visibility: visible; }
+.card .more:hover { background: var(--code-bg); color: var(--text); }
+.card .badge { font-size: .85em; padding: 0 6px; border-radius: 8px; background: var(--code-bg); color: var(--muted); }
+.card.resolved .badge { color: var(--accent); }
+.card .quote { margin: 4px 0 6px; padding: 1px 0 1px 8px; border-left: 3px solid var(--quote, var(--border));
+               font-family: Georgia, "Literata", serif; font-style: italic; color: var(--muted);
+               display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md p, .md ul, .md ol, .md blockquote, .md pre, .md table { margin: 0 0 .5em; }
+.md h1, .md h2, .md h3, .md h4 { margin: .6em 0 .3em; line-height: 1.25; }
+.md h1 { font-size: 1.3em; } .md h2 { font-size: 1.18em; } .md h3, .md h4 { font-size: 1.05em; }
+.md ul, .md ol { padding-left: 1.4em; }
+.md blockquote { border-left: 3px solid var(--border); padding-left: 8px; color: var(--muted); }
+.md code { background: var(--code-bg); padding: 0 4px; border-radius: 4px; font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: .92em; }
+.md pre { background: var(--code-bg); padding: 8px; border-radius: 6px; overflow-x: auto; }
+.md pre code { background: none; padding: 0; }
+.md a { color: var(--link); }
+.md table { border-collapse: collapse; }
+.md th, .md td { border: 1px solid var(--border); padding: 2px 6px; }
+.md hr { border: 0; border-top: 1px solid var(--border); }
+.md .wikilink { color: var(--wiki); text-decoration: underline dashed; text-underline-offset: 3px; }
+.md .katex-display { margin: .4em 0; overflow-x: auto; overflow-y: hidden; }
+.md .math-error { color: #c0392b; font-family: monospace; }

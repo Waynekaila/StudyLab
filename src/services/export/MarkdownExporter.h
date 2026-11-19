@@ -2,6 +2,7 @@
 
 #include "core/Result.h"
 #include "core/domain/Annotation.h"
+#include "core/domain/Comment.h"
 #include "core/domain/Document.h"
 
 #include <QDate>
@@ -18,6 +19,7 @@ namespace studylab {
 ///   <Auteur> - <Titre> (<année>)/
 ///     <Auteur> - <Titre> (<année>).md   fiche document (YAML)
 ///     Annotations.md                     groupées par chapitre, citations en callouts
+///     Commentaires.md                    commentaires libres puis par chapitre (s'il y en a)
 ///     metadata.json                      métadonnées et annotations, lisibles par une machine
 class MarkdownExporter {
 public:
@@ -27,6 +29,7 @@ public:
     struct Options {
         QDate date = QDate::currentDate();
         ChapterResolver chapterOf;
+        QList<CommentRecord> comments;  ///< commentaires du document (Commentaires.md)
     };
 
     /// « Çengel - Thermodynamique (2019) », sans caractères interdits dans un nom de fichier.
@@ -42,6 +45,7 @@ public:
                                 const Options& options);
     static QString annotationsNote(const DocumentRecord& doc, const QList<AnnotationRecord>& annotations,
                                    const Options& options);
+    static QString commentsNote(const DocumentRecord& doc, const QList<CommentRecord>& comments, const Options& options);
     static QJsonObject metadata(const DocumentRecord& doc, const QList<AnnotationRecord>& annotations,
                                 const Options& options);
 

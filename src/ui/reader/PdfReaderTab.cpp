@@ -41,6 +41,7 @@
 #include <QPdfSearchModel>
 #include <QPushButton>
 #include <QShortcut>
+#include <QSplitter>
 #include <QStackedWidget>
 #include <QStyledItemDelegate>
 #include <QToolButton>
@@ -136,9 +137,7 @@ PdfReaderTab::PdfReaderTab(AppContext& ctx, qint64 documentId, QWidget* parent)
     m_view = new PdfView(theme, this);
     body->addWidget(buildSidePanel());
     body->addWidget(m_view, 1);
-    m_pane = new AnnotationsPane(theme, this);
-    m_pane->setFixedWidth(theme.px(340));
-    body->addWidget(m_pane);
+    body->addWidget(createSidePanes(false));
     v->addLayout(body, 1);
     m_popup = new AnnotationPopup(theme, m_view->viewport());
 
@@ -188,6 +187,7 @@ PdfReaderTab::PdfReaderTab(AppContext& ctx, qint64 documentId, QWidget* parent)
     // Annotations : lecteur, barre flottante, volet
     connect(m_view, &PdfView::currentPageChanged, this, [this](int page) {
         m_pane->setCurrentPage(page);
+        m_comments->setCurrentUnit(page);
         updateBookmarkButton();
     });
     connect(m_view, &PdfView::positionChanged, m_popup, &QWidget::hide);
@@ -596,6 +596,7 @@ Result<void> PdfReaderTab::ensureLoaded()
     updatePageIndicator();
     updateZoomCombo();
     (void)m_library.markOpened(m_documentId);
+    flushPendingReveal();
     return {};
 }
 
@@ -744,7 +745,7 @@ void PdfReaderTab::setFocusMode(bool on)
     }
     m_toolbar->setVisible(!on);
     m_side->setVisible(!on && m_sideToggle->isChecked());
-    m_pane->setVisible(!on && m_paneToggle->isChecked());
+    m_sidePanel->setVisible(!on && m_paneToggle->isChecked());
     m_popup->hide();
     if (on)
         m_searchBar->hide();
@@ -938,6 +939,66 @@ void PdfReaderTab::revealAnnotation(qint64 id)
         m_pane->setActive(id);
         return;
     }
+}
+
+std::optional<CommentTarget> PdfReaderTab::selectionTarget() const
+{
+    const auto anchors = m_view->selectionAnchors();
+    if (anchors.isEmpty())
+        return std::nullopt;
+    // Passage sur plusieurs pages : ancré à sa première page, citation complète.
+    const PdfSelectionAnchor& a = anchors.first();
+    PdfLocator loc;
+    loc.page = a.page;
+    loc.rects = a.rects;
+    loc.exact = normalizeQuote(a.text);
+    loc.prefix = a.prefix;
+    loc.suffix = a.suffix;
+    loc.start = a.start;
+    loc.end = a.end;
+    QStringList texts;
+    for (const auto& part : anchors)
+        texts << part.text;
+    CommentTarget t;
+    t.anchor = CommentAnchor::Passage;
+    t.unitIndex = a.page;
+    t.locator = loc.toJson();
+    const QString label = m_queue ? m_queue->pageLabel(a.page) : QString();
+    if (!label.isEmpty() && label != QString::number(a.page + 1))
+        t.locator.insert(QStringLiteral("pageLabel"), label);
+    t.quote = normalizeQuote(texts.join(QLatin1Char(' ')));
+    t.locator.insert(QStringLiteral("textQuote"),
+                     QJsonObject{{QStringLiteral("exact"), t.quote}, {QStringLiteral("prefix"), a.prefix},
+                                 {QStringLiteral("suffix"), anchors.last().suffix}});
+    t.where = QStringLiteral("p. %1").arg(label.isEmpty() ? QString::number(a.page + 1) : label);
+    return t;
+}
+
+CommentTarget PdfReaderTab::positionTarget() const
+{
+    const int page = m_view->currentPage();
+    PdfLocator loc;
+    loc.page = page;
+    CommentTarget t;
+    t.anchor = CommentAnchor::Page;
+    t.unitIndex = page;
+    t.locator = loc.toJson();
+    const QString label = m_queue ? m_queue->pageLabel(page) : QString();
+    if (!label.isEmpty() && label != QString::number(page + 1))
+        t.locator.insert(QStringLiteral("pageLabel"), label);
+    t.where = QStringLiteral("p. %1").arg(label.isEmpty() ? QString::number(page + 1) : label);
+    return t;
+}
+
+void PdfReaderTab::revealLocator(const QJsonObject& locator)
+{
+    const auto loc = PdfLocator::fromJson(locator);
+    if (!loc)
+        return;
+    if (loc->rects.isEmpty())
+        m_view->goToPage(loc->page);
+    else
+        m_view->revealNormalizedRect(loc->page, loc->bounds(), true);
 }
 
 void PdfReaderTab::copySelection()

@@ -7,6 +7,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPainter>
+#include <QPushButton>
 #include <QToolButton>
 #include <QVBoxLayout>
 
@@ -54,6 +55,16 @@ Sidebar::Sidebar(ThemeManager& theme, const QList<Entry>& entries, QWidget* pare
     brandRow->addWidget(brand, 1);
     layout->addLayout(brandRow);
 
+    m_search = new QPushButton(tr("Rechercher…"), this);
+    m_search->setObjectName(QStringLiteral("SidebarSearch"));
+    m_search->setToolTip(tr("Rechercher partout (Ctrl+K)"));
+    m_search->setAccessibleName(tr("Rechercher partout"));
+    m_search->setCursor(Qt::PointingHandCursor);
+    m_search->setFocusPolicy(Qt::TabFocus);
+    layout->addWidget(m_search);
+    layout->addSpacing(8);
+    connect(m_search, &QPushButton::clicked, this, &Sidebar::searchRequested);
+
     for (int i = 0; i < m_entries.size(); ++i) {
         auto* b = new QToolButton(this);
         b->setProperty("nav", true);
@@ -97,6 +108,7 @@ void Sidebar::refreshIcons()
     for (int i = 0; i < m_buttons.size(); ++i)
         m_buttons[i]->setIcon(Icons::stateful(m_entries[i].icon, p.text2, p.primaryStrong));
     m_logo->setPixmap(logoPixmap(p, 28, devicePixelRatioF()));
+    m_search->setIcon(Icons::get(QStringLiteral("search"), p.text3, 16));
     m_footerIcon->setPixmap(Icons::get(QStringLiteral("shield"), p.text3, 14).pixmap(14, 14));
     setFixedWidth(m_theme.px(228));
 }

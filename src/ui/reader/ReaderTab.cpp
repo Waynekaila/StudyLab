@@ -1,12 +1,14 @@
 #include "ui/reader/ReaderTab.h"
 
 #include "services/annotations/AnnotationService.h"
+#include "services/comments/CommentService.h"
 #include "services/export/MarkdownExporter.h"
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
 #include "ui/reader/AnnotationPopup.h"
 #include "ui/reader/AnnotationStyle.h"
 #include "ui/reader/AnnotationsPane.h"
+#include "ui/reader/CommentsPane.h"
 #include "ui/shell/AppContext.h"
 #include "ui/theme/Icons.h"
 #include "ui/theme/ThemeManager.h"
@@ -22,7 +24,9 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QShortcut>
+#include <QSplitter>
 #include <QStandardPaths>
+#include <QTimer>
 #include <QToolButton>
 #include <QUrl>
 
@@ -37,7 +41,8 @@ ReaderTab::ReaderTab(AppContext& ctx, qint64 documentId, QWidget* parent)
       m_annotations(ctx.annotations),
       m_settings(ctx.settings),
       m_theme(ctx.theme),
-      m_documentId(documentId)
+      m_documentId(documentId),
+      m_commentService(ctx.comments)
 {
     if (auto r = m_library.document(documentId))
         m_record = r.value();
@@ -92,6 +97,31 @@ void ReaderTab::refreshColorIcons()
         m_paneToggle->setIcon(Icons::stateful(QStringLiteral("panel-right"), pal.text2, pal.primaryStrong, 18));
 }
 
+QWidget* ReaderTab::createSidePanes(bool unitIsChapter)
+{
+    m_sidePanel = new QSplitter(Qt::Vertical, this);
+    m_sidePanel->setObjectName(QStringLiteral("ReaderSidePanel"));
+    m_sidePanel->setFixedWidth(m_theme.px(340));
+    m_sidePanel->setChildrenCollapsible(false);
+    m_sidePanel->setHandleWidth(m_theme.px(6));
+    m_pane = new AnnotationsPane(m_theme, m_sidePanel);
+    m_pane->setUnitIsChapter(unitIsChapter);
+    m_comments = new CommentsPane(m_theme, m_settings, m_documentId, m_sidePanel);
+    m_comments->setUnitIsChapter(unitIsChapter);
+    m_comments->setPositionTargetProvider([this] { return positionTarget(); });
+    m_sidePanel->addWidget(m_pane);
+    m_sidePanel->addWidget(m_comments);
+    m_sidePanel->setStretchFactor(0, 1);
+    m_sidePanel->setStretchFactor(1, 1);
+    const QByteArray state = QByteArray::fromBase64(m_settings.value(QStringLiteral("reader/sidePanelSplit")).toString().toLatin1());
+    if (!state.isEmpty())
+        m_sidePanel->restoreState(state);
+    connect(m_sidePanel, &QSplitter::splitterMoved, this, [this] {
+        m_settings.setValue(QStringLiteral("reader/sidePanelSplit"), QString::fromLatin1(m_sidePanel->saveState().toBase64()));
+    });
+    return m_sidePanel;
+}
+
 void ReaderTab::initAnnotations()
 {
     connect(m_popup, &AnnotationPopup::colorPicked, this, [this](AnnotationColor c) {
@@ -137,6 +167,12 @@ void ReaderTab::initAnnotations()
         m_popup->hide();
     });
     connect(m_popup, &AnnotationPopup::deleteRequested, this, [this] { deleteAnnotation(m_popupAnnotation); });
+    connect(m_popup, &AnnotationPopup::commentRequested, this, [this] {
+        if (m_popup->mode() == AnnotationPopup::Mode::Create)
+            commentSelection();
+        else
+            commentAnnotation(m_popupAnnotation);
+    });
 
     connect(m_pane, &AnnotationsPane::annotationActivated, this, &ReaderTab::revealAnnotation);
     connect(m_pane, &AnnotationsPane::contextMenuRequested, this, &ReaderTab::showAnnotationMenu);
@@ -144,6 +180,43 @@ void ReaderTab::initAnnotations()
     connect(m_pane, &AnnotationsPane::closeRequested, this, [this] { setPaneVisible(false); });
     connect(m_pane, &AnnotationsPane::undoRequested, this, &ReaderTab::undoDelete);
     m_pane->setGroupResolver([this](int unit) { return chapterOf(unit); });
+
+    // Commentaires
+    connect(m_comments, &CommentsPane::submitted, this, &ReaderTab::submitComment);
+    connect(m_comments, &CommentsPane::commentActivated, this, &ReaderTab::revealComment);
+    connect(m_comments, &CommentsPane::editRequested, this, &ReaderTab::editComment);
+    connect(m_comments, &CommentsPane::deleteRequested, this, &ReaderTab::deleteComment);
+    connect(m_comments, &CommentsPane::menuRequested, this, &ReaderTab::showCommentMenu);
+    connect(m_comments, &CommentsPane::undoRequested, this, &ReaderTab::undoDelete);
+    connect(m_comments, &CommentsPane::linkActivated, this, [](const QUrl& url) {
+        if (url.scheme() == QLatin1String("http") || url.scheme() == QLatin1String("https")
+            || url.scheme() == QLatin1String("mailto"))
+            QDesktopServices::openUrl(url);
+    });
+    auto onComment = [this](qint64 documentId, qint64 annotationId) {
+        if (documentId != m_documentId)
+            return;
+        reloadComments();
+        // Le commentaire d'une annotation est aussi sa note : volet Annotations et vue à jour.
+        if (annotationId > 0) {
+            if (auto a = m_annotations.find(annotationId)) {
+                for (auto& existing : m_records)
+                    if (existing.id == annotationId)
+                        existing = a.value();
+                pushMarks();
+            }
+        }
+        emit contentChanged();
+    };
+    connect(&m_commentService, &CommentService::commentAdded, this, [this, onComment](const CommentRecord& c) {
+        onComment(c.documentId, c.annotationId);
+        if (c.documentId == m_documentId)
+            m_comments->setActive(c.id);
+    });
+    connect(&m_commentService, &CommentService::commentChanged, this,
+            [onComment](const CommentRecord& c) { onComment(c.documentId, c.annotationId); });
+    connect(&m_commentService, &CommentService::commentRemoved, this,
+            [onComment](qint64, qint64 documentId, qint64 annotationId) { onComment(documentId, annotationId); });
 
     connect(&m_annotations, &AnnotationService::annotationAdded, this, [this](const AnnotationRecord& r) {
         if (r.documentId != m_documentId)
@@ -162,6 +235,8 @@ void ReaderTab::initAnnotations()
         pushMarks();
         m_pane->setActive(r.id);
         updateBookmarkButton();
+        reloadComments();
+        emit contentChanged();
     });
     connect(&m_annotations, &AnnotationService::annotationChanged, this, [this](const AnnotationRecord& r) {
         if (r.documentId != m_documentId)
@@ -170,6 +245,8 @@ void ReaderTab::initAnnotations()
             if (existing.id == r.id)
                 existing = r;
         pushMarks();
+        reloadComments();
+        emit contentChanged();
     });
     connect(&m_annotations, &AnnotationService::annotationRemoved, this, [this](qint64 id, qint64 docId) {
         if (docId != m_documentId)
@@ -182,6 +259,8 @@ void ReaderTab::initAnnotations()
         annotationRemoved(id);
         pushMarks();
         updateBookmarkButton();
+        reloadComments();
+        emit contentChanged();
     });
 
     auto* undo = new QShortcut(QKeySequence::Undo, this, this, [this] { (void)undoDelete(); });
@@ -194,6 +273,7 @@ void ReaderTab::initAnnotations()
     });
     del->setContext(Qt::WidgetWithChildrenShortcut);
     setPaneVisible(m_settings.value(QStringLiteral("reader/annotationsPane"), true).toBool());
+    reloadComments();
 }
 
 void ReaderTab::reportError(const Error& error)
@@ -223,7 +303,7 @@ void ReaderTab::setCurrentColor(AnnotationColor color)
 
 void ReaderTab::setPaneVisible(bool on)
 {
-    m_pane->setVisible(on && !m_focusMode);
+    m_sidePanel->setVisible(on && !m_focusMode);
     if (m_paneToggle) {
         const QSignalBlocker block(m_paneToggle);
         m_paneToggle->setChecked(on);
@@ -249,7 +329,7 @@ void ReaderTab::deleteAnnotation(qint64 id)
         return;
     }
     m_popup->hide();
-    m_deleted.append(id);
+    m_deleted.append({false, id});
     const QString what = r ? annotationTypeLabel(r.value().type) : tr("Annotation");
     m_pane->showUndo(tr("%1 supprimé%2").arg(what, r && (r.value().type == AnnotationType::Highlight
                                                            || r.value().type == AnnotationType::Underline
@@ -262,9 +342,10 @@ void ReaderTab::deleteAnnotation(qint64 id)
 bool ReaderTab::undoDelete()
 {
     while (!m_deleted.isEmpty()) {
-        const qint64 id = m_deleted.takeLast();
-        if (m_annotations.restore(id)) {
+        const Deleted d = m_deleted.takeLast();
+        if (d.comment ? bool(m_commentService.restore(d.id)) : bool(m_annotations.restore(d.id))) {
             m_pane->hideUndo();
+            m_comments->hideUndo();
             return true;
         }
     }
@@ -312,8 +393,8 @@ void ReaderTab::showAnnotationMenu(qint64 id, QPoint globalPos)
         }
     }
     if (a.type != AnnotationType::Bookmark)
-        menu.addAction(a.note.isEmpty() ? tr("Ajouter une note…") : tr("Modifier la note…"), this,
-                       [this, id] { editNote(id); });
+        menu.addAction(a.note.isEmpty() ? tr("Commenter…") : tr("Modifier le commentaire…"), this,
+                       [this, id] { commentAnnotation(id); });
     if (!a.selectedText.isEmpty())
         menu.addAction(tr("Copier le texte"), this,
                        [text = a.selectedText] { QApplication::clipboard()->setText(normalizeQuote(text)); });
@@ -333,8 +414,12 @@ Result<QString> ReaderTab::exportMarkdown(const QString& directory)
     auto list = m_annotations.list(m_documentId);
     if (!list)
         return list.error();
+    auto comments = m_commentService.list(m_documentId);
+    if (!comments)
+        return comments.error();
     MarkdownExporter::Options opt;
     opt.chapterOf = [this](int unit) { return chapterOf(unit); };
+    opt.comments = comments.value();
     return MarkdownExporter::exportDocument(directory, doc.value(), list.value(), opt);
 }
 
@@ -343,7 +428,7 @@ void ReaderTab::exportWithDialog()
     QString start = m_settings.value(QStringLiteral("export/lastDirectory")).toString();
     if (start.isEmpty() || !QDir(start).exists())
         start = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
-    const QString dir = QFileDialog::getExistingDirectory(window(), tr("Exporter les annotations en Markdown"), start);
+    const QString dir = QFileDialog::getExistingDirectory(window(), tr("Exporter en Markdown"), start);
     if (dir.isEmpty())
         return;
     m_settings.setValue(QStringLiteral("export/lastDirectory"), dir);
@@ -354,12 +439,179 @@ void ReaderTab::exportWithDialog()
     }
     QMessageBox box(window());
     box.setWindowTitle(tr("Export terminé"));
-    box.setText(tr("Les annotations ont été exportées dans :\n%1").arg(QDir::toNativeSeparators(res.value())));
+    box.setText(tr("Les annotations et les commentaires ont été exportés dans :\n%1").arg(QDir::toNativeSeparators(res.value())));
     QPushButton* open = box.addButton(tr("Ouvrir le dossier"), QMessageBox::AcceptRole);
     box.addButton(tr("Fermer"), QMessageBox::RejectRole);
     box.exec();
     if (box.clickedButton() == open)
         QDesktopServices::openUrl(QUrl::fromLocalFile(res.value()));
+}
+
+// ───────────────────────── Commentaires ─────────────────────────
+
+void ReaderTab::reloadComments()
+{
+    if (!m_comments)
+        return;
+    auto list = m_commentService.list(m_documentId);
+    m_commentRecords = list ? list.value() : QList<CommentRecord>{};
+    m_comments->setComments(m_commentRecords);
+}
+
+void ReaderTab::revealItem(bool comment, qint64 id)
+{
+    if (!isReady()) {
+        m_pendingReveal = std::make_pair(comment, id);
+        return;
+    }
+    if (comment) {
+        revealComment(id);
+    } else {
+        revealAnnotation(id);
+        m_pane->setActive(id);
+    }
+}
+
+void ReaderTab::flushPendingReveal()
+{
+    if (!m_pendingReveal)
+        return;
+    const auto [comment, id] = *m_pendingReveal;
+    m_pendingReveal.reset();
+    // Laisse la vue terminer sa mise en page avant de défiler.
+    QTimer::singleShot(0, this, [this, comment, id] { revealItem(comment, id); });
+}
+
+void ReaderTab::commentSelection()
+{
+    const auto target = selectionTarget();
+    if (!target)
+        return;
+    m_popup->hide();
+    setPaneVisible(true);
+    m_comments->startComment(*target);
+}
+
+void ReaderTab::commentAnnotation(qint64 annotationId)
+{
+    auto found = m_annotations.find(annotationId);
+    if (!found)
+        return;
+    m_popup->hide();
+    setPaneVisible(true);
+    auto existing = m_commentService.forAnnotation(annotationId);
+    if (existing && existing.value()) {
+        m_comments->editComment(*existing.value());
+        return;
+    }
+    const AnnotationRecord& a = found.value();
+    CommentTarget t;
+    t.anchor = CommentAnchor::Annotation;
+    t.annotationId = a.id;
+    t.unitIndex = a.unitIndex;
+    t.quote = normalizeQuote(a.selectedText);
+    t.where = annotationLocation(a);
+    t.color = a.color;
+    m_comments->startComment(t);
+}
+
+void ReaderTab::commentHere()
+{
+    setPaneVisible(true);
+    m_comments->startComment(positionTarget());
+}
+
+void ReaderTab::editComment(qint64 id)
+{
+    auto c = m_commentService.find(id);
+    if (!c)
+        return;
+    setPaneVisible(true);
+    m_comments->editComment(c.value());
+}
+
+void ReaderTab::submitComment(qint64 editingId, const CommentTarget& target, CommentKind kind, const QString& body)
+{
+    Result<CommentRecord> saved = Error::make(Error::Code::Generic, QString());
+    if (editingId != 0) {
+        saved = m_commentService.update(editingId, kind, body);
+    } else {
+        CommentRecord c;
+        c.documentId = m_documentId;
+        c.anchor = target.anchor;
+        c.annotationId = target.annotationId;
+        c.locator = target.locator;
+        c.unitIndex = target.unitIndex;
+        c.kind = kind;
+        c.body = body;
+        saved = m_commentService.create(c);
+    }
+    if (!saved) {
+        reportError(saved.error());
+        return;
+    }
+    m_comments->cancelEditing();
+    m_comments->setActive(saved.value().id);
+}
+
+void ReaderTab::deleteComment(qint64 id)
+{
+    if (auto r = m_commentService.remove(id); !r) {
+        reportError(r.error());
+        return;
+    }
+    if (m_comments->editingId() == id)
+        m_comments->cancelEditing();
+    m_deleted.append({true, id});
+    m_comments->showUndo(tr("Commentaire supprimé"));
+}
+
+void ReaderTab::revealComment(qint64 id)
+{
+    for (const CommentRecord& c : std::as_const(m_commentRecords)) {
+        if (c.id != id)
+            continue;
+        m_comments->setActive(id, false);
+        if (c.anchor == CommentAnchor::Annotation)
+            revealAnnotation(c.annotationId);
+        else if (!c.locator.isEmpty())
+            revealLocator(c.locator);
+        return;
+    }
+}
+
+void ReaderTab::showCommentMenu(qint64 id, QPoint globalPos)
+{
+    auto found = m_commentService.find(id);
+    if (!found)
+        return;
+    const CommentRecord c = found.value();
+    const Palette& pal = m_theme.palette();
+    QMenu menu(this);
+    menu.addAction(tr("Modifier"), this, [this, id] { editComment(id); });
+    if (c.kind == CommentKind::Question)
+        menu.addAction(c.resolved ? tr("Marquer comme non résolue") : tr("Marquer comme résolue"), this,
+                       [this, id, resolved = c.resolved] {
+                           if (auto r = m_commentService.setResolved(id, !resolved); !r)
+                               reportError(r.error());
+                       });
+    QMenu* kinds = menu.addMenu(tr("Type"));
+    for (CommentKind k : editableCommentKinds()) {
+        QAction* act = kinds->addAction(commentKindLabel(k));
+        act->setCheckable(true);
+        act->setChecked(k == c.kind);
+        connect(act, &QAction::triggered, this, [this, id, k, body = c.body] {
+            if (auto r = m_commentService.update(id, k, body); !r)
+                reportError(r.error());
+        });
+    }
+    if (c.anchor != CommentAnchor::Free)
+        menu.addAction(tr("Aller au passage"), this, [this, id] { revealComment(id); });
+    menu.addAction(tr("Copier le texte"), this, [body = c.body] { QApplication::clipboard()->setText(body); });
+    menu.addSeparator();
+    menu.addAction(Icons::get(QStringLiteral("trash"), pal.danger, 16), tr("Supprimer"), this,
+                   [this, id] { deleteComment(id); });
+    menu.exec(globalPos);
 }
 
 }  // namespace studylab::ui

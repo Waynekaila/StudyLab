@@ -32,6 +32,7 @@
 #include <QPointer>
 #include <QPushButton>
 #include <QShortcut>
+#include <QSplitter>
 #include <QSlider>
 #include <QStandardItemModel>
 #include <QToolButton>
@@ -264,10 +265,7 @@ EpubReaderTab::EpubReaderTab(AppContext& ctx, qint64 documentId, QWidget* parent
     m_errorBox->hide();
     body->addWidget(m_errorBox, 1);
 
-    m_pane = new AnnotationsPane(theme, this);
-    m_pane->setFixedWidth(theme.px(340));
-    m_pane->setUnitIsChapter(true);
-    body->addWidget(m_pane);
+    body->addWidget(createSidePanes(true));
     v->addLayout(body, 1);
     m_popup = new AnnotationPopup(theme, m_viewHost);
 
@@ -656,6 +654,7 @@ void EpubReaderTab::onOpened()
     m_tocView->setVisible(hasToc);
     m_noToc->setVisible(!hasToc);
     pushMarks();
+    flushPendingReveal();
 }
 
 void EpubReaderTab::onRelocated(const EpubLocation& l)
@@ -674,6 +673,7 @@ void EpubReaderTab::onRelocated(const EpubLocation& l)
     m_back->setEnabled(true);
     m_forward->setEnabled(true);
     m_pane->setCurrentPage(l.section);
+    m_comments->setCurrentUnit(l.section);
     // Chapitre courant en évidence dans le sommaire
     std::function<QModelIndex(const QModelIndex&)> find = [&](const QModelIndex& parent) -> QModelIndex {
         QModelIndex found;
@@ -764,7 +764,7 @@ void EpubReaderTab::setFocusMode(bool on)
     }
     m_toolbar->setVisible(!on);
     m_side->setVisible(!on && m_tocToggle->isChecked());
-    m_pane->setVisible(!on && m_paneToggle->isChecked());
+    m_sidePanel->setVisible(!on && m_paneToggle->isChecked());
     m_popup->hide();
     if (on)
         m_searchBar->hide();
@@ -993,6 +993,54 @@ void EpubReaderTab::revealAnnotation(qint64 id)
         m_pane->setActive(id);
         return;
     }
+}
+
+std::optional<CommentTarget> EpubReaderTab::selectionTarget() const
+{
+    if (!m_selection)
+        return std::nullopt;
+    const EpubSelection& s = *m_selection;
+    EpubLocator loc;
+    loc.cfi = s.cfi;
+    loc.section = s.section;
+    loc.fraction = s.fraction;
+    loc.progress = s.progress;
+    loc.exact = normalizeQuote(s.text);
+    loc.prefix = s.prefix;
+    loc.suffix = s.suffix;
+    CommentTarget t;
+    t.anchor = CommentAnchor::Passage;
+    t.unitIndex = s.section;
+    t.locator = loc.toJson();
+    t.quote = loc.exact;
+    t.where = QStringLiteral("%1 %").arg(qRound(s.progress * 100));
+    return t;
+}
+
+CommentTarget EpubReaderTab::positionTarget() const
+{
+    CommentTarget t;
+    if (!m_view)
+        return t;
+    const EpubLocation l = m_view->location();
+    if (!l.cfi.startsWith(QLatin1String("epubcfi(")))
+        return t;
+    EpubLocator loc;
+    loc.cfi = l.cfi;
+    loc.section = l.section;
+    loc.fraction = l.pages > 0 ? double(std::max(0, l.page - 1)) / l.pages : 0.0;
+    loc.progress = l.fraction;
+    t.anchor = CommentAnchor::Page;
+    t.unitIndex = l.section;
+    t.locator = loc.toJson();
+    t.where = QStringLiteral("%1 %").arg(qRound(l.fraction * 100));
+    return t;
+}
+
+void EpubReaderTab::revealLocator(const QJsonObject& locator)
+{
+    if (const auto loc = EpubLocator::fromJson(locator); loc && m_view)
+        m_view->reveal(loc->cfi);
 }
 
 void EpubReaderTab::showEditPopup(qint64 id)

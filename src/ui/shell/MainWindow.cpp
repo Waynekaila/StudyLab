@@ -6,6 +6,7 @@
 #include "ui/reader/ReaderPage.h"
 #include "ui/pages/HomePage.h"
 #include "ui/pages/SettingsPage.h"
+#include "ui/shell/SearchPalette.h"
 #include "ui/shell/Sidebar.h"
 #include "ui/theme/ThemeManager.h"
 
@@ -69,6 +70,19 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
     auto* fullScreen = new QShortcut(QKeySequence(Qt::Key_F11), this, this, &MainWindow::toggleFullScreen);
     fullScreen->setContext(Qt::WindowShortcut);
     addPage(QStringLiteral("settings"), new SettingsPage(ctx, m_stack));
+
+    // Rechercher partout
+    m_search = new SearchPalette(ctx.search, ctx.theme, this);
+    connect(m_search, &SearchPalette::hitActivated, this, [this, reader](const SearchHit& hit) {
+        navigateTo(QStringLiteral("reader"));
+        if (hit.kind == SearchHit::Kind::Document)
+            reader->openDocument(hit.documentId);
+        else
+            reader->openItem(hit.documentId, hit.kind == SearchHit::Kind::Comment, hit.itemId);
+    });
+    connect(m_sidebar, &Sidebar::searchRequested, this, &MainWindow::showSearch);
+    auto* find = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_K), this, this, &MainWindow::showSearch);
+    find->setContext(Qt::WindowShortcut);
 
     connect(m_sidebar, &Sidebar::navigated, this, &MainWindow::navigateTo);
     connect(&ctx.settings, &SettingsService::changed, this, [this](const QString& key) {
@@ -134,6 +148,8 @@ void MainWindow::dropEvent(QDropEvent* event)
     if (auto* library = qobject_cast<LibraryPage*>(m_pages.value(QStringLiteral("library"))))
         library->importPaths(paths);
 }
+
+void MainWindow::showSearch() { m_search->popup(); }
 
 void MainWindow::toggleFullScreen()
 {

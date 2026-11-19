@@ -2,7 +2,9 @@
 
 #include "core/Result.h"
 #include "core/domain/Annotation.h"
+#include "core/domain/Comment.h"
 #include "core/domain/Document.h"
+#include "ui/reader/CommentsPane.h"
 
 #include <QList>
 #include <QWidget>
@@ -11,10 +13,12 @@
 #include <optional>
 
 class QHBoxLayout;
+class QSplitter;
 class QToolButton;
 
 namespace studylab {
 class AnnotationService;
+class CommentService;
 class LibraryService;
 class SettingsService;
 struct AppContext;
@@ -27,8 +31,8 @@ class AnnotationsPane;
 class ThemeManager;
 
 /// Document ouvert dans un onglet de l'espace Lecture (PDF ou EPUB).
-/// Porte ce que les lecteurs ont en commun : volet Annotations, barre flottante, couleur courante,
-/// suppression annulable, menu contextuel d'une annotation, export Markdown, mode sans distraction.
+/// Porte ce que les lecteurs ont en commun : volets Annotations et Commentaires, barre flottante,
+/// couleur courante, suppression annulable, menus contextuels, export Markdown, mode sans distraction.
 class ReaderTab : public QWidget {
     Q_OBJECT
 public:
@@ -58,6 +62,22 @@ public:
     /// Rétablit la dernière annotation supprimée (Ctrl+Z).
     bool undoDelete();
     void editNote(qint64 id);
+    // Commentaires
+    /// Commente la sélection courante (passage, sans annotation visible).
+    void commentSelection();
+    /// Ouvre l'éditeur sur le commentaire de l'annotation (le crée s'il n'existe pas).
+    void commentAnnotation(qint64 annotationId);
+    /// Nouveau commentaire rattaché à la page (PDF) ou à la position (EPUB) courante.
+    void commentHere();
+    void editComment(qint64 id);
+    void deleteComment(qint64 id);
+    void revealComment(qint64 id);
+    const QList<CommentRecord>& comments() const { return m_commentRecords; }
+    /// Affiche une annotation ou un commentaire dès que le document est prêt (résultat de recherche).
+    void revealItem(bool comment, qint64 id);
+    CommentsPane* commentsPane() const { return m_comments; }
+    QSplitter* sidePanel() const { return m_sidePanel; }
+
     /// Exporte les annotations du document en Markdown dans le dossier donné ; renvoie le dossier créé.
     Result<QString> exportMarkdown(const QString& directory);
     const QList<AnnotationRecord>& annotations() const { return m_records; }
@@ -74,12 +94,29 @@ public:
 
 signals:
     void focusModeToggled(bool on);
+    /// Un commentaire ou une annotation a été créé, modifié ou supprimé.
+    void contentChanged();
     void fullScreenToggled();
     void loadFailed(const QString& message);
 
 protected:
-    /// À appeler une fois m_pane et m_popup créés : relie volet, barre flottante, service et raccourcis.
+    /// Volets latéraux (Annotations au-dessus, Commentaires au-dessous, séparés par une poignée).
+    QWidget* createSidePanes(bool unitIsChapter);
+    /// À appeler une fois les volets et m_popup créés : relie volets, barre flottante, services et raccourcis.
     void initAnnotations();
+    /// Cible d'un commentaire sur la sélection courante (aucune : pas de sélection).
+    virtual std::optional<CommentTarget> selectionTarget() const { return std::nullopt; }
+    /// Cible d'un commentaire sur la page ou la position courante.
+    virtual CommentTarget positionTarget() const = 0;
+    /// Affiche le passage ou la page d'un commentaire.
+    virtual void revealLocator(const QJsonObject& locator) = 0;
+    void reloadComments();
+    /// Document affiché et navigable (l'EPUB s'ouvre de façon asynchrone).
+    virtual bool isReady() const { return isLoaded(); }
+    /// À appeler quand le document devient prêt : applique revealItem() en attente.
+    void flushPendingReveal();
+    void submitComment(qint64 editingId, const CommentTarget& target, CommentKind kind, const QString& body);
+    void showCommentMenu(qint64 id, QPoint globalPos);
     /// Pastilles de couleur et bouton du volet, ajoutés à la barre d'outils.
     void addColorButtons(QHBoxLayout* layout, QWidget* parent);
     QToolButton* addPaneToggle(QHBoxLayout* layout, QWidget* parent);
@@ -110,7 +147,16 @@ protected:
     bool m_focusMode = false;
 
     QList<AnnotationRecord> m_records;
-    QList<qint64> m_deleted;  ///< pile d'annulation
+    struct Deleted {
+        bool comment = false;
+        qint64 id = 0;
+    };
+    QList<Deleted> m_deleted;  ///< pile d'annulation (annotations et commentaires)
+    CommentService& m_commentService;
+    QList<CommentRecord> m_commentRecords;
+    CommentsPane* m_comments = nullptr;
+    QSplitter* m_sidePanel = nullptr;
+    std::optional<std::pair<bool, qint64>> m_pendingReveal;
     AnnotationColor m_color = AnnotationColor::Yellow;
     NoteEditor m_noteEditor;
     AnnotationsPane* m_pane = nullptr;
