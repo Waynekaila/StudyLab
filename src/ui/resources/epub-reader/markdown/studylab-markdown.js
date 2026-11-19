@@ -100,8 +100,9 @@ function wikiLinkPlugin (md) {
     const esc = md.utils.escapeHtml
     if (noteMode && !m.target.startsWith('@')) {
       const unresolved = noteState.unresolved.includes(m.target)
-      const title = unresolved ? `${m.target} · ${noteState.unresolvedLabel}` : m.target
-      return `<a class="wikilink${unresolved ? ' unresolved' : ''}" href="#" title="${esc(title)}" data-target="${esc(m.target)}">${esc(m.label || m.target)}</a>`
+      const doc = !unresolved && noteState.documents.includes(m.target)
+      const title = unresolved ? `${m.target} · ${noteState.unresolvedLabel}` : doc ? `${m.target} · ${noteState.documentLabel}` : m.target
+      return `<a class="wikilink${unresolved ? ' unresolved' : ''}${doc ? ' document' : ''}" href="#" title="${esc(title)}" data-target="${esc(m.target)}">${esc(m.label || m.target)}</a>`
     }
     return `<span class="wikilink" title="${esc(m.target)}" data-raw="[[${esc(m.raw)}]]">${esc(m.label || m.target)}</span>`
   }
@@ -109,13 +110,14 @@ function wikiLinkPlugin (md) {
 
 // Mode note : état fourni par l'application à chaque rendu.
 let noteMode = false
-let noteState = { unresolved: [], images: {}, lineOffset: 0, unresolvedLabel: '' }
+let noteState = { unresolved: [], documents: [], images: {}, lineOffset: 0, unresolvedLabel: '', documentLabel: '' }
 
 const md = window.markdownit({ html: false, linkify: true, breaks: true, typographer: false })
   .use(mathPlugin).use(wikiLinkPlugin)
 // Liens : jamais suivis dans la page ; l'application décide (navigateur externe pour http/https).
 // Images : seulement les pièces jointes de la note, servies en data: par l'application (hors ligne).
-md.validateLink = url => /^(https?:|mailto:)/i.test(url.trim()) || /^attachments\/[\w.-]+$/.test(url.trim())
+// « studylab://open?… » : passage d'un document (citations des notes de lecture), ouvert dans le lecteur.
+md.validateLink = url => /^(https?:|mailto:|studylab:\/\/open[/?])/i.test(url.trim()) || /^attachments\/[\w.-]+$/.test(url.trim())
 const defaultImage = md.renderer.rules.image
 md.renderer.rules.image = (tokens, idx, options, env, self) => {
   const token = tokens[idx]
@@ -236,7 +238,7 @@ window.StudyLab = {
   // note : {title, body (sans front matter), lineOffset, chips: [texte], unresolved: [cible], images: {chemin: data:}}
   setNote (note, emptyText) {
     noteMode = true
-    noteState = Object.assign({ unresolved: [], images: {}, lineOffset: 0, unresolvedLabel: '' }, note)
+    noteState = Object.assign({ unresolved: [], documents: [], images: {}, lineOffset: 0, unresolvedLabel: '', documentLabel: '' }, note)
     document.body.classList.add('preview', 'note')
     const root = document.getElementById('root')
     const chips = (note.chips || []).map(c => `<span class="chip">${esc(c)}</span>`).join('')
@@ -256,7 +258,9 @@ window.StudyLab = {
     else window.scrollTo({ top: 0, behavior: 'smooth' })
     return !!target
   },
-  wikiLinks: () => [...document.querySelectorAll('a.wikilink')].map(a => ({ target: a.dataset.target, unresolved: a.classList.contains('unresolved') })),
+  wikiLinks: () => [...document.querySelectorAll('a.wikilink')].map(a => ({ target: a.dataset.target, unresolved: a.classList.contains('unresolved'), document: a.classList.contains('document') })),
+  appLinks: () => [...document.querySelectorAll('a[href^="studylab:"]')].map(a => a.getAttribute('href')),
+  clickHref: href => { const a = [...document.querySelectorAll('a[href]')].find(el => el.getAttribute('href') === href); if (a) a.click(); return !!a },
   clickWiki: target => { const a = [...document.querySelectorAll('a.wikilink')].find(el => el.dataset.target === target); if (a) a.click(); return !!a },
   // Tests et diagnostic
   render,

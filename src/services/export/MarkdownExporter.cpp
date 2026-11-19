@@ -106,6 +106,8 @@ QString MarkdownExporter::documentNote(const DocumentRecord& doc, const QList<An
     y << QStringLiteral("---");
     y << QStringLiteral("type: document");
     y << QStringLiteral("title: ") + yamlString(doc.title);
+    // Alias = titre : un [[Titre]] écrit dans une note mène à cette fiche dans Obsidian.
+    y << QStringLiteral("aliases:") << QStringLiteral("  - ") + yamlString(doc.title);
     if (!doc.subtitle.isEmpty())
         y << QStringLiteral("subtitle: ") + yamlString(doc.subtitle);
     if (!doc.authors.isEmpty()) {

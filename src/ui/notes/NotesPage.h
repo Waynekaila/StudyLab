@@ -28,7 +28,7 @@ class NoteEditor;
 class SegmentedControl;
 
 /// Espace de notes (05-maquettes §5) : arborescence par dossiers virtuels et tags, éditeur Markdown avec
-/// aperçu (Source / Partagé / Aperçu), panneau de contexte (rétroliens, plan, liens non résolus).
+/// aperçu (Source / Partagé / Aperçu), panneau de contexte (sources, rétroliens, plan, liens non résolus).
 /// Le texte est enregistré 0,7 s après la dernière frappe, en changeant de note et à la fermeture.
 class NotesPage : public QWidget {
     Q_OBJECT
@@ -63,6 +63,7 @@ public:
     QList<QPushButton*> backlinkButtons() const { return m_backlinkButtons; }
     QList<QPushButton*> outlineButtons() const { return m_outlineButtons; }
     QList<QPushButton*> createLinkButtons() const { return m_createButtons; }
+    QList<QPushButton*> sourceButtons() const { return m_sourceButtons; }
     QList<QToolButton*> tagButtons() const { return m_tagButtons; }
     QLabel* backlinkCountLabel() const { return m_backlinkCount; }
     /// Notes visibles dans l'arborescence (après filtre), dans l'ordre d'affichage.
@@ -77,6 +78,12 @@ public:
 
 signals:
     void noteOpened(qint64 id);
+    /// Ouvrir un document de la bibliothèque dans le lecteur ([[lien]] vers un document, source).
+    void openDocumentRequested(qint64 documentId);
+    /// Ouvrir le passage d'une source (annotation ou commentaire).
+    void openItemRequested(qint64 documentId, bool comment, qint64 itemId);
+    /// Lien « studylab://open?… » cliqué dans l'aperçu.
+    void appLinkActivated(const QString& link);
 
 protected:
     void hideEvent(QHideEvent* event) override;
@@ -151,6 +158,8 @@ private:
     QFrame* m_context = nullptr;
     QLabel* m_backlinkCount = nullptr;
     QVBoxLayout* m_backlinkList = nullptr;
+    QWidget* m_sourcesSection = nullptr;
+    QVBoxLayout* m_sourceList = nullptr;
     QVBoxLayout* m_outlineList = nullptr;
     QVBoxLayout* m_unresolvedList = nullptr;
     QLabel* m_backlinkEmpty = nullptr;
@@ -159,6 +168,7 @@ private:
     QList<QPushButton*> m_backlinkButtons;
     QList<QPushButton*> m_outlineButtons;
     QList<QPushButton*> m_createButtons;
+    QList<QPushButton*> m_sourceButtons;
     QList<QWidget*> m_contextRows;
 };
 

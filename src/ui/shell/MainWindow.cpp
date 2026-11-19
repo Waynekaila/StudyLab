@@ -82,7 +82,25 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
     connect(reader, &ReaderPage::fullScreenRequested, this, &MainWindow::toggleFullScreen);
     auto* fullScreen = new QShortcut(QKeySequence(Qt::Key_F11), this, this, &MainWindow::toggleFullScreen);
     fullScreen->setContext(Qt::WindowShortcut);
-    addPage(QStringLiteral("notes"), new NotesPage(ctx, m_stack));
+    auto* notes = new NotesPage(ctx, m_stack);
+    addPage(QStringLiteral("notes"), notes);
+    connect(reader, &ReaderPage::noteCreated, this, [this, notes](qint64 id) {
+        navigateTo(QStringLiteral("notes"));
+        notes->openNote(id);
+    });
+    connect(notes, &NotesPage::openDocumentRequested, this, [this, reader](qint64 id) {
+        navigateTo(QStringLiteral("reader"));
+        reader->openDocument(id);
+    });
+    connect(notes, &NotesPage::openItemRequested, this, [this, reader](qint64 doc, bool comment, qint64 item) {
+        navigateTo(QStringLiteral("reader"));
+        reader->openItem(doc, comment, item);
+    });
+    connect(notes, &NotesPage::appLinkActivated, this, [this](const QString& link) {
+        auto opened = openLink(link);
+        if (!opened)
+            QMessageBox::warning(this, tr("Ouvrir le passage"), opened.error().message);
+    });
     addPage(QStringLiteral("settings"), new SettingsPage(ctx, m_stack));
 
     // Rechercher partout
@@ -168,6 +186,14 @@ void MainWindow::showSearch() { m_search->popup(); }
 void MainWindow::toggleFullScreen()
 {
     setWindowState(windowState() ^ Qt::WindowFullScreen);
+}
+
+MainWindow::~MainWindow()
+{
+    // Avant la destruction des pages : le texte en attente est enregistré pendant que tout est encore debout
+    // (sinon la perte du focus à la fermeture l'enregistrerait au milieu de la destruction).
+    if (auto* notes = qobject_cast<NotesPage*>(m_pages.value(QStringLiteral("notes"))))
+        notes->saveNow();
 }
 
 void MainWindow::closeEvent(QCloseEvent* event)

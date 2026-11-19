@@ -35,6 +35,8 @@ signals:
     void focusModeChanged(bool on);
     void fullScreenRequested();
     void libraryRequested();
+    /// Note créée depuis la lecture : à ouvrir dans l'espace de notes.
+    void noteCreated(qint64 noteId);
 
 private:
     void restoreSession();

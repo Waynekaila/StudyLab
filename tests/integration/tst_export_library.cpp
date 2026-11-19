@@ -117,6 +117,54 @@ private slots:
                  QStringLiteral("studylab://open?doc=u1&annotation=a2"));
     }
 
+    void notesInTheExport()
+    {
+        NoteRecord note;
+        note.title = QStringLiteral("Cycle de Carnot");
+        note.slug = QStringLiteral("Cycle de Carnot");
+        note.uuid = QStringLiteral("n-1");
+        note.type = NoteType::Concept;
+        note.folder = QStringLiteral("Thermo/Cours");
+        note.body = QStringLiteral("---\ntags: [cours]\n---\n\nVoir [[Cours]].\n\n![](attachments/a1.png)\n");
+        QCOMPARE(LibraryExporter::notePath(note), QStringLiteral("Notes/Thermo/Cours/Cycle de Carnot.md"));
+        QCOMPARE(LibraryExporter::noteAttachments(note.body), QStringList{QStringLiteral("attachments/a1.png")});
+        const QString md = LibraryExporter::noteMarkdown(note);
+        QVERIFY2(md.startsWith(QStringLiteral("---\ntags: [cours]\ntype: concept\nuuid: n-1\n---\n")), qPrintable(md));
+        QVERIFY(md.contains(QStringLiteral("![](../../../_attachments/a1.png)")));
+        QVERIFY(md.contains(QStringLiteral("[[Cours]]")));
+
+        NoteRecord root = note;
+        root.folder.clear();
+        root.body = QStringLiteral("Sans front matter ![x](attachments/b.png)");
+        QCOMPARE(LibraryExporter::notePath(root), QStringLiteral("Notes/Cycle de Carnot.md"));
+        const QString rootMd = LibraryExporter::noteMarkdown(root);
+        QVERIFY(rootMd.startsWith(QStringLiteral("---\ntype: concept\nuuid: n-1\n---\n\n")));
+        QVERIFY(rootMd.contains(QStringLiteral("![x](../_attachments/b.png)")));
+
+        // Écriture : notes, images copiées, README qui les compte.
+        QTemporaryDir attachments;
+        QFile img(attachments.filePath(QStringLiteral("a1.png")));
+        QVERIFY(img.open(QIODevice::WriteOnly));
+        img.write("PNG");
+        img.close();
+        LibraryExporter::Options opt;
+        opt.date = QDate(2026, 11, 20);
+        opt.notes = {note};
+        opt.attachmentsDir = attachments.path();
+        QTemporaryDir out;
+        auto result = LibraryExporter::write(out.path(), {}, opt);
+        QVERIFY(result);
+        QCOMPARE(result.value().notes, 1);
+        QCOMPARE(result.value().attachments, 1);
+        QVERIFY(result.value().errors.isEmpty());
+        const QString folder = result.value().folder;
+        QCOMPARE(readAll(folder + QStringLiteral("/Notes/Thermo/Cours/Cycle de Carnot.md")), md);
+        QVERIFY(QFile::exists(folder + QStringLiteral("/_attachments/a1.png")));
+        const QString readme = readAll(folder + QStringLiteral("/README.md"));
+        QVERIFY2(readme.contains(QStringLiteral("1 note.")), qPrintable(readme));
+        QVERIFY(readme.contains(QStringLiteral("`Notes/`")));
+    }
+
     void chapterIndexReadsPdfOutlineAndEpubToc()
     {
         const QString pdf = m_tmp.filePath(QStringLiteral("sommaire.pdf"));

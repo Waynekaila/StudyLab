@@ -63,6 +63,7 @@ body.note { padding: 18px 28px 40px; }
 .md.note img { max-width: 100%; border-radius: 6px; }
 .md a.wikilink { cursor: pointer; text-decoration: underline dashed; }
 .md a.wikilink.unresolved { color: var(--muted); text-decoration: underline dotted; }
+.md a.wikilink.document { text-decoration: underline solid; text-decoration-thickness: 1px; }
 .md .missing-image { color: var(--muted); font-style: italic; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
 .chip { background: var(--code-bg); color: var(--muted); border-radius: 6px; padding: 2px 9px; font-size: .86em;

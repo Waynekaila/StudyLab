@@ -419,6 +419,7 @@ void NotesPage::buildEditor()
             markDirty();
     });
     connect(m_editor, &NoteEditor::imageInserted, this, &NotesPage::insertImage);
+    m_editor->setLinkCompletions([this] { return m_ctx.notes.linkCompletions(); });
     m_editor->installEventFilter(this);
     sv->addWidget(m_editor, 1);
     m_split->addWidget(source);
@@ -427,9 +428,11 @@ void NotesPage::buildEditor()
     m_preview->setObjectName(QStringLiteral("NotePreview"));
     m_preview->setAccessibleName(tr("Aperçu de la note"));
     connect(m_preview, &MarkdownView::wikiLinkActivated, this, [this](const QString& target) { followLink(target); });
-    connect(m_preview, &MarkdownView::linkActivated, this, [](const QUrl& url) {
+    connect(m_preview, &MarkdownView::linkActivated, this, [this](const QUrl& url) {
         if (url.scheme() == QLatin1String("http") || url.scheme() == QLatin1String("https"))
             QDesktopServices::openUrl(url);
+        else if (url.scheme() == QLatin1String("studylab"))
+            emit appLinkActivated(url.toString());
     });
     connect(m_preview, &MarkdownView::ready, this, [this] { refreshPreview(); });
     m_split->addWidget(m_preview);
@@ -462,6 +465,18 @@ void NotesPage::buildContext()
     auto* v = new QVBoxLayout(body);
     v->setContentsMargins(14, 16, 14, 16);
     v->setSpacing(8);
+
+    // Sources : seulement pour les notes tirées de la lecture.
+    m_sourcesSection = new QWidget(body);
+    auto* sv = new QVBoxLayout(m_sourcesSection);
+    sv->setContentsMargins(0, 0, 0, 10);
+    sv->setSpacing(8);
+    sv->addWidget(sectionTitle(theme, QStringLiteral("book-open"), tr("Sources"), nullptr, m_sourcesSection));
+    m_sourceList = new QVBoxLayout;
+    m_sourceList->setSpacing(6);
+    sv->addLayout(m_sourceList);
+    m_sourcesSection->setVisible(false);
+    v->addWidget(m_sourcesSection);
 
     v->addWidget(sectionTitle(theme, QStringLiteral("link"), tr("Rétroliens"), &m_backlinkCount, body));
     m_backlinkList = new QVBoxLayout;
@@ -545,6 +560,7 @@ void NotesPage::loadNote(const NoteRecord& note)
     m_current = note;
     m_currentId = note.id;
     m_title->setText(note.title);
+    m_title->setCursorPosition(0);  // début du titre visible s'il est plus long que le champ
     m_editor->setPlainText(note.body);
     m_typeButton->setText(noteTypeLabel(note.type));
     m_typeButton->setIcon(Icons::get(noteTypeIcon(note.type), m_ctx.theme.palette().primaryStrong, 16));
@@ -601,10 +617,15 @@ qint64 NotesPage::newNote(NoteType type, const QString& title)
 
 qint64 NotesPage::followLink(const QString& target)
 {
-    auto id = m_ctx.notes.resolve(target);
-    if (id && id.value() > 0) {
-        openNote(id.value());
-        return id.value();
+    const NoteLinkTarget resolved = m_ctx.notes.resolveTarget(target);
+    if (resolved.kind == NoteLinkTarget::Kind::Note) {
+        openNote(resolved.id);
+        return resolved.id;
+    }
+    if (resolved.kind == NoteLinkTarget::Kind::Document) {
+        saveNow();
+        emit openDocumentRequested(resolved.id);
+        return 0;
     }
     // Lien non résolu : la note est créée à côté de celle qui la cite, comme dans Obsidian.
     const QString folder = m_currentId > 0 ? m_current.folder : QString();
@@ -952,10 +973,14 @@ QJsonObject NotesPage::previewPayload() const
         if (!t.startsWith(u'@'))
             targets << t;
     QJsonArray unresolved;
-    const QHash<QString, qint64> resolved = m_ctx.notes.resolveMany(targets);
-    for (auto it = resolved.cbegin(); it != resolved.cend(); ++it)
-        if (it.value() == 0)
+    QJsonArray documents;
+    const QHash<QString, NoteLinkTarget> resolved = m_ctx.notes.resolveMany(targets);
+    for (auto it = resolved.cbegin(); it != resolved.cend(); ++it) {
+        if (!it.value().resolved())
             unresolved.append(it.key());
+        else if (it.value().kind == NoteLinkTarget::Kind::Document)
+            documents.append(it.key());
+    }
 
     QJsonObject images;
     static const QRegularExpression img(QStringLiteral("!\\[[^\\]]*\\]\\((attachments/[\\w.-]+)\\)"));
@@ -974,6 +999,8 @@ QJsonObject NotesPage::previewPayload() const
         {QStringLiteral("chips"), chips},
         {QStringLiteral("unresolved"), unresolved},
         {QStringLiteral("unresolvedLabel"), tr("note à créer")},
+        {QStringLiteral("documents"), documents},
+        {QStringLiteral("documentLabel"), tr("document de la bibliothèque")},
         {QStringLiteral("images"), images},
     };
 }
@@ -1022,10 +1049,45 @@ void NotesPage::refreshContext()
 {
     clearLayout(m_backlinkList);
     clearLayout(m_unresolvedList);
+    clearLayout(m_sourceList);
     m_backlinkButtons.clear();
     m_createButtons.clear();
+    m_sourceButtons.clear();
+    m_sourcesSection->setVisible(false);
     if (m_currentId <= 0)
         return;
+
+    auto sources = m_ctx.notes.sources(m_currentId);
+    if (sources && !sources.value().isEmpty()) {
+        for (const NoteSource& src : sources.value()) {
+            QString title = src.documentTitle.isEmpty() ? tr("Document") : src.documentTitle;
+            if (!src.pageLabel.isEmpty())
+                title += tr(" · p. %1").arg(src.pageLabel);
+            else if (src.unitIndex >= 0 && src.format == QLatin1String("pdf"))
+                title += tr(" · p. %1").arg(src.unitIndex + 1);
+            QString detail = src.quote.simplified();
+            if (detail.size() > 140)
+                detail = detail.left(139) + QChar(0x2026);
+            if (src.missing)
+                detail = tr("Source supprimée depuis.");
+            auto* row = new ContextRow(title, detail, m_context);
+            row->setEnabled(!src.missing);
+            row->setToolTip(src.missing ? detail : tr("Ouvrir le passage dans le lecteur"));
+            const QString kind = src.kind;
+            const qint64 doc = src.documentId;
+            const qint64 item = src.id;
+            connect(row, &QPushButton::clicked, this, [this, kind, doc, item] {
+                saveNow();
+                if (kind == QLatin1String("document"))
+                    emit openDocumentRequested(doc);
+                else
+                    emit openItemRequested(doc, kind == QLatin1String("comment"), item);
+            });
+            m_sourceList->addWidget(row);
+            m_sourceButtons << row;
+        }
+        m_sourcesSection->setVisible(true);
+    }
 
     auto back = m_ctx.notes.backlinks(m_currentId);
     const QList<NoteBacklink> backlinks = back ? back.value() : QList<NoteBacklink>{};
@@ -1043,7 +1105,7 @@ void NotesPage::refreshContext()
     int unresolved = 0;
     if (links) {
         for (const NoteLink& l : links.value()) {
-            if (l.noteId > 0)
+            if (l.resolved())
                 continue;
             ++unresolved;
             auto* row = new QWidget(m_context);
@@ -1097,6 +1159,12 @@ bool NotesPage::eventFilter(QObject* watched, QEvent* event)
 void NotesPage::showEvent(QShowEvent* event)
 {
     QWidget::showEvent(event);
+    // Des documents ont pu être ajoutés, renommés ou retirés de la bibliothèque depuis.
+    auto changed = m_ctx.notes.refreshLinks();
+    if (changed && changed.value() && m_currentId > 0) {
+        refreshPreview();
+        refreshContext();
+    }
     if (!m_splitRestored && m_split->width() > 0) {
         m_splitRestored = true;
         m_split->setSizes({m_split->width() / 2, m_split->width() - m_split->width() / 2});

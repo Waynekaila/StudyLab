@@ -8,7 +8,9 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
+#include <QFile>
 #include <QHash>
+#include <QRegularExpression>
 #include <QSaveFile>
 
 namespace studylab {
@@ -39,6 +41,41 @@ int countAnnotations(const QList<AnnotationRecord>& list)
     for (const auto& a : list)
         n += a.type != AnnotationType::Bookmark;
     return n;
+}
+
+/// Notes et images citées. Une note en échec n'arrête pas l'export.
+void writeNotes(LibraryExportResult& result, const LibraryExporter::Options& options)
+{
+    QDir root(result.folder);
+    QStringList copied;
+    for (const NoteRecord& note : options.notes) {
+        const QString rel = LibraryExporter::notePath(note);
+        const QString path = root.filePath(rel);
+        if (!QDir().mkpath(QFileInfo(path).absolutePath())) {
+            result.errors << tr("Note « %1 » : impossible de créer son dossier.").arg(note.title);
+            continue;
+        }
+        if (auto r = writeUtf8(path, LibraryExporter::noteMarkdown(note).toUtf8()); !r) {
+            result.errors << QStringLiteral("%1 : %2").arg(note.title, r.error().message);
+            continue;
+        }
+        ++result.notes;
+        for (const QString& image : LibraryExporter::noteAttachments(note.body)) {
+            if (copied.contains(image) || options.attachmentsDir.isEmpty())
+                continue;
+            const QString from = QDir(options.attachmentsDir).filePath(image.mid(image.indexOf(QLatin1Char('/')) + 1));
+            const QString to = root.filePath(QStringLiteral("_attachments/") + image.mid(image.indexOf(QLatin1Char('/')) + 1));
+            copied << image;
+            if (!QFileInfo::exists(from))
+                continue;  // image retirée depuis : le lien reste, comme dans l'application
+            QDir().mkpath(QFileInfo(to).absolutePath());
+            QFile::remove(to);
+            if (QFile::copy(from, to))
+                ++result.attachments;
+            else
+                result.errors << tr("Image %1 : copie impossible.").arg(image);
+        }
+    }
 }
 
 }  // namespace
@@ -138,8 +175,61 @@ QStringList LibraryExporter::csvRows(const DocumentExportData& data, const Chapt
     return rows;
 }
 
+QString LibraryExporter::notePath(const NoteRecord& note)
+{
+    QStringList parts{QStringLiteral("Notes")};
+    for (const QString& seg : note.folder.split(QLatin1Char('/'), Qt::SkipEmptyParts))
+        parts << MarkdownExporter::safeFileName(seg);
+    const QString name = note.slug.isEmpty() ? MarkdownExporter::safeFileName(note.title) : note.slug;
+    parts << name + QStringLiteral(".md");
+    return parts.join(QLatin1Char('/'));
+}
+
+QStringList LibraryExporter::noteAttachments(const QString& markdown)
+{
+    static const QRegularExpression img(QStringLiteral("\\]\\(<?(attachments/[\\w.-]+)>?\\)"));
+    QStringList out;
+    auto it = img.globalMatch(markdown);
+    while (it.hasNext()) {
+        const QString rel = it.next().captured(1);
+        if (!out.contains(rel))
+            out << rel;
+    }
+    return out;
+}
+
+QString LibraryExporter::noteMarkdown(const NoteRecord& note)
+{
+    QString text = note.body;
+    // Les images sont rangées dans _attachments/ à la racine de l'export : chemin relatif à la note.
+    const int depth = int(notePath(note).count(QLatin1Char('/')));
+    const QString up = QStringLiteral("../").repeated(depth) + QStringLiteral("_attachments/");
+    static const QRegularExpression img(QStringLiteral("(\\]\\(<?)attachments/"));
+    text.replace(img, QStringLiteral("\\1") + up);
+
+    // Type et uuid dans le front matter : un ré-import retrouve la note sans doublon.
+    QStringList extra;
+    const FrontMatter fm = parseFrontMatter(note.body);
+    if (!fm.values.contains(QStringLiteral("type")))
+        extra << QStringLiteral("type: ") + noteTypeKey(note.type);
+    if (!fm.values.contains(QStringLiteral("uuid")) && !note.uuid.isEmpty())
+        extra << QStringLiteral("uuid: ") + note.uuid;
+    if (extra.isEmpty())
+        return text;
+    if (!fm.present)
+        return QStringLiteral("---\n") + extra.join(QLatin1Char('\n')) + QStringLiteral("\n---\n\n") + text;
+    // Avant la ligne « --- » qui ferme le bloc (lineCount lignes, fermeture comprise).
+    QStringList lines = text.split(QLatin1Char('\n'));
+    const int close = fm.lineCount - 1;
+    if (close <= 0 || close >= lines.size())
+        return text;
+    for (int i = 0; i < extra.size(); ++i)
+        lines.insert(close + i, extra.at(i));
+    return lines.join(QLatin1Char('\n'));
+}
+
 QString LibraryExporter::readme(const QList<DocumentExportData>& docs, const QStringList& baseNames,
-                                const Options& options)
+                                const Options& options, int notes)
 {
     int anns = 0;
     int coms = 0;
@@ -152,9 +242,12 @@ QString LibraryExporter::readme(const QList<DocumentExportData>& docs, const QSt
        << QString();
     const QString app = options.appVersion.isEmpty() ? QStringLiteral("StudyLab")
                                                       : QStringLiteral("StudyLab ") + options.appVersion;
-    md << tr("Exporté par %1 : %2, %3, %4.")
-              .arg(app, plural(int(docs.size()), "1 document", "%1 documents"),
-                   plural(anns, "1 annotation", "%1 annotations"), plural(coms, "1 commentaire", "%1 commentaires"));
+    QStringList counts{plural(int(docs.size()), "1 document", "%1 documents"),
+                       plural(anns, "1 annotation", "%1 annotations"),
+                       plural(coms, "1 commentaire", "%1 commentaires")};
+    if (notes > 0)
+        counts << plural(notes, "1 note", "%1 notes");
+    md << tr("Exporté par %1 : %2.").arg(app, counts.join(QStringLiteral(", ")));
     md << QString() << QStringLiteral("## ") + tr("Ouvrir dans Obsidian") << QString();
     md << tr("1. Dans Obsidian, choisissez « Ouvrir un dossier comme coffre » et sélectionnez ce dossier.");
     md << tr("2. Chaque document a son dossier dans `Bibliothèque/` : une fiche avec ses métadonnées (YAML), "
@@ -163,6 +256,9 @@ QString LibraryExporter::readme(const QList<DocumentExportData>& docs, const QSt
              "référence depuis vos notes : `[[Annotations#^ann-1a2b3c4d]]`.");
     if (options.appLinks)
         md << tr("4. Les liens de page ouvrent le passage dans StudyLab s'il est installé sur cet ordinateur.");
+    if (notes > 0)
+        md << tr("5. Vos notes sont dans `Notes/`, rangées par dossier, avec leurs [[liens]] et #tags ; "
+                 "leurs images dans `_attachments/`. Un [[lien]] vers un document mène à sa fiche.");
     md << QString() << tr("`annotations.csv` (UTF-8, séparateur virgule) s'ouvre dans un tableur.");
     md << QString() << QStringLiteral("## ") + tr("Documents") << QString();
     for (int i = 0; i < docs.size(); ++i) {
@@ -215,6 +311,8 @@ Result<LibraryExportResult> LibraryExporter::write(const QString& parentDir, con
             break;
         }
     }
+    if (!result.cancelled)
+        writeNotes(result, options);
     // Index et CSV décrivent ce qui a réellement été écrit
     const QByteArray bom("\xEF\xBB\xBF");  // Excel reconnaît l'UTF-8 grâce à la marque d'ordre
     if (auto r = writeUtf8(result.folder + QStringLiteral("/annotations.csv"),
@@ -229,7 +327,7 @@ Result<LibraryExportResult> LibraryExporter::write(const QString& parentDir, con
             writtenNames << names.at(i);
         }
     }
-    if (auto r = writeUtf8(result.folder + QStringLiteral("/README.md"), readme(written, writtenNames, options).toUtf8()); !r)
+    if (auto r = writeUtf8(result.folder + QStringLiteral("/README.md"), readme(written, writtenNames, options, result.notes).toUtf8()); !r)
         return r.error();
     return result;
 }

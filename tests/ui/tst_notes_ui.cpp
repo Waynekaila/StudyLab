@@ -2,6 +2,7 @@
 #include "Bootstrap.h"
 
 #include "data/sqlite/Database.h"
+#include "core/domain/Annotation.h"
 #include "services/annotations/AnnotationService.h"
 #include "services/backup/BackupService.h"
 #include "services/comments/CommentService.h"
@@ -11,13 +12,18 @@
 #include "services/settings/SettingsService.h"
 #include "ui/notes/NoteEditor.h"
 #include "ui/notes/NotesPage.h"
+#include "support/Fixtures.h"
 #include "ui/reader/MarkdownView.h"
+#include "ui/reader/ReaderPage.h"
+#include "ui/reader/ReaderTab.h"
 #include "ui/shell/AppContext.h"
 #include "ui/shell/MainWindow.h"
 #include "ui/shell/Sidebar.h"
 #include "ui/theme/ThemeManager.h"
 
+#include <QAbstractItemView>
 #include <QApplication>
+#include <QCompleter>
 #include <QClipboard>
 #include <QDeadlineTimer>
 #include <QImage>
@@ -107,6 +113,30 @@ class TstNotesUi : public QObject {
         struct Demo {
             qint64 principe = 0, carnot = 0, rankine = 0, formules = 0, revision = 0, exergie = 0;
         };
+        qint64 import(const QString& file)
+        {
+            QSignalSpy finished(library.get(), &LibraryService::importFinished);
+            library->importPaths({file});
+            if (!finished.wait(60000))
+                return 0;
+            const auto report = finished.first().at(0).value<ImportReport>();
+            return report.importedIds.isEmpty() ? 0 : report.importedIds.first();
+        }
+        AnnotationRecord annotate(qint64 documentId, int page, double y, const QString& text)
+        {
+            PdfLocator l;
+            l.page = page;
+            l.rects = {QRectF(0.1, y, 0.8, 0.02)};
+            l.exact = text;
+            AnnotationRecord r;
+            r.documentId = documentId;
+            r.unitIndex = page;
+            r.sortKey = annotationSortKey(page, y);
+            r.locator = l.toJson();
+            r.selectedText = text;
+            return annotations->create(r).value();
+        }
+
         Demo demo()
         {
             Demo d;
@@ -151,6 +181,8 @@ class TstNotesUi : public QObject {
     }
 
 private slots:
+    void initTestCase() { qRegisterMetaType<ImportReport>(); }
+
     void emptyStateAndNewNote()
     {
         Env env;
@@ -336,6 +368,71 @@ private slots:
         QVERIFY(body.endsWith(QStringLiteral("Legende")));
     }
 
+    void notesFromReadingOpenTheirSources()
+    {
+        Env env;
+        QTemporaryDir files;
+        const QString pdf = files.filePath(QStringLiteral("carnot.pdf"));
+        QVERIFY(test::writePdf(pdf, {QStringLiteral("Reflexions sur la puissance motrice du feu"), 3}));
+        const qint64 doc = env.import(pdf);
+        QVERIFY(doc > 0);
+        const AnnotationRecord ann = env.annotate(doc, 1, 0.3, QStringLiteral("La puissance motrice du feu est independante des agents."));
+        env.settings->setValue(QStringLiteral("ui/lastPage"), QStringLiteral("library"));
+        ui::MainWindow window(*env.ctx);
+        window.resize(1440, 900);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        auto* reader = qobject_cast<ui::ReaderPage*>(window.page(QStringLiteral("reader")));
+        auto* notes = qobject_cast<ui::NotesPage*>(window.page(QStringLiteral("notes")));
+        window.navigateTo(QStringLiteral("reader"));
+        reader->openDocument(doc);
+        QTRY_VERIFY(reader->currentTab() && reader->currentTab()->isLoaded());
+
+        // Annotation → note de lecture ouverte dans l'espace de notes, avec sa source.
+        const qint64 id = reader->currentTab()->createNoteFromAnnotations({ann.id});
+        QVERIFY(id > 0);
+        QCOMPARE(window.currentPage(), QStringLiteral("notes"));
+        QCOMPARE(notes->currentNoteId(), id);
+        QCOMPARE(env.notes->find(id).value().folder, QStringLiteral("Notes de lecture"));
+        QCOMPARE(notes->sourceButtons().size(), 1);
+        QVERIFY(notes->sourceButtons().first()->accessibleName().startsWith(QStringLiteral("Reflexions sur la puissance motrice du feu · p. 2")));
+
+        // Aperçu : la citation renvoie au passage, le [[document]] est reconnu comme tel.
+        QVERIFY(waitPreview(notes, QStringLiteral("independante des agents")));
+        const QStringList appLinks = js(notes->preview(), QStringLiteral("StudyLab.appLinks()")).toStringList();
+        QCOMPARE(appLinks.size(), 1);
+        QVERIFY(appLinks.first().startsWith(QStringLiteral("studylab://open?doc=")));
+        const QVariantList links = js(notes->preview(), QStringLiteral("StudyLab.wikiLinks()")).toList();
+        QCOMPARE(links.size(), 1);
+        QVERIFY(links.first().toMap().value(QStringLiteral("document")).toBool());
+
+        // Source → lecteur, sur le document
+        notes->sourceButtons().first()->click();
+        QCOMPARE(window.currentPage(), QStringLiteral("reader"));
+        QCOMPARE(reader->currentTab()->documentId(), doc);
+
+        // [[document]] dans l'aperçu → lecteur ; lien studylab:// → lecteur
+        window.navigateTo(QStringLiteral("notes"));
+        QVERIFY(js(notes->preview(), QStringLiteral("StudyLab.clickWiki('Reflexions sur la puissance motrice du feu')")).toBool());
+        QTRY_COMPARE(window.currentPage(), QStringLiteral("reader"));
+        window.navigateTo(QStringLiteral("notes"));
+        QVERIFY(js(notes->preview(), QStringLiteral("StudyLab.clickHref('%1')").arg(appLinks.first())).toBool());
+        QTRY_COMPARE(window.currentPage(), QStringLiteral("reader"));
+
+        // Autocomplétion « [[ » : notes et documents
+        window.navigateTo(QStringLiteral("notes"));
+        notes->editor()->setFocus();
+        notes->editor()->moveCursor(QTextCursor::End);
+        QTest::keyClick(notes->editor(), Qt::Key_Return);
+        QTest::keyClicks(notes->editor(), QStringLiteral("Voir [[reflexions sur"));
+        QCompleter* completer = notes->editor()->linkCompleter();
+        QTRY_VERIFY(completer->popup()->isVisible());
+        QCOMPARE(completer->currentCompletion(), QStringLiteral("Reflexions sur la puissance motrice du feu"));
+        QTest::keyClick(completer->popup(), Qt::Key_Return);
+        QVERIFY(!completer->popup()->isVisible());
+        QVERIFY(notes->editor()->toPlainText().endsWith(QStringLiteral("Voir [[Reflexions sur la puissance motrice du feu]]")));
+    }
+
     void screenshots_data()
     {
         QTest::addColumn<bool>("dark");
@@ -359,6 +456,23 @@ private slots:
         QVERIFY(page->openNote(d.principe));
         QVERIFY(waitPreview(page, QStringLiteral("Inégalité de Clausius")));
         maybeScreenshot(window, dark ? QStringLiteral("v1-1-notes-sombre") : QStringLiteral("v1-1-notes"));
+
+        // V1-2 : note de lecture tirée de deux annotations, avec ses sources.
+        QTemporaryDir files;
+        const QString pdf = files.filePath(QStringLiteral("thermo.pdf"));
+        QVERIFY(test::writePdf(pdf, {QStringLiteral("Thermodynamique"), 3}));
+        const qint64 doc = env.import(pdf);
+        QVERIFY(doc > 0);
+        const auto a1 = env.annotate(doc, 0, 0.3, QStringLiteral("L'entropie d'un système isolé ne peut que croître ou rester constante."));
+        const auto a2 = env.annotate(doc, 1, 0.5, QStringLiteral("Le rendement d'une machine réversible ne dépend que des températures des sources."));
+        (void)env.annotations->setNote(a2.id, QStringLiteral("Lien direct avec le [[Cycle de Carnot]]."));
+        auto* reader = qobject_cast<ui::ReaderPage*>(window.page(QStringLiteral("reader")));
+        window.navigateTo(QStringLiteral("reader"));
+        reader->openDocument(doc);
+        QTRY_VERIFY(reader->currentTab() && reader->currentTab()->isLoaded());
+        QVERIFY(reader->currentTab()->createNoteFromAnnotations({a1.id, a2.id}) > 0);
+        QVERIFY(waitPreview(page, QStringLiteral("rester constante")));
+        maybeScreenshot(window, dark ? QStringLiteral("v1-2-note-lecture-sombre") : QStringLiteral("v1-2-note-lecture"));
     }
 };
 

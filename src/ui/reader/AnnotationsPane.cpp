@@ -61,6 +61,15 @@ Qt::ItemFlags AnnotationListModel::flags(const QModelIndex& index) const
     return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
 }
 
+QList<qint64> AnnotationListModel::annotationIds() const
+{
+    QList<qint64> out;
+    for (const Row& r : m_rows)
+        if (!r.header)
+            out << r.record.id;
+    return out;
+}
+
 void AnnotationListModel::setRows(const QList<AnnotationRecord>& records, const std::function<QString(int)>& groupOf)
 {
     beginResetModel();
@@ -292,6 +301,12 @@ AnnotationsPane::AnnotationsPane(ThemeManager& theme, QWidget* parent) : QFrame(
     m_export->setAutoRaise(true);
     m_export->setToolTip(tr("Exporter les annotations en Markdown…"));
     m_export->setAccessibleName(tr("Exporter en Markdown"));
+    m_note = new QToolButton(this);
+    m_note->setObjectName(QStringLiteral("AnnotationsNoteButton"));
+    m_note->setProperty("readerTool", true);
+    m_note->setAutoRaise(true);
+    m_note->setToolTip(tr("Créer une note depuis ce document…"));
+    m_note->setAccessibleName(tr("Créer une note"));
     m_close = new QToolButton(this);
     m_close->setProperty("readerTool", true);
     m_close->setAutoRaise(true);
@@ -300,10 +315,12 @@ AnnotationsPane::AnnotationsPane(ThemeManager& theme, QWidget* parent) : QFrame(
     header->addWidget(m_title);
     header->addWidget(m_count);
     header->addStretch(1);
+    header->addWidget(m_note);
     header->addWidget(m_export);
     header->addWidget(m_close);
     v->addLayout(header);
     connect(m_export, &QToolButton::clicked, this, &AnnotationsPane::exportRequested);
+    connect(m_note, &QToolButton::clicked, this, &AnnotationsPane::noteRequested);
     connect(m_close, &QToolButton::clicked, this, &AnnotationsPane::closeRequested);
 
     auto* searchRow = new QHBoxLayout;
@@ -427,6 +444,7 @@ void AnnotationsPane::refreshIcons()
 {
     const Palette& pal = m_theme.palette();
     m_export->setIcon(Icons::get(QStringLiteral("download"), pal.text2, 18));
+    m_note->setIcon(Icons::get(QStringLiteral("note"), pal.text2, 18));
     m_close->setIcon(Icons::get(QStringLiteral("x"), pal.text2, 16));
     const auto colors = allAnnotationColors();
     for (int i = 1; i < m_colorButtons.size(); ++i)

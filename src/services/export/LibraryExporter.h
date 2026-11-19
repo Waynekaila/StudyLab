@@ -4,6 +4,7 @@
 #include "core/domain/Annotation.h"
 #include "core/domain/Comment.h"
 #include "core/domain/Document.h"
+#include "core/domain/Note.h"
 #include "services/export/ChapterIndex.h"
 
 #include <QDate>
@@ -32,6 +33,8 @@ struct LibraryExportResult {
     int documents = 0;
     int annotations = 0;      ///< hors signets
     int comments = 0;
+    int notes = 0;
+    int attachments = 0;      ///< images des notes copiées dans _attachments/
     QStringList errors;       ///< un message par document en échec
     bool cancelled = false;
 };
@@ -42,12 +45,17 @@ struct LibraryExportResult {
 ///     README.md            mode d'emploi et index des documents
 ///     annotations.csv      toutes les annotations, une ligne chacune
 ///     Bibliothèque/<Auteur> - <Titre> (<année>)/…   comme l'export d'un document
+///     Notes/<dossier>/<nom>.md                        notes (front matter, [[liens]] et #tags conservés)
+///     _attachments/                                   images des notes
 class LibraryExporter {
 public:
     struct Options {
         QDate date = QDate::currentDate();
         QString appVersion;
         bool appLinks = true;
+        /// Notes à joindre : toutes pour la bibliothèque entière, celles tirées des documents pour une sélection.
+        QList<NoteRecord> notes;
+        QString attachmentsDir;  ///< dossier des images collées dans les notes
     };
     /// Appelée après chaque document ; renvoyer false annule l'export.
     using Progress = std::function<bool(int done, int total)>;
@@ -62,7 +70,14 @@ public:
     static QString csvField(const QString& value);
     static QString csvHeader();
     static QStringList csvRows(const DocumentExportData& data, const ChapterIndex& chapters);
-    static QString readme(const QList<DocumentExportData>& docs, const QStringList& baseNames, const Options& options);
+    static QString readme(const QList<DocumentExportData>& docs, const QStringList& baseNames, const Options& options,
+                          int notes = 0);
+    /// Chemin de la note dans l'export, relatif au dossier racine : « Notes/Thermo/Cours/Cycle de Carnot.md ».
+    static QString notePath(const NoteRecord& note);
+    /// Texte exporté : front matter complété (type, uuid), images redirigées vers ../_attachments/.
+    static QString noteMarkdown(const NoteRecord& note);
+    /// Images « attachments/… » citées par la note.
+    static QStringList noteAttachments(const QString& markdown);
 
     /// Écrit l'export dans parentDir ; utilisable depuis un thread de travail (aucun accès à la base).
     /// Un document en échec n'arrête pas l'export : il est listé dans errors.
