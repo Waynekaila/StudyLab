@@ -1,14 +1,30 @@
 #include "ui/reader/PdfReaderTab.h"
 
 #include "engines/pdf/PdfRenderQueue.h"
+#include "services/annotations/AnnotationService.h"
+#include "services/export/MarkdownExporter.h"
 #include "services/library/LibraryService.h"
+#include "services/settings/SettingsService.h"
+#include "ui/reader/AnnotationPopup.h"
+#include "ui/reader/AnnotationStyle.h"
+#include "ui/reader/AnnotationsPane.h"
+#include "ui/shell/AppContext.h"
 #include "ui/components/SegmentedControl.h"
 #include "ui/components/Widgets.h"
 #include "ui/reader/ThumbnailModel.h"
 #include "ui/theme/Icons.h"
 #include "ui/theme/ThemeManager.h"
 
+#include <QApplication>
+#include <QButtonGroup>
+#include <QClipboard>
 #include <QComboBox>
+#include <QDesktopServices>
+#include <QFileDialog>
+#include <QMenu>
+#include <QMessageBox>
+#include <QStandardPaths>
+#include <QUrl>
 #include <QDir>
 #include <QFileInfo>
 #include <QHBoxLayout>
@@ -71,6 +87,13 @@ public:
         p->setPen(QPen(current ? pal.primary : pal.border, current ? 2.5 : 1));
         p->setBrush(Qt::NoBrush);
         p->drawRect(QRectF(img).adjusted(-0.5, -0.5, 0.5, 0.5));
+        const QVariant mark = index.data(ThumbnailModel::MarkRole);
+        if (mark.isValid()) {
+            const int d = m_theme.px(8);
+            p->setPen(QPen(Qt::white, 1.5));
+            p->setBrush(mark.value<QColor>());
+            p->drawEllipse(QRectF(img.right() - d - m_theme.px(5), img.top() + m_theme.px(5), d, d));
+        }
         QFont f = opt.font;
         f.setPixelSize(m_theme.px(11));
         f.setWeight(current ? QFont::DemiBold : QFont::Normal);
@@ -100,11 +123,20 @@ QToolButton* toolButton(const QString& tooltip, QWidget* parent, bool checkable 
 
 }  // namespace
 
-PdfReaderTab::PdfReaderTab(LibraryService& library, ThemeManager& theme, qint64 documentId, QWidget* parent)
-    : QWidget(parent), m_library(library), m_theme(theme), m_documentId(documentId)
+PdfReaderTab::PdfReaderTab(AppContext& ctx, qint64 documentId, QWidget* parent)
+    : QWidget(parent),
+      m_ctx(ctx),
+      m_library(ctx.library),
+      m_annotations(ctx.annotations),
+      m_settings(ctx.settings),
+      m_theme(ctx.theme),
+      m_documentId(documentId)
 {
-    if (auto r = library.document(documentId))
+    ThemeManager& theme = m_theme;
+    if (auto r = m_library.document(documentId))
         m_record = r.value();
+    m_color = annotationColorFromKey(m_settings.value(QStringLiteral("reader/annotationColor")).toString())
+                  .value_or(AnnotationColor::Yellow);
 
     auto* v = new QVBoxLayout(this);
     v->setContentsMargins(0, 0, 0, 0);
@@ -120,7 +152,11 @@ PdfReaderTab::PdfReaderTab(LibraryService& library, ThemeManager& theme, qint64 
     m_view = new PdfView(theme, this);
     body->addWidget(buildSidePanel());
     body->addWidget(m_view, 1);
+    m_pane = new AnnotationsPane(theme, this);
+    m_pane->setFixedWidth(theme.px(340));
+    body->addWidget(m_pane);
     v->addLayout(body, 1);
+    m_popup = new AnnotationPopup(theme, m_view->viewport());
 
     m_errorBox = new QWidget(this);
     auto* ev = new QVBoxLayout(m_errorBox);
@@ -160,7 +196,147 @@ PdfReaderTab::PdfReaderTab(LibraryService& library, ThemeManager& theme, qint64 
         m_saveTimer.start();
     });
     connect(m_view, &PdfView::historyChanged, this, &PdfReaderTab::updateHistoryButtons);
-    connect(&theme, &ThemeManager::themeChanged, this, &PdfReaderTab::refreshIcons);
+    connect(&theme, &ThemeManager::themeChanged, this, [this] {
+        refreshIcons();
+        pushMarks();
+    });
+
+    // Annotations : lecteur, barre flottante, volet
+    connect(m_view, &PdfView::currentPageChanged, this, [this](int page) {
+        m_pane->setCurrentPage(page);
+        updateBookmarkButton();
+    });
+    connect(m_view, &PdfView::positionChanged, m_popup, &QWidget::hide);
+    connect(m_view, &PdfView::zoomChanged, m_popup, &QWidget::hide);
+    connect(m_view, &PdfView::selectionChanged, this, [this] {
+        if (!m_view->hasSelection() && m_popup->mode() == AnnotationPopup::Mode::Create)
+            m_popup->hide();
+    });
+    connect(m_view, &PdfView::selectionFinished, this, &PdfReaderTab::onSelectionFinished);
+    connect(m_view, &PdfView::annotationClicked, this, [this](qint64 id) {
+        m_pane->setActive(id);
+        showEditPopup(id);
+    });
+    connect(m_view, &PdfView::annotationContextMenuRequested, this, &PdfReaderTab::showAnnotationMenu);
+    connect(m_view, &PdfView::areaDrawn, this, [this](int page, const QRectF& rect) {
+        if (auto r = addArea(page, rect); !r)
+            reportError(r.error());
+    });
+    connect(m_view, &PdfView::pointClicked, this, [this](int page, const QPointF& pt) {
+        const auto text = askNote(QString(), QString());
+        m_view->setTool(PdfView::Tool::Select);
+        if (text && !text->trimmed().isEmpty()) {
+            if (auto r = addNote(page, pt, *text); !r)
+                reportError(r.error());
+        }
+    });
+    connect(m_view, &PdfView::toolChanged, this, [this](PdfView::Tool tool) {
+        for (auto it = m_toolButtons.cbegin(); it != m_toolButtons.cend(); ++it) {
+            const QSignalBlocker block(it.value());
+            it.value()->setChecked(PdfView::Tool(it.key()) == tool);
+        }
+        m_popup->hide();
+    });
+
+    connect(m_popup, &AnnotationPopup::colorPicked, this, [this](AnnotationColor c) {
+        if (m_popup->mode() == AnnotationPopup::Mode::Create) {
+            setCurrentColor(c);
+            if (auto r = annotateSelection(AnnotationType::Highlight, c); !r)
+                reportError(r.error());
+        } else if (auto r = m_annotations.setColor(m_popupAnnotation, c); !r) {
+            reportError(r.error());
+        } else {
+            showEditPopup(m_popupAnnotation);
+        }
+    });
+    connect(m_popup, &AnnotationPopup::typePicked, this, [this](AnnotationType t) {
+        if (m_popup->mode() == AnnotationPopup::Mode::Create) {
+            if (auto r = annotateSelection(t, m_color); !r)
+                reportError(r.error());
+        } else if (auto r = m_annotations.setType(m_popupAnnotation, t); !r) {
+            reportError(r.error());
+        } else {
+            showEditPopup(m_popupAnnotation);
+        }
+    });
+    connect(m_popup, &AnnotationPopup::noteRequested, this, [this] {
+        if (m_popup->mode() == AnnotationPopup::Mode::Create) {
+            auto created = annotateSelection(AnnotationType::Highlight, m_color);
+            if (!created) {
+                reportError(created.error());
+                return;
+            }
+            if (!created.value().isEmpty())
+                editNote(created.value().first().id);
+        } else {
+            editNote(m_popupAnnotation);
+        }
+    });
+    connect(m_popup, &AnnotationPopup::copyRequested, this, [this] {
+        if (m_popup->mode() == AnnotationPopup::Mode::Create) {
+            m_view->copySelection();
+        } else if (auto r = m_annotations.find(m_popupAnnotation)) {
+            QApplication::clipboard()->setText(r.value().selectedText);
+        }
+        m_popup->hide();
+    });
+    connect(m_popup, &AnnotationPopup::deleteRequested, this, [this] { deleteAnnotation(m_popupAnnotation); });
+
+    connect(m_pane, &AnnotationsPane::annotationActivated, this, &PdfReaderTab::revealAnnotation);
+    connect(m_pane, &AnnotationsPane::contextMenuRequested, this, &PdfReaderTab::showAnnotationMenu);
+    connect(m_pane, &AnnotationsPane::exportRequested, this, &PdfReaderTab::exportWithDialog);
+    connect(m_pane, &AnnotationsPane::closeRequested, this, [this] { setPaneVisible(false); });
+    connect(m_pane, &AnnotationsPane::undoRequested, this, &PdfReaderTab::undoDelete);
+    m_pane->setGroupResolver([this](int page) { return chapterOf(page); });
+
+    connect(&m_annotations, &AnnotationService::annotationAdded, this, [this](const AnnotationRecord& r) {
+        if (r.documentId != m_documentId)
+            return;
+        bool replaced = false;
+        for (auto& existing : m_records)
+            if (existing.id == r.id) {
+                existing = r;
+                replaced = true;
+            }
+        if (!replaced) {
+            auto pos = std::upper_bound(m_records.begin(), m_records.end(), r,
+                                        [](const AnnotationRecord& a, const AnnotationRecord& b) { return a.sortKey < b.sortKey; });
+            m_records.insert(pos, r);
+        }
+        pushMarks();
+        m_pane->setActive(r.id);
+        updateBookmarkButton();
+    });
+    connect(&m_annotations, &AnnotationService::annotationChanged, this, [this](const AnnotationRecord& r) {
+        if (r.documentId != m_documentId)
+            return;
+        for (auto& existing : m_records)
+            if (existing.id == r.id)
+                existing = r;
+        pushMarks();
+    });
+    connect(&m_annotations, &AnnotationService::annotationRemoved, this, [this](qint64 id, qint64 docId) {
+        if (docId != m_documentId)
+            return;
+        m_records.erase(std::remove_if(m_records.begin(), m_records.end(),
+                                       [id](const AnnotationRecord& r) { return r.id == id; }),
+                        m_records.end());
+        if (m_popupAnnotation == id)
+            m_popup->hide();
+        pushMarks();
+        updateBookmarkButton();
+    });
+
+    auto* undo = new QShortcut(QKeySequence::Undo, this, this, [this] { (void)undoDelete(); });
+    undo->setContext(Qt::WidgetWithChildrenShortcut);
+    auto* bookmark = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_D), this, this, &PdfReaderTab::toggleBookmark);
+    bookmark->setContext(Qt::WidgetWithChildrenShortcut);
+    auto* del = new QShortcut(QKeySequence::Delete, this, this, [this] {
+        if (m_popup->isVisible() && m_popup->mode() == AnnotationPopup::Mode::Edit)
+            deleteAnnotation(m_popupAnnotation);
+    });
+    del->setContext(Qt::WidgetWithChildrenShortcut);
+    setPaneVisible(m_settings.value(QStringLiteral("reader/annotationsPane"), true).toBool());
 
     auto* find = new QShortcut(QKeySequence::Find, this, this, &PdfReaderTab::showSearch);
     find->setContext(Qt::WidgetWithChildrenShortcut);
@@ -278,6 +454,50 @@ QWidget* PdfReaderTab::buildToolbar()
     h->addWidget(m_double);
     h->addStretch(1);
 
+    // Outils d'annotation : un clic active l'outil, un second clic revient à la sélection simple.
+    const struct {
+        PdfView::Tool tool;
+        const char* tip;
+    } tools[] = {
+        {PdfView::Tool::Highlight, QT_TR_NOOP("Surligner : sélectionnez un passage")},
+        {PdfView::Tool::Underline, QT_TR_NOOP("Souligner : sélectionnez un passage")},
+        {PdfView::Tool::Strikeout, QT_TR_NOOP("Barrer : sélectionnez un passage")},
+        {PdfView::Tool::Marker, QT_TR_NOOP("Zone : tracez un rectangle (figure, formule, tableau)")},
+        {PdfView::Tool::Note, QT_TR_NOOP("Note : cliquez à l'endroit voulu")},
+    };
+    auto* toolGroup = new QFrame(bar);
+    toolGroup->setObjectName(QStringLiteral("ToolGroup"));
+    auto* th = new QHBoxLayout(toolGroup);
+    th->setContentsMargins(3, 2, 3, 2);
+    th->setSpacing(1);
+    for (const auto& t : tools) {
+        auto* b = toolButton(tr(t.tip), toolGroup, true);
+        const PdfView::Tool tool = t.tool;
+        connect(b, &QToolButton::clicked, this, [this, tool](bool on) {
+            m_view->setTool(on ? tool : PdfView::Tool::Select);
+            m_view->setFocus();
+        });
+        th->addWidget(b);
+        m_toolButtons.insert(int(tool), b);
+    }
+    m_bookmarkButton = toolButton(tr("Signet sur cette page (Ctrl+D)"), toolGroup, true);
+    connect(m_bookmarkButton, &QToolButton::clicked, this, [this] { toggleBookmark(); });
+    th->addWidget(m_bookmarkButton);
+    h->addWidget(toolGroup);
+    h->addSpacing(6);
+    auto* colors = new QButtonGroup(bar);
+    colors->setExclusive(true);
+    for (AnnotationColor c : allAnnotationColors()) {
+        auto* b = toolButton(tr("Couleur : %1").arg(annotationColorLabel(c).toLower()), bar, true);
+        b->setProperty("swatch", true);
+        b->setChecked(c == m_color);
+        colors->addButton(b);
+        connect(b, &QToolButton::clicked, this, [this, c] { setCurrentColor(c); });
+        h->addWidget(b);
+        m_colorButtons << b;
+    }
+    h->addSpacing(10);
+
     m_searchButton = toolButton(tr("Rechercher dans le document (Ctrl+F)"), bar);
     connect(m_searchButton, &QToolButton::clicked, this, &PdfReaderTab::showSearch);
     m_focusButton = toolButton(tr("Lecture sans distraction (Échap pour quitter)"), bar, true);
@@ -287,6 +507,10 @@ QWidget* PdfReaderTab::buildToolbar()
     h->addWidget(m_searchButton);
     h->addWidget(m_focusButton);
     h->addWidget(m_fullButton);
+    h->addSpacing(6);
+    m_paneToggle = toolButton(tr("Volet Annotations"), bar, true);
+    connect(m_paneToggle, &QToolButton::clicked, this, [this](bool on) { setPaneVisible(on); });
+    h->addWidget(m_paneToggle);
     return bar;
 }
 
@@ -397,6 +621,14 @@ void PdfReaderTab::refreshIcons()
     set(m_searchButton, "search");
     set(m_focusButton, "eye");
     set(m_fullButton, "maximize");
+    set(m_paneToggle, "panel-right");
+    set(m_bookmarkButton, "bookmark");
+    const char* toolIcons[] = {"", "highlighter", "underline", "strikethrough", "square-dashed", "message-square"};
+    for (auto it = m_toolButtons.cbegin(); it != m_toolButtons.cend(); ++it)
+        set(it.value(), toolIcons[it.key()]);
+    const auto colors = allAnnotationColors();
+    for (int i = 0; i < m_colorButtons.size(); ++i)
+        m_colorButtons[i]->setIcon(colorSwatchIcon(annotationAccent(pal, colors[i]), pal.text2, 20));
 }
 
 void PdfReaderTab::showEvent(QShowEvent* event)
@@ -487,6 +719,8 @@ Result<void> PdfReaderTab::ensureLoaded()
 
     m_loaded = true;
     m_pageTotal->setText(QStringLiteral("/ %1").arg(m_view->pageCount()));
+    buildChapters();
+    reloadAnnotations();
     restoreState();
     updatePageIndicator();
     updateZoomCombo();
@@ -639,10 +873,396 @@ void PdfReaderTab::setFocusMode(bool on)
     }
     m_toolbar->setVisible(!on);
     m_side->setVisible(!on && m_sideToggle->isChecked());
+    m_pane->setVisible(!on && m_paneToggle->isChecked());
+    m_popup->hide();
     if (on)
         m_searchBar->hide();
     emit focusModeToggled(on);
     m_view->setFocus();
+}
+
+// ───────────────────────── Annotations ─────────────────────────
+
+void PdfReaderTab::reportError(const Error& error)
+{
+    QMessageBox::warning(window(), tr("Annotations"), error.message);
+}
+
+std::optional<QString> PdfReaderTab::askNote(const QString& quote, const QString& current)
+{
+    if (m_noteEditor)
+        return m_noteEditor(quote, current);
+    return NoteDialog::edit(window(), m_theme, quote, current);
+}
+
+QToolButton* PdfReaderTab::toolButtonFor(PdfView::Tool tool) const
+{
+    return m_toolButtons.value(int(tool));
+}
+
+QToolButton* PdfReaderTab::colorButton(AnnotationColor color) const
+{
+    return m_colorButtons.value(int(allAnnotationColors().indexOf(color)));
+}
+
+void PdfReaderTab::setCurrentColor(AnnotationColor color)
+{
+    m_color = color;
+    if (QToolButton* b = colorButton(color))
+        b->setChecked(true);
+    m_settings.setValue(QStringLiteral("reader/annotationColor"), annotationColorKey(color));
+}
+
+void PdfReaderTab::setPaneVisible(bool on)
+{
+    m_pane->setVisible(on && !m_focusMode);
+    {
+        const QSignalBlocker block(m_paneToggle);
+        m_paneToggle->setChecked(on);
+    }
+    m_settings.setValue(QStringLiteral("reader/annotationsPane"), on);
+}
+
+void PdfReaderTab::buildChapters()
+{
+    m_chapters.clear();
+    if (!m_bookmarks)
+        return;
+    // Entrées des deux premiers niveaux du sommaire : « Chapitre 7 · L'entropie ».
+    std::function<void(const QModelIndex&, int)> walk = [&](const QModelIndex& parent, int depth) {
+        for (int i = 0; i < m_bookmarks->rowCount(parent); ++i) {
+            const QModelIndex idx = m_bookmarks->index(i, 0, parent);
+            const QString title = idx.data(int(QPdfBookmarkModel::Role::Title)).toString().simplified();
+            const int page = idx.data(int(QPdfBookmarkModel::Role::Page)).toInt();
+            if (!title.isEmpty() && page >= 0)
+                m_chapters.append({page, title});
+            if (depth < 1)
+                walk(idx, depth + 1);
+        }
+    };
+    walk(QModelIndex(), 0);
+    std::stable_sort(m_chapters.begin(), m_chapters.end(),
+                     [](const auto& a, const auto& b) { return a.first < b.first; });
+}
+
+QString PdfReaderTab::chapterOf(int page) const
+{
+    QString title;
+    for (const auto& [p, t] : m_chapters) {
+        if (p > page)
+            break;
+        title = t;
+    }
+    return title;
+}
+
+void PdfReaderTab::reloadAnnotations()
+{
+    auto list = m_annotations.list(m_documentId);
+    m_records = list ? list.value() : QList<AnnotationRecord>{};
+    pushMarks();
+    updateBookmarkButton();
+}
+
+void PdfReaderTab::pushMarks()
+{
+    const Palette& pal = m_theme.palette();
+    QList<PdfAnnotationMark> marks;
+    QHash<int, QColor> pages;
+    for (const auto& r : m_records) {
+        const auto loc = PdfLocator::fromJson(r.locator);
+        if (!loc)
+            continue;
+        PdfAnnotationMark m;
+        m.id = r.id;
+        m.page = loc->page;
+        m.type = r.type;
+        m.rects = loc->rects;
+        m.hasNote = !r.note.isEmpty();
+        m.fill = annotationPageFill(r.color);
+        m.stroke = annotationPageStroke(r.color);
+        if (r.type == AnnotationType::Bookmark) {
+            m.fill = annotationPageFill(AnnotationColor::Blue);
+            m.stroke = annotationPageStroke(AnnotationColor::Blue);
+        }
+        marks << m;
+        if (!pages.contains(m.page))
+            pages.insert(m.page, annotationAccent(pal, r.type == AnnotationType::Bookmark ? AnnotationColor::Blue : r.color));
+    }
+    m_view->setAnnotations(marks);
+    if (m_thumbModel)
+        m_thumbModel->setMarks(pages);
+    m_pane->setAnnotations(m_records);
+}
+
+void PdfReaderTab::updateBookmarkButton()
+{
+    if (!m_bookmarkButton)
+        return;
+    bool on = false;
+    for (const auto& r : m_records)
+        on = on || (r.type == AnnotationType::Bookmark && r.unitIndex == m_view->currentPage());
+    const QSignalBlocker block(m_bookmarkButton);
+    m_bookmarkButton->setChecked(on);
+    m_bookmarkButton->setToolTip(on ? tr("Retirer le signet de cette page (Ctrl+D)") : tr("Signet sur cette page (Ctrl+D)"));
+}
+
+Result<QList<AnnotationRecord>> PdfReaderTab::annotateSelection(AnnotationType type, AnnotationColor color)
+{
+    const auto anchors = m_view->selectionAnchors();
+    QList<AnnotationRecord> created;
+    for (const PdfSelectionAnchor& a : anchors) {
+        PdfLocator loc;
+        loc.page = a.page;
+        loc.rects = a.rects;
+        loc.exact = normalizeQuote(a.text);
+        loc.prefix = a.prefix;
+        loc.suffix = a.suffix;
+        loc.start = a.start;
+        loc.end = a.end;
+        AnnotationRecord r;
+        r.documentId = m_documentId;
+        r.type = type;
+        r.color = color;
+        r.pageLabel = m_doc ? m_doc->pageLabel(a.page) : QString();
+        if (r.pageLabel == QString::number(a.page + 1))
+            r.pageLabel.clear();  // numéro physique : inutile de le stocker
+        r.locator = loc.toJson();
+        r.selectedText = a.text;
+        auto res = m_annotations.create(r);
+        if (!res)
+            return res.error();
+        created << res.value();
+    }
+    m_view->clearSelection();
+    m_popup->hide();
+    return created;
+}
+
+Result<AnnotationRecord> PdfReaderTab::addArea(int page, const QRectF& rect)
+{
+    PdfLocator loc;
+    loc.page = page;
+    loc.rects = {rect};
+    AnnotationRecord r;
+    r.documentId = m_documentId;
+    r.type = AnnotationType::Marker;
+    r.color = m_color;
+    if (m_doc) {
+        // Texte contenu dans la zone, s'il y en a (formule, légende) : utile à la recherche et à l'export.
+        const QSizeF size = m_doc->pagePointSize(page);
+        const QPdfSelection sel = m_doc->getSelection(
+            page, QPointF(rect.left() * size.width(), rect.top() * size.height()),
+            QPointF(rect.right() * size.width(), rect.bottom() * size.height()));
+        if (sel.isValid())
+            r.selectedText = sel.text();
+        r.pageLabel = m_doc->pageLabel(page);
+        if (r.pageLabel == QString::number(page + 1))
+            r.pageLabel.clear();
+    }
+    loc.exact = normalizeQuote(r.selectedText);
+    r.locator = loc.toJson();
+    return m_annotations.create(r);
+}
+
+Result<AnnotationRecord> PdfReaderTab::addNote(int page, const QPointF& point, const QString& text)
+{
+    PdfLocator loc;
+    loc.page = page;
+    loc.rects = {QRectF(point.x() - 0.005, point.y() - 0.005, 0.01, 0.01)};
+    AnnotationRecord r;
+    r.documentId = m_documentId;
+    r.type = AnnotationType::Note;
+    r.color = m_color;
+    r.locator = loc.toJson();
+    r.note = text;
+    if (m_doc) {
+        r.pageLabel = m_doc->pageLabel(page);
+        if (r.pageLabel == QString::number(page + 1))
+            r.pageLabel.clear();
+    }
+    return m_annotations.create(r);
+}
+
+void PdfReaderTab::toggleBookmark()
+{
+    if (!m_loaded)
+        return;
+    const int page = m_view->currentPage();
+    QString label = m_doc ? m_doc->pageLabel(page) : QString();
+    if (label == QString::number(page + 1))
+        label.clear();
+    if (auto r = m_annotations.toggleBookmark(m_documentId, page, label); !r)
+        reportError(r.error());
+    updateBookmarkButton();
+}
+
+void PdfReaderTab::deleteAnnotation(qint64 id)
+{
+    if (id == 0)
+        return;
+    auto r = m_annotations.find(id);
+    if (auto res = m_annotations.remove(id); !res) {
+        reportError(res.error());
+        return;
+    }
+    m_popup->hide();
+    m_deleted.append(id);
+    const QString what = r ? annotationTypeLabel(r.value().type) : tr("Annotation");
+    m_pane->showUndo(tr("%1 supprimé%2").arg(what, r && (r.value().type == AnnotationType::Highlight
+                                                           || r.value().type == AnnotationType::Underline
+                                                           || r.value().type == AnnotationType::Bookmark
+                                                           || r.value().type == AnnotationType::Strikeout)
+                                                          ? QString()
+                                                          : QStringLiteral("e")));
+}
+
+bool PdfReaderTab::undoDelete()
+{
+    while (!m_deleted.isEmpty()) {
+        const qint64 id = m_deleted.takeLast();
+        if (m_annotations.restore(id)) {
+            m_pane->hideUndo();
+            return true;
+        }
+    }
+    return false;
+}
+
+void PdfReaderTab::editNote(qint64 id)
+{
+    auto r = m_annotations.find(id);
+    if (!r)
+        return;
+    m_popup->hide();
+    const auto text = askNote(r.value().selectedText, r.value().note);
+    if (!text)
+        return;
+    if (auto res = m_annotations.setNote(id, *text); !res)
+        reportError(res.error());
+}
+
+void PdfReaderTab::revealAnnotation(qint64 id)
+{
+    for (const auto& r : m_records) {
+        if (r.id != id)
+            continue;
+        const auto loc = PdfLocator::fromJson(r.locator);
+        if (!loc)
+            return;
+        m_view->revealNormalizedRect(loc->page, loc->bounds(), true);
+        m_view->flashAnnotation(id);
+        m_pane->setActive(id);
+        return;
+    }
+}
+
+void PdfReaderTab::onSelectionFinished()
+{
+    const PdfView::Tool tool = m_view->tool();
+    const AnnotationType type = tool == PdfView::Tool::Underline   ? AnnotationType::Underline
+                                : tool == PdfView::Tool::Strikeout ? AnnotationType::Strikeout
+                                                                   : AnnotationType::Highlight;
+    if (tool == PdfView::Tool::Highlight || tool == PdfView::Tool::Underline || tool == PdfView::Tool::Strikeout) {
+        if (auto r = annotateSelection(type, m_color); !r)
+            reportError(r.error());
+        return;
+    }
+    const QRect rect = m_view->selectionViewportRect();
+    if (rect.isEmpty())
+        return;
+    m_popupAnnotation = 0;
+    m_popup->showFor(AnnotationPopup::Mode::Create, rect, m_color);
+}
+
+void PdfReaderTab::showEditPopup(qint64 id)
+{
+    auto r = m_annotations.find(id);
+    if (!r)
+        return;
+    m_popupAnnotation = id;
+    QRect rect = m_view->annotationViewportRect(id);
+    if (rect.isEmpty())
+        rect = QRect(m_view->viewport()->rect().center(), QSize(1, 1));
+    m_popup->showFor(AnnotationPopup::Mode::Edit, rect, r.value().color, r.value().type, !r.value().note.isEmpty());
+}
+
+void PdfReaderTab::showAnnotationMenu(qint64 id, QPoint globalPos)
+{
+    auto found = m_annotations.find(id);
+    if (!found)
+        return;
+    const AnnotationRecord a = found.value();
+    QMenu menu(this);
+    const Palette& pal = m_theme.palette();
+    if (a.type != AnnotationType::Bookmark) {
+        QMenu* colorMenu = menu.addMenu(tr("Couleur"));
+        for (AnnotationColor c : allAnnotationColors()) {
+            QAction* act = colorMenu->addAction(colorSwatchIcon(annotationAccent(pal, c), pal.text2, 16),
+                                                annotationColorLabel(c));
+            act->setCheckable(true);
+            act->setChecked(c == a.color);
+            connect(act, &QAction::triggered, this, [this, id, c] { (void)m_annotations.setColor(id, c); });
+        }
+    }
+    if (a.type == AnnotationType::Highlight || a.type == AnnotationType::Underline || a.type == AnnotationType::Strikeout) {
+        QMenu* typeMenu = menu.addMenu(tr("Type"));
+        for (AnnotationType t : {AnnotationType::Highlight, AnnotationType::Underline, AnnotationType::Strikeout}) {
+            QAction* act = typeMenu->addAction(annotationTypeLabel(t));
+            act->setCheckable(true);
+            act->setChecked(t == a.type);
+            connect(act, &QAction::triggered, this, [this, id, t] { (void)m_annotations.setType(id, t); });
+        }
+    }
+    if (a.type != AnnotationType::Bookmark)
+        menu.addAction(a.note.isEmpty() ? tr("Ajouter une note…") : tr("Modifier la note…"), this,
+                       [this, id] { editNote(id); });
+    if (!a.selectedText.isEmpty())
+        menu.addAction(tr("Copier le texte"), this,
+                       [text = a.selectedText] { QApplication::clipboard()->setText(normalizeQuote(text)); });
+    menu.addAction(tr("Aller au passage"), this, [this, id] { revealAnnotation(id); });
+    menu.addSeparator();
+    QAction* del = menu.addAction(Icons::get(QStringLiteral("trash"), pal.danger, 16), tr("Supprimer"), this,
+                                  [this, id] { deleteAnnotation(id); });
+    del->setShortcut(QKeySequence::Delete);
+    menu.exec(globalPos);
+}
+
+Result<QString> PdfReaderTab::exportMarkdown(const QString& directory)
+{
+    auto doc = m_library.document(m_documentId);
+    if (!doc)
+        return doc.error();
+    auto list = m_annotations.list(m_documentId);
+    if (!list)
+        return list.error();
+    MarkdownExporter::Options opt;
+    opt.chapterOf = [this](int page) { return chapterOf(page); };
+    return MarkdownExporter::exportDocument(directory, doc.value(), list.value(), opt);
+}
+
+void PdfReaderTab::exportWithDialog()
+{
+    QString start = m_settings.value(QStringLiteral("export/lastDirectory")).toString();
+    if (start.isEmpty() || !QDir(start).exists())
+        start = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    const QString dir = QFileDialog::getExistingDirectory(window(), tr("Exporter les annotations en Markdown"), start);
+    if (dir.isEmpty())
+        return;
+    m_settings.setValue(QStringLiteral("export/lastDirectory"), dir);
+    auto res = exportMarkdown(dir);
+    if (!res) {
+        reportError(res.error());
+        return;
+    }
+    QMessageBox box(window());
+    box.setWindowTitle(tr("Export terminé"));
+    box.setText(tr("Les annotations ont été exportées dans :\n%1").arg(QDir::toNativeSeparators(res.value())));
+    QPushButton* open = box.addButton(tr("Ouvrir le dossier"), QMessageBox::AcceptRole);
+    box.addButton(tr("Fermer"), QMessageBox::RejectRole);
+    box.exec();
+    if (box.clickedButton() == open)
+        QDesktopServices::openUrl(QUrl::fromLocalFile(res.value()));
 }
 
 }  // namespace studylab::ui

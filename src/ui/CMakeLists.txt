@@ -22,8 +22,11 @@ add_library(studylab_ui STATIC
     reader/PdfView.h reader/PdfView.cpp
     reader/ThumbnailModel.h reader/ThumbnailModel.cpp
     reader/PdfReaderTab.h reader/PdfReaderTab.cpp
-    reader/ReaderPage.h reader/ReaderPage.cpp)
-target_link_libraries(studylab_ui PUBLIC studylab_library studylab_settings studylab_data studylab_core Qt6::Widgets Qt6::Svg)
+    reader/ReaderPage.h reader/ReaderPage.cpp
+    reader/AnnotationStyle.h reader/AnnotationStyle.cpp
+    reader/AnnotationPopup.h reader/AnnotationPopup.cpp
+    reader/AnnotationsPane.h reader/AnnotationsPane.cpp)
+target_link_libraries(studylab_ui PUBLIC studylab_library studylab_annotations studylab_export studylab_settings studylab_data studylab_core Qt6::Widgets Qt6::Svg)
 studylab_set_warnings(studylab_ui)
 
 file(GLOB STUDYLAB_ICONS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS resources/icons/*.svg)

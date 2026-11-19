@@ -34,6 +34,10 @@ int ThumbnailModel::rowCount(const QModelIndex& parent) const
 
 QVariant ThumbnailModel::data(const QModelIndex& index, int role) const
 {
+    if (role == MarkRole) {
+        const auto it = m_marks.constFind(index.row());
+        return it == m_marks.constEnd() ? QVariant() : QVariant(*it);
+    }
     if (!index.isValid())
         return {};
     const int page = index.row();
@@ -57,6 +61,21 @@ QVariant ThumbnailModel::data(const QModelIndex& index, int role) const
     default:
         return {};
     }
+}
+
+void ThumbnailModel::setMarks(const QHash<int, QColor>& marks)
+{
+    QSet<int> changed;
+    for (auto it = m_marks.cbegin(); it != m_marks.cend(); ++it)
+        if (marks.value(it.key()) != it.value())
+            changed.insert(it.key());
+    for (auto it = marks.cbegin(); it != marks.cend(); ++it)
+        if (m_marks.value(it.key()) != it.value())
+            changed.insert(it.key());
+    m_marks = marks;
+    for (int row : changed)
+        if (row >= 0 && row < rowCount())
+            emit dataChanged(index(row), index(row), {MarkRole});
 }
 
 }  // namespace studylab::ui
