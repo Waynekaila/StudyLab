@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StudyLab Maquettes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;1,7..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F6F5F2; --surface:#FFFFFF; --surface2:#FBFAF8; --sunken:#F1EFEB; --border:#E6E3DD; --border-soft:#EEECE7;
+  --text:#2A2F36; --text2:#6B7280; --text3:#9AA0A8;
+  --primary:#5B7DB1; --primary-strong:#4A6A9C; --primary-soft:#E9EEF6;
+  --lav:#9C8FD0; --lav-soft:#F2EFFA; --sage:#7FA88A; --sage-soft:#EAF2EC; --amber:#C9A24A;
+  --hl-yellow:#F6E7A1; --hl-green:#D3EACF; --hl-blue:#D3E3F6; --hl-pink:#F6D5DF; --hl-purple:#E4D9F4;
+  --a-yellow:#DDBE4E; --a-green:#79B472; --a-blue:#6E9BD6; --a-pink:#D98AA6; --a-purple:#A88BD8;
+  --paper:#FFFFFF; --paper-text:#262A30; --page-shadow:0 1px 3px rgba(30,35,45,.08),0 8px 24px rgba(30,35,45,.06);
+  --shadow:0 1px 2px rgba(30,35,45,.04),0 4px 14px rgba(30,35,45,.04);
+  --shadow-pop:0 4px 10px rgba(30,35,45,.08),0 16px 40px rgba(30,35,45,.10);
+  --r-sm:6px; --r:8px; --r-lg:12px;
+  --ui:"Inter",system-ui,sans-serif; --read:"Literata","Source Serif 4",Georgia,serif; --mono:"JetBrains Mono",monospace;
+}
+.dark{
+  --bg:#1D2026; --surface:#252930; --surface2:#2A2F37; --sunken:#21252B; --border:#363C46; --border-soft:#30353E;
+  --text:#E3E6EA; --text2:#A0A8B3; --text3:#6F7883;
+  --primary:#8AA6D1; --primary-strong:#A3BADD; --primary-soft:#2E3747;
+  --lav:#B4A9DF; --lav-soft:#312E42; --sage:#9BBFA4; --sage-soft:#2B3830;
+  --hl-yellow:rgba(221,190,78,.30); --hl-green:rgba(121,180,114,.28); --hl-blue:rgba(110,155,214,.30); --hl-pink:rgba(217,138,166,.28); --hl-purple:rgba(168,139,216,.30);
+  --paper:#2B2F36; --paper-text:#D9DDE2; --page-shadow:0 1px 3px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  --shadow:0 1px 2px rgba(0,0,0,.2),0 4px 14px rgba(0,0,0,.15); --shadow-pop:0 8px 30px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#DCDAD5;font-family:var(--ui);color:var(--text);padding:40px 16px;font-size:13px;-webkit-font-smoothing:antialiased}
+.doc-h{max-width:1440px;margin:0 auto 14px;font-size:15px;font-weight:600;color:#3a3f46}
+.doc-h small{display:block;font-weight:400;color:#6b7280;font-size:13px;margin-top:3px}
+.win{width:1440px;height:900px;margin:0 auto 56px;background:var(--bg);border-radius:12px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.18);display:grid;grid-template-rows:38px 1fr;color:var(--text)}
+.titlebar{display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--bg);border-bottom:1px solid var(--border-soft);font-size:12.5px;color:var(--text2)}
+.titlebar .ttl{flex:1;text-align:center;font-weight:500;color:var(--text)}
+.titlebar .wc{display:flex;gap:8px}.titlebar .wc span{width:12px;height:12px;border-radius:50%;background:var(--border)}
+.cmdk{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:4px 10px;width:340px;color:var(--text3);font-size:12.5px}
+.cmdk kbd{margin-left:auto}
+kbd{font-family:var(--ui);font-size:11px;background:var(--sunken);border:1px solid var(--border);border-bottom-width:2px;border-radius:4px;padding:0 5px;color:var(--text2)}
+.body{display:grid;grid-template-columns:228px 1fr;min-height:0}
+.body.rail{grid-template-columns:60px 1fr}
+.ic{width:18px;height:18px;display:inline-block;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
+.ic.s{width:15px;height:15px}.ic.l{width:22px;height:22px}
+/* sidebar */
+.side{background:var(--surface2);border-right:1px solid var(--border-soft);display:flex;flex-direction:column;padding:14px 10px;gap:2px;min-height:0}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 14px;font-weight:650;font-size:15px;letter-spacing:-.01em}
+.logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(145deg,#6E8FC2,#9C8FD0);display:grid;place-items:center;color:#fff}
+.nav{display:flex;align-items:center;gap:11px;padding:7px 10px;border-radius:var(--r);color:var(--text2);font-weight:500;font-size:13.2px}
+.nav:hover{background:var(--sunken)}
+.nav.on{background:var(--primary-soft);color:var(--primary-strong)}
+.nav .badge{margin-left:auto;font-size:11px;background:var(--lav-soft);color:#7466B3;border-radius:10px;padding:0 7px;font-weight:600}
+.dark .nav .badge{color:var(--lav)}
+.side .sec{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);padding:16px 10px 6px;font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.side .foot{margin-top:auto;display:flex;align-items:center;gap:8px;padding:10px;border-top:1px solid var(--border-soft);color:var(--text3);font-size:12px}
+.rail .side{padding:14px 8px;align-items:center}
+.rail .nav{padding:9px;justify-content:center}
+.rail .brand{padding:4px 0 14px}
+/* main */
+.main{min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.pagehead{display:flex;align-items:center;gap:12px;padding:22px 32px 6px}
+.pagehead h1{font-size:22px;font-weight:650;letter-spacing:-.015em}
+.pagehead .sub{color:var(--text2);font-size:13px}
+.sp{flex:1}
+.btn{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface);color:var(--text);font-weight:500;font-size:12.8px;box-shadow:0 1px 1px rgba(0,0,0,.02)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.dark .btn.primary{color:#1D2026}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--text2)}
+.btn.icon{width:32px;padding:0;justify-content:center}
+.btn.sm{height:26px;padding:0 9px;font-size:12px}
+.btn.on{background:var(--primary-soft);border-color:transparent;color:var(--primary-strong)}
+.card{background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--r-lg);box-shadow:var(--shadow)}
+.card h3{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card h3 .more{margin-left:auto;font-weight:500;color:var(--primary);font-size:12px}
+.muted{color:var(--text2)}.faint{color:var(--text3)}
+.chip{white-space:nowrap;display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:14px;background:var(--surface);border:1px solid var(--border);font-size:12.3px;color:var(--text2);font-weight:500}
+.chip.on{background:var(--primary-soft);border-color:transparent;color:var(--primary-strong)}
+.pill{white-space:nowrap;display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:10px;font-size:11px;font-weight:600}
+.p-reading{background:var(--primary-soft);color:var(--primary-strong)}
+.p-todo{background:var(--sunken);color:var(--text2)}
+.p-done{background:var(--sage-soft);color:#5A8A66}
+.p-pause{background:#F7EFD9;color:#9A7A2A}
+.p-reread{background:var(--lav-soft);color:#7466B3}
+.dark .p-done{color:var(--sage)}.dark .p-pause{background:#3A3424;color:#D9BD72}.dark .p-reread{color:var(--lav)}
+.bar{height:5px;border-radius:3px;background:var(--sunken);overflow:hidden}.bar i{display:block;height:100%;border-radius:3px;background:var(--primary)}
+.cover{border-radius:4px 6px 6px 4px;position:relative;overflow:hidden;color:#fff;display:flex;flex-direction:column;justify-content:space-between;padding:10px 9px;font-family:var(--read);box-shadow:0 1px 2px rgba(0,0,0,.12),0 4px 10px rgba(0,0,0,.08)}
+.cover:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:rgba(0,0,0,.12)}
+.cover b{font-weight:600;font-size:12px;line-height:1.2}.cover span{font-size:9px;opacity:.85;font-family:var(--ui)}
+.c1{background:#6F8DB8}.c2{background:#B98B7A}.c3{background:#7FA88A}.c4{background:#8D82BF}.c5{background:#5E6B7C}.c6{background:#C7A85C}.c7{background:#7DA3A8}.c8{background:#A57C9B}.c9{background:#486A8F}.c10{background:#9AAF7C}.c11{background:#B07D6B}.c12{background:#6C7FA6}
+.input{white-space:nowrap;overflow:hidden;display:flex;align-items:center;gap:8px;height:32px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);padding:0 10px;color:var(--text3);font-size:12.8px}
+.seg{display:inline-flex;background:var(--sunken);border-radius:var(--r);padding:2px;gap:2px}
+.seg span{height:26px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border-radius:6px;color:var(--text2);font-size:12px;font-weight:500}
+.seg span.on{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.toggle{width:34px;height:20px;border-radius:10px;background:var(--border);position:relative;flex:none}
+.toggle:after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;left:2px;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.toggle.on{background:var(--primary)}.toggle.on:after{left:16px}
+.annot-bar{width:3px;border-radius:2px;flex:none}
+.y{background:var(--a-yellow)}.g{background:var(--a-green)}.b{background:var(--a-blue)}.p{background:var(--a-pink)}.v{background:var(--a-purple)}
+.mark-y{background:var(--hl-yellow)}.mark-g{background:var(--hl-green)}.mark-b{background:var(--hl-blue)}.mark-p{background:var(--hl-pink)}.mark-v{background:var(--hl-purple)}
+/* reader */
+.tabs{display:flex;align-items:flex-end;gap:2px;padding:8px 12px 0;background:var(--bg);border-bottom:1px solid var(--border-soft)}
+.tab{display:flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:8px 8px 0 0;color:var(--text2);font-size:12.5px;max-width:240px;white-space:nowrap}
+.tab.on{background:var(--surface);color:var(--text);border:1px solid var(--border-soft);border-bottom-color:var(--surface);margin-bottom:-1px;font-weight:500}
+.tab .x{opacity:.5}
+.toolbar{display:flex;align-items:center;gap:6px;padding:7px 12px;background:var(--surface);border-bottom:1px solid var(--border-soft)}
+.toolbar .sep{width:1px;height:20px;background:var(--border);margin:0 6px}
+.toolbar .pg{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text2)}
+.toolbar .pg b{display:inline-block;min-width:38px;text-align:center;border:1px solid var(--border);border-radius:6px;padding:3px 6px;color:var(--text);font-weight:500}
+.swatch{width:16px;height:16px;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border)}
+.swatch.on{box-shadow:0 0 0 2px var(--primary)}
+.readarea{display:grid;min-height:0}
+.viewer{background:var(--sunken);overflow:hidden;position:relative;display:flex;justify-content:center;padding:26px 0}
+.page{background:var(--paper);color:var(--paper-text);box-shadow:var(--page-shadow);width:640px;padding:56px 64px;font-family:"DejaVu Serif","Times New Roman",serif;font-size:12.6px;line-height:1.62;position:relative}
+.page h4{font-family:var(--ui);font-size:15px;margin-bottom:10px;font-weight:650}
+.page p{margin-bottom:9px;text-align:justify;hyphens:auto}
+.page .eq{text-align:center;margin:12px 0;font-style:italic;font-size:14px}
+.page .fig{height:120px;border:1px solid var(--border);border-radius:4px;margin:12px 0;display:grid;place-items:center;color:var(--text3);font-family:var(--ui);font-size:11px;background:repeating-linear-gradient(45deg,transparent 0 8px,rgba(0,0,0,.02) 8px 16px)}
+.page .pno{position:absolute;bottom:22px;left:0;right:0;text-align:center;font-size:10.5px;color:var(--text3)}
+.ul-g{text-decoration:underline;text-decoration-color:var(--a-green);text-decoration-thickness:2px;text-underline-offset:3px}
+.margin-note{position:absolute;right:22px;width:22px;height:22px;border-radius:6px;background:var(--hl-purple);display:grid;place-items:center;color:#7A5FB0}
+.selpop{position:absolute;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-pop);display:flex;align-items:center;gap:4px;padding:5px 6px;font-family:var(--ui);color:var(--text)}
+.selpop .btn{height:28px;border:none;box-shadow:none;background:transparent;font-size:12px}
+.selpop .vs{width:1px;height:18px;background:var(--border);margin:0 3px}
+.thumbs{background:var(--surface2);border-right:1px solid var(--border-soft);padding:14px 12px;display:flex;flex-direction:column;gap:26px;align-items:center;overflow:hidden}
+.thumb{width:84px;height:110px;background:var(--paper);border-radius:3px;box-shadow:0 1px 3px rgba(0,0,0,.1);padding:10px 9px;display:flex;flex-direction:column;gap:3px;position:relative}
+.thumb i{display:block;height:2px;background:var(--border);border-radius:1px}
+.thumb.on{outline:2px solid var(--primary);outline-offset:3px}
+.thumb small{position:absolute;bottom:-17px;left:0;right:0;text-align:center;font-size:10.5px;color:var(--text3)}
+.thumb .hm{position:absolute;right:6px;top:6px;width:6px;height:6px;border-radius:50%}
+.panes{background:var(--surface2);border-left:1px solid var(--border-soft);display:flex;flex-direction:column;min-height:0}
+.pane-h{display:flex;align-items:center;gap:8px;padding:11px 14px;font-weight:600;font-size:12.8px;letter-spacing:.01em}
+.pane-h .cnt{font-size:11px;font-weight:600;color:var(--text2);background:var(--sunken);border-radius:9px;padding:1px 7px}
+.pane-h .acts{margin-left:auto;display:flex;gap:2px;color:var(--text3)}
+.pane-h .acts .btn{height:26px;width:26px}
+.splitter{height:9px;display:grid;place-items:center;border-top:1px solid var(--border-soft);border-bottom:1px solid var(--border-soft);background:var(--surface2);cursor:row-resize}
+.splitter i{width:36px;height:3px;border-radius:2px;background:var(--border)}
+.ann{display:flex;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid var(--border-soft);border-radius:10px}
+.ann q{font-family:var(--read);font-style:italic;font-size:12.8px;line-height:1.5;color:var(--text);quotes:"« " " »";display:block}
+.ann .meta{display:flex;gap:8px;font-size:11px;color:var(--text3);margin-top:6px;align-items:center}
+.ann .meta .ref{font-variant:small-caps;letter-spacing:.04em;color:var(--text2);font-weight:600}
+.ann.sel{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.ann .cm{margin-top:7px;padding:6px 8px;border-radius:6px;background:var(--lav-soft);font-size:12px;color:var(--text);display:flex;gap:6px}
+.comment{background:var(--lav-soft);border-radius:10px;padding:10px 12px;font-size:12.6px;line-height:1.55}
+.comment .who{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:600}
+.md-src{font-family:var(--mono);font-size:12px;line-height:1.7;color:var(--text)}
+.md-h{color:var(--primary-strong);font-weight:700}.md-k{color:var(--text3)}.md-l{color:#7466B3}.md-m{color:#4C8A5C}.md-t{color:#B07A2A}
+.dark .md-l{color:var(--lav)}.dark .md-m{color:var(--sage)}
+.math{font-family:"KaTeX_Main","Latin Modern Math","STIX Two Math","DejaVu Serif",serif;font-style:italic}
+.kv{display:grid;grid-template-columns:104px 1fr;gap:7px 10px;font-size:12.4px}
+.kv dt{color:var(--text3)}.kv dd{color:var(--text)}
+.tag{font-family:var(--ui);font-style:normal;white-space:nowrap;display:inline-flex;height:21px;align-items:center;padding:0 8px;border-radius:6px;background:var(--sunken);font-size:11.5px;color:var(--text2);margin:0 4px 4px 0}
+.note-preview{font-family:var(--read);font-size:14px;line-height:1.7;color:var(--text)}
+.note-preview h2{font-family:var(--ui);font-size:20px;font-weight:650;margin-bottom:6px;letter-spacing:-.01em}
+.note-preview h3{font-family:var(--ui);font-size:14.5px;font-weight:600;margin:16px 0 6px}
+.note-preview .wl{color:var(--primary-strong);border-bottom:1px dashed var(--primary)}
+.note-preview blockquote{border-left:3px solid var(--a-yellow);padding:4px 12px;background:var(--surface2);border-radius:0 6px 6px 0;font-style:italic;margin:8px 0}
+.note-preview table{border-collapse:collapse;font-family:var(--ui);font-size:12.5px;margin:8px 0}
+.note-preview td,.note-preview th{border:1px solid var(--border);padding:5px 10px}
+.note-preview th{background:var(--surface2);font-weight:600}
+.callout{display:flex;gap:8px;background:var(--sage-soft);border-radius:8px;padding:8px 12px;font-family:var(--ui);font-size:12.5px;margin:10px 0}
+.tree{font-size:12.8px}
+.tree div{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;color:var(--text2)}
+.tree .on{background:var(--primary-soft);color:var(--primary-strong);font-weight:500}
+.ring{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--sage) 0 68%,var(--sunken) 68% 100%)}
+.ring div{width:76px;height:76px;border-radius:50%;background:var(--surface);display:grid;place-items:center;text-align:center;font-size:11px;color:var(--text2)}
+.ring b{display:block;font-size:20px;color:var(--text);font-weight:650}
+.flash{width:640px;min-height:380px;padding:40px 48px;text-align:center}
+.rate{display:flex;gap:10px;justify-content:center}
+.rate .btn{flex-direction:column;height:56px;width:128px;gap:2px;justify-content:center}
+.rate .btn small{font-size:11px;color:var(--text3);font-weight:500}
+.set-row{display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid var(--border-soft)}
+.set-row:last-child{border-bottom:none}
+.set-row .lbl{flex:1}.set-row .lbl b{display:block;font-weight:550;font-size:13px}.set-row .lbl span{font-size:12px;color:var(--text2)}
+.select{display:flex;align-items:center;gap:8px;height:32px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);padding:0 10px;min-width:220px;font-size:12.6px;justify-content:space-between}
+.slider{width:220px;height:4px;border-radius:2px;background:var(--sunken);position:relative}
+.slider i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--primary)}
+.slider b{position:absolute;top:-6px;width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid var(--primary)}
+.themecard{width:168px;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface)}
+.themecard.on{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.themecard .pv{height:92px;display:grid;grid-template-columns:34px 1fr;gap:0}
+.themecard .lb{display:flex;align-items:center;gap:8px;padding:9px 10px;font-size:12.5px;font-weight:500}
+.radio{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--border);flex:none}
+.radio.on{border:5px solid var(--primary)}
+.annotations-note{font-family:var(--ui)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text2)}
+</style>
+</head>
+<body>
+
+<!-- ═════════════ 1. ACCUEIL ═════════════ -->
+<div class="doc-h">1 · Accueil et tableau de bord<small>Reprendre la lecture en un clic, voir les révisions du jour, retrouver ses derniers apports. Pas plus de six blocs.</small></div>
+<div class="win" id="s1">
+  <div class="titlebar"><div class="wc"><span></span><span></span><span></span></div><div class="ttl">StudyLab</div><div class="cmdk"><i data-i="search" class="s"></i>Rechercher partout…<kbd>Ctrl K</kbd></div></div>
+  <div class="body">
+    <aside class="side" data-nav="home"></aside>
+    <main class="main" style="overflow:hidden">
+      <div class="pagehead"><div><h1>Bon retour</h1><div class="sub">Jeudi 19 novembre · 24 cartes à réviser · 3 lectures en cours</div></div><div class="sp"></div><button class="btn"><i data-i="import" class="s"></i>Importer</button><button class="btn primary"><i data-i="plus" class="s"></i>Nouvelle note</button></div>
+      <div style="display:grid;grid-template-columns:1.55fr 1fr 1fr;gap:18px;padding:16px 32px 0">
+        <div class="card" style="padding:20px;display:flex;gap:20px">
+          <div class="cover c1" style="width:112px;height:160px"><b>Thermo-dynamique</b><span>Y. A. Çengel</span></div>
+          <div style="flex:1;display:flex;flex-direction:column">
+            <div class="faint" style="font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em">Reprendre la lecture</div>
+            <div style="font-size:17px;font-weight:650;margin:6px 0 2px">Thermodynamique : une approche pragmatique</div>
+            <div class="muted">Çengel, Boles · Chapitre 7, L'entropie · page 412</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:16px"><div class="bar" style="flex:1"><i style="width:42%"></i></div><span class="muted" style="font-size:12px">42 %</span></div>
+            <div class="ann" style="margin-top:14px;padding:8px 10px"><div class="annot-bar y"></div><div><q style="font-size:12.2px">L'entropie d'un système isolé ne peut que croître ou rester constante.</q><div class="meta"><span class="ref">p. 411</span>· dernière annotation, hier</div></div></div>
+            <div style="margin-top:auto;display:flex;gap:8px"><button class="btn primary"><i data-i="book" class="s"></i>Continuer</button><button class="btn ghost">Ouvrir les notes du livre</button></div>
+          </div>
+        </div>
+        <div class="card" style="padding:18px 20px">
+          <h3><i data-i="cards" class="s" style="color:var(--lav)"></i>Révisions du jour<span class="more">Commencer</span></h3>
+          <div style="display:flex;align-items:baseline;gap:8px;margin:14px 0 12px"><span style="font-size:34px;font-weight:650;letter-spacing:-.02em">24</span><span class="muted">cartes · ~12 min</span></div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:8px"><span class="dot" style="background:#6F8DB8"></span>Thermodynamique<span class="sp"></span><b>11</b></div>
+            <div style="display:flex;align-items:center;gap:8px"><span class="dot" style="background:#7FA88A"></span>Mécanique des fluides<span class="sp"></span><b>8</b></div>
+            <div style="display:flex;align-items:center;gap:8px"><span class="dot" style="background:#9C8FD0"></span>Automatique<span class="sp"></span><b>5</b></div>
+          </div>
+        </div>
+        <div class="card" style="padding:18px 20px;display:flex;flex-direction:column">
+          <h3><i data-i="target" class="s" style="color:var(--sage)"></i>Objectif de la semaine</h3>
+          <div style="display:flex;align-items:center;gap:16px;margin-top:14px">
+            <div class="ring"><div><span><b>136</b>/ 200 p.</span></div></div>
+            <div class="muted" style="font-size:12.3px;line-height:1.6">Lundi → jeudi<br><b style="color:var(--text)">4 h 20</b> de lecture<br><span style="color:#5A8A66">+18 % vs semaine dernière</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;padding:18px 32px 0">
+        <div class="card" style="padding:18px 20px">
+          <h3>Lectures en cours<span class="more">Bibliothèque</span></h3>
+          <div style="display:flex;flex-direction:column;gap:14px;margin-top:14px">
+            <div style="display:flex;gap:12px;align-items:center"><div class="cover c3" style="width:34px;height:48px;padding:0"></div><div style="flex:1"><div style="font-weight:550">Mécanique des fluides</div><div class="faint" style="font-size:11.5px">Candel · p. 188 / 512</div><div class="bar" style="margin-top:6px"><i style="width:37%;background:var(--sage)"></i></div></div></div>
+            <div style="display:flex;gap:12px;align-items:center"><div class="cover c4" style="width:34px;height:48px;padding:0"></div><div style="flex:1"><div style="font-weight:550">Feedback Systems</div><div class="faint" style="font-size:11.5px">Åström, Murray · ch. 5 / 12</div><div class="bar" style="margin-top:6px"><i style="width:41%;background:var(--lav)"></i></div></div></div>
+            <div style="display:flex;gap:12px;align-items:center"><div class="cover c5" style="width:34px;height:48px;padding:0"></div><div style="flex:1"><div style="font-weight:550">RDM, cours ENSAM 2025</div><div class="faint" style="font-size:11.5px">Polycopié · p. 64 / 140</div><div class="bar" style="margin-top:6px"><i style="width:46%"></i></div></div></div>
+          </div>
+        </div>
+        <div class="card" style="padding:18px 20px">
+          <h3>Dernières annotations<span class="more">Tout voir</span></h3>
+          <div style="display:flex;flex-direction:column;gap:9px;margin-top:14px">
+            <div style="display:flex;gap:10px"><div class="annot-bar y"></div><div><div style="font-family:var(--read);font-style:italic;font-size:12.6px">« Le rendement de Carnot ne dépend que des températures… »</div><div class="faint" style="font-size:11px;margin-top:2px">Thermodynamique · p. 298 · hier</div></div></div>
+            <div style="display:flex;gap:10px"><div class="annot-bar b"></div><div><div style="font-family:var(--read);font-style:italic;font-size:12.6px">« Nombre de Reynolds : rapport des forces d'inertie… »</div><div class="faint" style="font-size:11px;margin-top:2px">Mécanique des fluides · p. 181 · lundi</div></div></div>
+            <div style="display:flex;gap:10px"><div class="annot-bar p"></div><div><div style="font-family:var(--read);font-style:italic;font-size:12.6px">« Marge de phase et robustesse »</div><div class="faint" style="font-size:11px;margin-top:2px">Feedback Systems · ch. 5.3 · lundi</div></div></div>
+          </div>
+        </div>
+        <div class="card" style="padding:18px 20px">
+          <h3>Progression par matière</h3>
+          <div style="display:flex;flex-direction:column;gap:13px;margin-top:16px;font-size:12.6px">
+            <div><div style="display:flex"><span>Thermodynamique</span><span class="sp"></span><span class="muted">58 %</span></div><div class="bar" style="margin-top:5px"><i style="width:58%;background:#6F8DB8"></i></div></div>
+            <div><div style="display:flex"><span>Mécanique des fluides</span><span class="sp"></span><span class="muted">34 %</span></div><div class="bar" style="margin-top:5px"><i style="width:34%;background:#7FA88A"></i></div></div>
+            <div><div style="display:flex"><span>Automatique</span><span class="sp"></span><span class="muted">41 %</span></div><div class="bar" style="margin-top:5px"><i style="width:41%;background:#9C8FD0"></i></div></div>
+            <div><div style="display:flex"><span>Résistance des matériaux</span><span class="sp"></span><span class="muted">22 %</span></div><div class="bar" style="margin-top:5px"><i style="width:22%;background:#C7A85C"></i></div></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px;padding:18px 32px 0">
+        <div class="card" style="padding:18px 20px">
+          <h3>Derniers commentaires<span class="more">Tout voir</span></h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+            <div class="comment"><div class="who"><i data-i="msg" class="s"></i>Question · Thermodynamique p. 412</div>Pourquoi ΔS ≥ 0 seulement pour un système <b>isolé</b> ?</div>
+            <div class="comment"><div class="who"><i data-i="msg" class="s"></i>Explication · Feedback Systems § 5.3</div>Réponse établie indépendante des conditions initiales si le système est stable.</div>
+          </div>
+        </div>
+        <div class="card" style="padding:18px 20px">
+          <h3><i data-i="star" class="s" style="color:var(--amber)"></i>Favoris<span class="more">21</span></h3>
+          <div style="display:flex;gap:10px;margin-top:12px">
+            <div class="cover c9" style="width:46px;height:64px;padding:0"></div><div class="cover c11" style="width:46px;height:64px;padding:0"></div><div class="cover c8" style="width:46px;height:64px;padding:0"></div><div class="cover c2" style="width:46px;height:64px;padding:0"></div><div class="cover c7" style="width:46px;height:64px;padding:0"></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:18px 32px;color:var(--text3);font-size:12px"><i data-i="note" class="s"></i>Notes récentes :<span class="tag">Second principe</span><span class="tag">Cycle de Rankine</span><span class="tag">Couche limite</span><span class="tag">Diagramme de Bode</span><span class="sp"></span><i data-i="shield" class="s"></i>Sauvegarde automatique · il y a 2 h</div>
+    </main>
+  </div>
+</div>
+
+<!-- ═════════════ 2. BIBLIOTHÈQUE ═════════════ -->
+<div class="doc-h">2 · Bibliothèque<small>Grille de couvertures (ou liste), filtres en puces, panneau de métadonnées à droite. Glisser-déposer n'importe où pour importer.</small></div>
+<div class="win" id="s2">
+  <div class="titlebar"><div class="wc"><span></span><span></span><span></span></div><div class="ttl">Bibliothèque · StudyLab</div><div class="cmdk"><i data-i="search" class="s"></i>Rechercher partout…<kbd>Ctrl K</kbd></div></div>
+  <div class="body">
+    <aside class="side" data-nav="library"></aside>
+    <main class="main" style="display:grid;grid-template-columns:minmax(0,1fr) 340px">
+      <div style="display:flex;flex-direction:column;min-width:0">
+        <div class="pagehead"><div><h1>Bibliothèque</h1><div class="sub">1 284 documents · 37 Go</div></div><div class="sp"></div><button class="btn primary"><i data-i="import" class="s"></i>Importer</button></div>
+        <div style="display:flex;align-items:center;gap:8px;padding:12px 32px">
+          <div class="input" style="width:200px"><i data-i="search" class="s"></i>Titre, auteur, ISBN…</div>
+          <span class="chip on">Statut : En cours<i data-i="x" class="s"></i></span>
+          <span class="chip">Matière<i data-i="chd" class="s"></i></span><span class="chip">Format<i data-i="chd" class="s"></i></span><span class="chip">Tags<i data-i="chd" class="s"></i></span><span class="chip"><i data-i="star" class="s"></i>Favoris</span>
+          <div class="sp"></div><span class="muted" style="font-size:12px;white-space:nowrap">Tri : récents</span>
+          <div class="seg"><span class="on"><i data-i="grid" class="s"></i></span><span><i data-i="list" class="s"></i></span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:24px 22px;padding:12px 32px" id="libgrid"></div>
+      </div>
+      <aside style="background:var(--surface);border-left:1px solid var(--border-soft);padding:22px 22px;overflow:hidden">
+        <div style="display:flex;gap:16px">
+          <div class="cover c1" style="width:96px;height:138px"><b>Thermo-dynamique</b><span>Y. A. Çengel</span></div>
+          <div><div style="font-weight:650;font-size:15px;line-height:1.3">Thermodynamique : une approche pragmatique</div><div class="muted" style="margin-top:4px">Yunus A. Çengel, Michael A. Boles</div><div style="margin-top:10px"><span class="pill p-reading">En cours · 42 %</span></div><div style="display:flex;gap:2px;margin-top:10px;color:var(--amber)"><i data-i="star" class="s" style="fill:currentColor"></i><i data-i="star" class="s" style="fill:currentColor"></i><i data-i="star" class="s" style="fill:currentColor"></i><i data-i="star" class="s" style="fill:currentColor"></i><i data-i="star" class="s"></i></div></div>
+        </div>
+        <div style="display:flex;gap:8px;margin:18px 0"><button class="btn primary" style="flex:1;justify-content:center"><i data-i="book" class="s"></i>Lire</button><button class="btn"><i data-i="pen" class="s"></i>Modifier</button><button class="btn icon"><i data-i="more" class="s"></i></button></div>
+        <dl class="kv">
+          <dt>Éditeur</dt><dd>De Boeck Supérieur</dd><dt>Année</dt><dd>2019 (3ᵉ éd.)</dd><dt>ISBN</dt><dd>978-2-8073-1960-5</dd><dt>Langue</dt><dd>Français</dd><dt>Format</dt><dd>PDF · 980 pages · 48 Mo</dd><dt>Matières</dt><dd><span class="tag" style="background:#E3EAF5;color:#4A6A9C">Thermodynamique</span></dd><dt>Collections</dt><dd>Prépa examen S5</dd><dt>Ajouté le</dt><dd>2 sept. 2026</dd>
+        </dl>
+        <div style="margin-top:14px;font-size:12px" class="faint">Tags</div>
+        <div style="margin-top:6px"><span class="tag">#entropie</span><span class="tag">#cycles</span><span class="tag">#exergie</span><span class="tag">+</span></div>
+        <div style="margin-top:14px;font-size:12px" class="faint">Description</div>
+        <p class="muted" style="font-size:12.3px;line-height:1.55;margin-top:4px">Manuel de référence couvrant les principes de la thermodynamique, les cycles moteurs et frigorifiques, et l'exergie…</p>
+        <div class="card" style="margin-top:16px;padding:12px 14px;display:flex;gap:18px;box-shadow:none;background:var(--surface2)">
+          <div><b style="font-size:16px">148</b><div class="faint" style="font-size:11px">annotations</div></div><div><b style="font-size:16px">23</b><div class="faint" style="font-size:11px">commentaires</div></div><div><b style="font-size:16px">9</b><div class="faint" style="font-size:11px">notes liées</div></div><div><b style="font-size:16px">31</b><div class="faint" style="font-size:11px">cartes</div></div>
+        </div>
+      </aside>
+    </main>
+  </div>
+</div>
+
+<!-- ═════════════ 3. LECTEUR PDF ═════════════ -->
+<div class="doc-h">3 · Lecteur PDF<small>Espace central : document au centre, volet Annotations en haut à droite, volet Commentaires en bas. Volets redimensionnables (poignée), repliables, agrandissables. La navigation devient un rail d'icônes.</small></div>
+<div class="win" id="s3"></div>
+
+<!-- ═════════════ 4. LECTEUR EPUB ═════════════ -->
+<div class="doc-h">4 · Lecteur EPUB<small>Texte recomposé, panneau typographique ouvert (police, taille, interligne, marges, thème). Ici le volet Annotations est replié en en-tête et le volet Commentaires occupe la hauteur.</small></div>
+<div class="win" id="s4">
+  <div class="titlebar"><div class="wc"><span></span><span></span><span></span></div><div class="ttl">Feedback Systems · StudyLab</div><div class="cmdk"><i data-i="search" class="s"></i>Rechercher partout…<kbd>Ctrl K</kbd></div></div>
+  <div class="body rail">
+    <aside class="side" data-nav="read" data-rail="1"></aside>
+    <main class="main">
+      <div class="tabs"><div class="tab"><i data-i="book" class="s"></i>Thermodynamique<i data-i="x" class="s x"></i></div><div class="tab on"><i data-i="book" class="s"></i>Feedback Systems<i data-i="x" class="s x"></i></div><div class="tab"><i data-i="plus" class="s"></i></div></div>
+      <div class="toolbar">
+        <button class="btn ghost icon on"><i data-i="list"></i></button><div class="sep"></div>
+        <button class="btn ghost icon"><i data-i="chl"></i></button><div class="pg">Chapitre 5 · Linear Systems</div><button class="btn ghost icon"><i data-i="chr"></i></button>
+        <div class="sep"></div><span class="muted" style="font-size:12px">41 % · ~18 min restantes dans le chapitre</span>
+        <div class="sp"></div>
+        <span class="swatch on" style="background:var(--a-yellow)"></span><span class="swatch" style="background:var(--a-green)"></span><span class="swatch" style="background:var(--a-blue)"></span><span class="swatch" style="background:var(--a-pink)"></span><span class="swatch" style="background:var(--a-purple)"></span>
+        <div class="sep"></div><button class="btn ghost icon on"><i data-i="type"></i></button><button class="btn ghost icon"><i data-i="search"></i></button><button class="btn ghost icon"><i data-i="bookmark"></i></button><button class="btn ghost icon"><i data-i="max"></i></button><button class="btn ghost icon on"><i data-i="panel"></i></button>
+      </div>
+      <div class="readarea" style="grid-template-columns:230px 1fr 380px;flex:1">
+        <div class="thumbs" style="align-items:stretch;gap:2px;padding:14px 10px">
+          <div class="faint" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding:0 8px 8px">Table des matières</div>
+          <div class="tree">
+            <div>1 · Introduction</div><div>2 · System Modeling</div><div>3 · Examples</div><div>4 · Dynamic Behavior</div>
+            <div class="on">5 · Linear Systems</div><div style="padding-left:24px">5.1 Basic Definitions</div><div style="padding-left:24px">5.2 The Matrix Exponential</div><div style="padding-left:24px;color:var(--text)">5.3 Input/Output Response</div><div style="padding-left:24px">5.4 Linearization</div>
+            <div>6 · State Feedback</div><div>7 · Output Feedback</div><div>8 · Transfer Functions</div><div>9 · Frequency Domain</div><div>10 · PID Control</div>
+          </div>
+        </div>
+        <div class="viewer" style="background:#F7F1E6;padding:0">
+          <div style="width:620px;padding:56px 0;font-family:var(--read);font-size:17px;line-height:1.75;color:#3B3328">
+            <div style="font-family:var(--ui);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#9A8B73">5.3 · Input/Output Response</div>
+            <h2 style="font-weight:600;font-size:26px;margin:8px 0 18px;line-height:1.3">Steady-State Response</h2>
+            <p style="margin-bottom:14px">Given a linear input/output system, the output can be computed for any input using the convolution equation. In practice, we are often interested in the <span class="mark-b" style="border-radius:2px;padding:0 1px">response to sinusoidal inputs, since many signals can be decomposed into a sum of sinusoids</span> through Fourier analysis.</p>
+            <p style="margin-bottom:14px">The <span class="mark-y" style="border-radius:2px;padding:0 1px">frequency response of a stable system is characterized by its gain and phase at each frequency</span>, which together describe how the system amplifies and shifts a sinusoidal input once transients have decayed.</p>
+            <p style="text-align:center;font-style:italic;margin:18px 0">y(t) = M sin(ωt + θ),&nbsp;&nbsp; M = |G(iω)|,&nbsp;&nbsp; θ = arg G(iω)</p>
+            <p>The gain <i>M</i> and phase <i>θ</i> can be plotted as functions of frequency, giving the Bode plot, which we will study in detail in Chapter 9…</p>
+          </div>
+          <div class="card" style="position:absolute;right:20px;top:18px;width:360px;padding:16px 18px;box-shadow:var(--shadow-pop)">
+            <div style="font-weight:600;margin-bottom:12px">Affichage du texte</div>
+            <div style="display:grid;grid-template-columns:86px 1fr;gap:12px 10px;align-items:center;font-size:12.4px">
+              <span class="muted">Police</span><div class="select" style="min-width:0;height:30px"><span style="font-family:var(--read)">Literata</span><i data-i="chd" class="s"></i></div>
+              <span class="muted">Taille</span><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px">A</span><div class="slider" style="width:120px"><i style="width:55%"></i><b style="left:52%"></b></div><span style="font-size:16px">A</span></div>
+              <span class="muted">Interligne</span><div class="seg"><span>1,4</span><span>1,6</span><span class="on">1,75</span><span>2</span></div>
+              <span class="muted">Marges</span><div class="seg"><span>Étroites</span><span class="on">Normales</span><span>Larges</span></div>
+              <span class="muted">Mise en page</span><div class="seg"><span class="on">Paginé</span><span>Défilement</span></div>
+              <span class="muted">Thème</span><div style="display:flex;gap:8px"><span style="width:30px;height:30px;border-radius:8px;background:#fff;border:1px solid var(--border)"></span><span style="width:30px;height:30px;border-radius:8px;background:#F7F1E6;border:2px solid var(--primary)"></span><span style="width:30px;height:30px;border-radius:8px;background:#E9EDE6;border:1px solid var(--border)"></span><span style="width:30px;height:30px;border-radius:8px;background:#2B2F36"></span></div>
+            </div>
+          </div>
+          <div style="position:absolute;bottom:14px;left:0;right:0;text-align:center;font-family:var(--ui);font-size:11.5px;color:#9A8B73">Page 7 sur 18 dans ce chapitre</div>
+        </div>
+        <div class="panes">
+          <div class="pane-h" style="border-bottom:1px solid var(--border-soft)"><i data-i="hl" class="s"></i>Annotations<span class="cnt">6</span><span class="faint" style="font-weight:400;font-size:11.5px">· repliées</span><div class="acts"><button class="btn ghost icon"><i data-i="chd" class="s"></i></button></div></div>
+          <div class="pane-h"><i data-i="msg" class="s"></i>Commentaires<span class="cnt">3</span><div class="acts"><button class="btn ghost icon"><i data-i="search" class="s"></i></button><button class="btn ghost icon"><i data-i="max" class="s"></i></button></div></div>
+          <div style="padding:0 14px;display:flex;gap:6px"><span class="chip on" style="height:24px">Tous</span><span class="chip" style="height:24px">Questions</span><span class="chip" style="height:24px">Explications</span><span class="chip" style="height:24px">Ce chapitre</span></div>
+          <div style="padding:12px 14px;display:flex;flex-direction:column;gap:10px">
+            <div class="comment"><div class="who"><i data-i="msg" class="s"></i>Question · § 5.3<span class="sp"></span><span class="faint" style="font-weight:400">lundi</span></div>Pourquoi la réponse établie ne dépend-elle pas des conditions initiales ? → parce que le système est <b>stable</b> : les termes transitoires <span class="math">e<sup>λt</sup></span> s'annulent.</div>
+            <div class="comment"><div class="who"><i data-i="link" class="s"></i>Lié à l'annotation bleue<span class="sp"></span><span class="faint" style="font-weight:400">lundi</span></div>Même idée qu'en vibrations : voir <span style="color:var(--primary-strong);border-bottom:1px dashed var(--primary)">[[Réponse fréquentielle]]</span> et <span style="color:var(--primary-strong);border-bottom:1px dashed var(--primary)">[[Série de Fourier]]</span>.</div>
+            <div class="card" style="padding:10px 12px;box-shadow:none">
+              <div class="seg" style="margin-bottom:8px"><span class="on">Écrire</span><span>Aperçu</span></div>
+              <div class="md-src"><span class="md-h">**Gain**</span> en dB : <span class="md-m">$20\log_{10} M$</span><br><span class="md-k">-</span> lien avec <span class="md-l">[[Diagramme de Bode]]</span><span style="border-left:1.5px solid var(--primary);margin-left:1px"></span></div>
+              <div style="display:flex;gap:6px;margin-top:10px;align-items:center"><span class="tag" style="margin:0">Question</span><span class="tag" style="margin:0;background:var(--primary-soft);color:var(--primary-strong)">Explication</span><span class="tag" style="margin:0">Réflexion</span><span class="sp"></span><button class="btn sm primary">Ajouter</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ═════════════ 5. NOTES ═════════════ -->
+<div class="doc-h">5 · Espace de notes<small>Arborescence, éditeur Markdown et aperçu côte à côte (formules KaTeX, liens internes, citations sourcées), panneau de contexte : rétroliens, sources, plan.</small></div>
+<div class="win" id="s5">
+  <div class="titlebar"><div class="wc"><span></span><span></span><span></span></div><div class="ttl">Second principe · Mes notes · StudyLab</div><div class="cmdk"><i data-i="search" class="s"></i>Rechercher partout…<kbd>Ctrl K</kbd></div></div>
+  <div class="body">
+    <aside class="side" data-nav="notes"></aside>
+    <main class="main" style="display:grid;grid-template-columns:230px 1fr 1fr 270px">
+      <div style="background:var(--surface2);border-right:1px solid var(--border-soft);padding:16px 10px">
+        <div style="display:flex;align-items:center;padding:0 6px 10px"><b style="font-size:13.5px">Mes notes</b><span class="sp"></span><button class="btn ghost icon sm"><i data-i="plus" class="s"></i></button></div>
+        <div class="input" style="height:30px;margin-bottom:12px"><i data-i="search" class="s"></i>Filtrer…</div>
+        <div class="tree">
+          <div><i data-i="chd" class="s"></i><i data-i="subject" class="s"></i>Thermodynamique</div>
+          <div style="padding-left:28px"><i data-i="subject" class="s"></i>Cours</div>
+          <div style="padding-left:28px" class="on"><i data-i="note" class="s"></i>Second principe</div>
+          <div style="padding-left:28px"><i data-i="note" class="s"></i>Cycle de Carnot</div>
+          <div style="padding-left:28px"><i data-i="note" class="s"></i>Cycle de Rankine</div>
+          <div style="padding-left:28px"><i data-i="sigma" class="s"></i>Formules · Entropie</div>
+          <div style="padding-left:28px"><i data-i="cards" class="s"></i>Fiche révision · Ch. 7</div>
+          <div><i data-i="chr" class="s"></i><i data-i="subject" class="s"></i>Mécanique des fluides</div>
+          <div><i data-i="chr" class="s"></i><i data-i="subject" class="s"></i>Automatique</div>
+          <div><i data-i="chr" class="s"></i><i data-i="subject" class="s"></i>Notes de lecture</div>
+          <div><i data-i="chr" class="s"></i><i data-i="subject" class="s"></i>Recherche</div>
+          <div><i data-i="note" class="s"></i>Boîte de réception</div>
+        </div>
+        <div class="faint" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding:18px 8px 6px">Tags</div>
+        <div style="padding:0 6px"><span class="tag">#entropie</span><span class="tag">#cycles</span><span class="tag">#examen</span><span class="tag">#à-revoir</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;border-right:1px solid var(--border-soft);background:var(--surface);min-width:0">
+        <div class="toolbar" style="border-bottom:1px solid var(--border-soft)"><span class="pill" style="background:var(--primary-soft);color:var(--primary-strong)">Fiche de cours</span><span class="sp"></span><span class="faint" style="font-size:11.5px">Enregistré</span><div class="seg"><span>Source</span><span class="on">Partagé</span><span>Aperçu</span></div></div>
+        <div class="md-src" style="padding:22px 26px;font-size:12.6px;line-height:1.85">
+          <span class="md-k">---</span><br><span class="md-k">type:</span> cours<br><span class="md-k">matière:</span> <span class="md-l">[[Thermodynamique]]</span><br><span class="md-k">tags:</span> <span class="md-t">[entropie, examen]</span><br><span class="md-k">---</span><br><br>
+          <span class="md-h"># Second principe</span><br><br>
+          L'entropie <span class="md-m">$S$</span> est une fonction d'état.<br>Pour une transformation réversible :<br><br>
+          <span class="md-m">$$dS = \frac{\delta Q_{rev}}{T}$$</span><br><br>
+          <span class="md-k">&gt;</span> L'entropie d'un système isolé ne peut que<br><span class="md-k">&gt;</span> croître ou rester constante.<br>
+          <span class="md-k">&gt;</span> — <span class="md-l">[[@cengel2019, p. 411]]</span><br><br>
+          <span class="md-h">## Inégalité de Clausius</span><br><br>
+          <span class="md-m">$\oint \frac{\delta Q}{T} \le 0$</span> · voir <span class="md-l">[[Cycle de Carnot]]</span><br><br>
+          <span class="md-h">## À retenir</span><br>
+          <span class="md-k">|</span> Cas <span class="md-k">|</span> <span class="md-m">$\Delta S$</span> <span class="md-k">|</span><br>
+          <span class="md-k">|---|---|</span><br>
+          <span class="md-k">|</span> Réversible <span class="md-k">|</span> <span class="md-m">$= 0$</span> <span class="md-k">|</span><br>
+          <span class="md-k">|</span> Irréversible <span class="md-k">|</span> <span class="md-m">$&gt; 0$</span> <span class="md-k">|</span> <span class="md-t">#examen</span><span style="border-left:1.5px solid var(--primary)"></span>
+        </div>
+      </div>
+      <div style="padding:28px 30px;background:var(--surface);overflow:hidden">
+        <div class="note-preview">
+          <div style="display:flex;gap:6px;margin-bottom:10px"><span class="tag">Thermodynamique</span><span class="tag">#entropie</span><span class="tag">#examen</span></div>
+          <h2>Second principe</h2>
+          <p>L'entropie <span class="math">S</span> est une fonction d'état. Pour une transformation réversible :</p>
+          <p style="text-align:center;margin:12px 0;font-size:17px" class="math">dS = <span style="display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;font-size:14px"><span style="border-bottom:1px solid currentColor;padding:0 3px">δQ<sub>rev</sub></span><span>T</span></span></p>
+          <blockquote>L'entropie d'un système isolé ne peut que croître ou rester constante.<div style="font-style:normal;font-family:var(--ui);font-size:11.5px;color:var(--text2);margin-top:4px">↳ Çengel, <i>Thermodynamique</i>, p. 411 · <span style="color:var(--primary)">ouvrir le passage</span></div></blockquote>
+          <h3>Inégalité de Clausius</h3>
+          <p><span class="math">∮ δQ / T ≤ 0</span>, voir <span class="wl">Cycle de Carnot</span>.</p>
+          <h3>À retenir</h3>
+          <table><tr><th>Cas</th><th>ΔS</th></tr><tr><td>Réversible</td><td class="math">= 0</td></tr><tr><td>Irréversible</td><td class="math">&gt; 0</td></tr></table>
+          <div class="callout"><i data-i="cards" class="s" style="color:#5A8A66"></i>2 cartes mémoire créées depuis cette note · <b style="color:#5A8A66">Réviser</b></div>
+        </div>
+      </div>
+      <div style="background:var(--surface2);border-left:1px solid var(--border-soft);padding:16px 14px;font-size:12.4px;overflow:hidden">
+        <div style="font-weight:600;margin-bottom:8px;display:flex;gap:6px;align-items:center"><i data-i="link" class="s"></i>Rétroliens <span class="cnt pane-h" style="padding:0"><span class="cnt">4</span></span></div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="card" style="padding:8px 10px;box-shadow:none"><b style="font-weight:550">Cycle de Carnot</b><div class="faint" style="font-size:11.5px;margin-top:2px">…découle du <span style="background:var(--primary-soft)">[[Second principe]]</span> appliqué…</div></div>
+          <div class="card" style="padding:8px 10px;box-shadow:none"><b style="font-weight:550">Exergie</b><div class="faint" style="font-size:11.5px;margin-top:2px">…création d'entropie (<span style="background:var(--primary-soft)">[[Second principe]]</span>)…</div></div>
+          <div class="faint" style="padding:2px 4px">+ 2 autres</div>
+        </div>
+        <div style="font-weight:600;margin:16px 0 8px;display:flex;gap:6px;align-items:center"><i data-i="quote" class="s"></i>Sources</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;gap:8px"><div class="annot-bar y"></div><div><div style="font-family:var(--read);font-style:italic">« L'entropie d'un système isolé… »</div><div class="faint" style="font-size:11px">Çengel · p. 411</div></div></div>
+          <div style="display:flex;gap:8px"><div class="annot-bar g"></div><div><div style="font-family:var(--read);font-style:italic">« Inégalité de Clausius »</div><div class="faint" style="font-size:11px">Çengel · p. 405</div></div></div>
+        </div>
+        <div style="font-weight:600;margin:16px 0 8px">Plan</div>
+        <div class="muted" style="line-height:1.9">Second principe<br>&nbsp;&nbsp;Inégalité de Clausius<br>&nbsp;&nbsp;À retenir</div>
+        <div style="font-weight:600;margin:16px 0 8px">Liens non résolus</div>
+        <div class="faint">[[Production d'entropie]] · <span style="color:var(--primary)">créer</span></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ═════════════ 6. MATIÈRES & COLLECTIONS ═════════════ -->
+<div class="doc-h">6 · Matières et collections<small>Chaque matière est un espace (documents, notes, cartes, progression). Les collections intelligentes sont des requêtes enregistrées, éditables en règles lisibles.</small></div>
+<div class="win" id="s6">
+  <div class="titlebar"><div class="wc"><span></span><span></span><span></span></div><div class="ttl">Thermodynamique · Matières · StudyLab</div><div class="cmdk"><i data-i="search" class="s"></i>Rechercher partout…<kbd>Ctrl K</kbd></div></div>
+  <div class="body">
+    <aside class="side" data-nav="subjects"></aside>
+    <main class="main" style="display:grid;grid-template-columns:240px 1fr 330px">
+      <div style="background:var(--surface2);border-right:1px solid var(--border-soft);padding:18px 10px">
+        <div style="display:flex;align-items:center;padding:0 8px 10px"><b style="font-size:13.5px">Matières</b><span class="sp"></span><button class="btn ghost icon sm"><i data-i="plus" class="s"></i></button></div>
+        <div class="tree" id="subjlist"></div>
+        <div style="padding:14px 8px 0" class="faint">Glisser pour réordonner · clic droit pour couleur, icône, archivage</div>
+      </div>
+      <div style="padding:0 30px;overflow:hidden">
+        <div style="height:92px;margin:0 -30px;background:linear-gradient(120deg,#E3EAF5,#EEEAF8);display:flex;align-items:flex-end;padding:0 30px 0"></div>
+        <div style="display:flex;align-items:flex-end;gap:14px;margin-top:-26px">
+          <div style="width:56px;height:56px;border-radius:14px;background:#6F8DB8;color:#fff;display:grid;place-items:center;box-shadow:var(--shadow)"><i data-i="flame" class="l"></i></div>
+          <div style="padding-bottom:2px"><h1 style="font-size:22px;font-weight:650">Thermodynamique</h1><div class="muted">Physique › Thermodynamique · Semestre 5</div></div>
+          <span class="sp"></span><button class="btn"><i data-i="download" class="s"></i>Exporter la matière</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:20px">
+          <div class="card" style="padding:12px 14px"><div style="font-size:20px;font-weight:650">12</div><div class="faint" style="font-size:11.5px">documents</div></div>
+          <div class="card" style="padding:12px 14px"><div style="font-size:20px;font-weight:650">148</div><div class="faint" style="font-size:11.5px">annotations</div></div>
+          <div class="card" style="padding:12px 14px"><div style="font-size:20px;font-weight:650">23</div><div class="faint" style="font-size:11.5px">notes</div></div>
+          <div class="card" style="padding:12px 14px"><div style="font-size:20px;font-weight:650">64</div><div class="faint" style="font-size:11.5px">cartes · 11 dues</div></div>
+          <div class="card" style="padding:12px 14px"><div style="font-size:20px;font-weight:650">58 %</div><div class="bar" style="margin-top:6px"><i style="width:58%;background:#6F8DB8"></i></div></div>
+        </div>
+        <div style="display:flex;gap:20px;border-bottom:1px solid var(--border);margin-top:20px;font-weight:500;color:var(--text2)"><span style="padding:8px 0;border-bottom:2px solid var(--primary);color:var(--text)">Vue d'ensemble</span><span style="padding:8px 0">Documents</span><span style="padding:8px 0">Notes</span><span style="padding:8px 0">Cartes</span><span style="padding:8px 0">Activité</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+          <div class="card" style="padding:16px 18px"><h3>Documents<span class="more">12</span></h3>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+              <div style="display:flex;gap:10px;align-items:center"><div class="cover c1" style="width:28px;height:40px;padding:0"></div><div style="flex:1"><div style="font-weight:550">Thermodynamique, Çengel</div><div class="faint" style="font-size:11.5px">42 % · 148 annotations</div></div><span class="pill p-reading">En cours</span></div>
+              <div style="display:flex;gap:10px;align-items:center"><div class="cover c5" style="width:28px;height:40px;padding:0"></div><div style="flex:1"><div style="font-weight:550">Cours Thermo S5 (poly)</div><div class="faint" style="font-size:11.5px">100 % · 37 annotations</div></div><span class="pill p-reread">À relire</span></div>
+              <div style="display:flex;gap:10px;align-items:center"><div class="cover c6" style="width:28px;height:40px;padding:0"></div><div style="flex:1"><div style="font-weight:550">TD 1 à 6, corrigés</div><div class="faint" style="font-size:11.5px">OCR · 0 %</div></div><span class="pill p-todo">À lire</span></div>
+            </div></div>
+          <div class="card" style="padding:16px 18px"><h3>Notes clés<span class="more">23</span></h3>
+            <div style="display:flex;flex-direction:column;gap:9px;margin-top:12px">
+              <div style="display:flex;gap:8px;align-items:center"><i data-i="note" class="s" style="color:var(--primary)"></i>Second principe<span class="sp"></span><span class="faint" style="font-size:11.5px">cours</span></div>
+              <div style="display:flex;gap:8px;align-items:center"><i data-i="sigma" class="s" style="color:var(--lav)"></i>Formules · Entropie<span class="sp"></span><span class="faint" style="font-size:11.5px">formules</span></div>
+              <div style="display:flex;gap:8px;align-items:center"><i data-i="note" class="s" style="color:var(--primary)"></i>Cycle de Rankine<span class="sp"></span><span class="faint" style="font-size:11.5px">concept</span></div>
+              <div style="display:flex;gap:8px;align-items:center"><i data-i="cards" class="s" style="color:var(--sage)"></i>Fiche révision · Ch. 7<span class="sp"></span><span class="faint" style="font-size:11.5px">révision</span></div>
+              <div style="display:flex;gap:8px;align-items:center"><i data-i="note" class="s" style="color:var(--primary)"></i>Exergie<span class="sp"></span><span class="faint" style="font-size:11.5px">concept</span></div>
+            </div></div>
+        </div>
+      </div>
+      <div style="background:var(--surface2);border-left:1px solid var(--border-soft);padding:18px 16px">
+        <div style="display:flex;align-items:center;margin-bottom:10px"><b style="font-size:13.5px">Collections</b><span class="sp"></span><button class="btn ghost icon sm"><i data-i="plus" class="s"></i></button></div>
+        <div class="tree">
+          <div><i data-i="layers" class="s"></i>Prépa examen S5<span class="sp"></span><span class="faint">18</span></div>
+          <div><i data-i="list" class="s"></i>Liste de lecture · Vacances<span class="sp"></span><span class="faint">6</span></div>
+          <div><i data-i="subject" class="s"></i>Projet · Banc d'essai PAC<span class="sp"></span><span class="faint">9</span></div>
+          <div class="on"><i data-i="sparkle" class="s"></i>Thermo non terminés<span class="sp"></span><span>7</span></div>
+          <div><i data-i="sparkle" class="s"></i>Annotés cette semaine<span class="sp"></span><span class="faint">5</span></div>
+          <div><i data-i="star" class="s"></i>Favoris<span class="sp"></span><span class="faint">21</span></div>
+        </div>
+        <div class="card" style="padding:14px;margin-top:16px;box-shadow:var(--shadow-pop)">
+          <div style="display:flex;align-items:center;gap:8px;font-weight:600"><i data-i="sparkle" class="s" style="color:var(--lav)"></i>Collection intelligente</div>
+          <div class="input" style="margin:10px 0;color:var(--text)">Thermo non terminés</div>
+          <div class="faint" style="font-size:11.5px;margin-bottom:6px">Documents qui respectent <b style="color:var(--text)">toutes</b> les règles :</div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:12px">
+            <div style="display:flex;gap:6px"><span class="tag" style="margin:0">Matière</span><span class="tag" style="margin:0">est</span><span class="tag" style="margin:0;background:#E3EAF5;color:#4A6A9C">Thermodynamique</span></div>
+            <div style="display:flex;gap:6px"><span class="tag" style="margin:0">Statut</span><span class="tag" style="margin:0">n'est pas</span><span class="tag" style="margin:0">Terminé, Archivé</span></div>
+            <div style="display:flex;gap:6px"><span class="tag" style="margin:0">Ajouté</span><span class="tag" style="margin:0">depuis</span><span class="tag" style="margin:0">90 jours</span></div>
+            <div style="color:var(--primary);font-weight:500;padding:2px 0">+ Ajouter une règle</div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px"><span class="faint" style="font-size:11.5px;align-self:center">7 résultats</span><span class="sp"></span><button class="btn sm">Annuler</button><button class="btn sm primary">Enregistrer</button></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ═════════════ 7. GRAPHE ═════════════ -->
+<div class="doc-h">7 · Graphe de connaissances<small>Documents, notes et concepts reliés. Couleur = matière, forme = type. Filtres à gauche, fiche du nœud sélectionné à droite, voisinage mis en valeur.</small></div>
+<div class="win" id="s7">
+  <div class="titlebar"><div class="wc"><span></span><span></span><span></span></div><div class="ttl">Graphe · StudyLab</div><div class="cmdk"><i data-i="search" class="s"></i>Rechercher partout…<kbd>Ctrl K</kbd></div></div>
+  <div class="body">
+    <aside class="side" data-nav="graph"></aside>
+    <main class="main" style="display:grid;grid-template-columns:250px 1fr">
+      <div style="background:var(--surface2);border-right:1px solid var(--border-soft);padding:18px 16px;font-size:12.5px">
+        <b style="font-size:13.5px">Filtres</b>
+        <div class="input" style="margin:12px 0"><i data-i="search" class="s"></i>Trouver un nœud…</div>
+        <div class="faint" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px">Types</div>
+        <div style="display:flex;flex-direction:column;gap:9px">
+          <div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:3px;border:2px solid var(--text2)"></span>Documents<span class="sp"></span><span class="toggle on"></span></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:50%;background:var(--text2)"></span>Notes<span class="sp"></span><span class="toggle on"></span></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;transform:rotate(45deg);background:var(--text3);margin:0 1px"></span>Concepts<span class="sp"></span><span class="toggle on"></span></div>
+          <div style="display:flex;align-items:center;gap:8px"><span style="width:12px;height:12px;border-radius:50%;border:2px dashed var(--text3)"></span>Liens non résolus<span class="sp"></span><span class="toggle"></span></div>
+        </div>
+        <div class="faint" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin:18px 0 8px">Matières</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px"><span class="dot" style="background:#6F8DB8"></span>Thermodynamique</div>
+          <div style="display:flex;align-items:center;gap:8px"><span class="dot" style="background:#7FA88A"></span>Mécanique des fluides</div>
+          <div style="display:flex;align-items:center;gap:8px"><span class="dot" style="background:#9C8FD0"></span>Automatique</div>
+          <div style="display:flex;align-items:center;gap:8px"><span class="dot" style="background:#C7A85C"></span>Mathématiques</div>
+        </div>
+        <div class="faint" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin:18px 0 8px">Affichage</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div>Profondeur autour de la sélection<div class="seg" style="margin-top:6px"><span>1</span><span class="on">2</span><span>3</span><span>Tout</span></div></div>
+          <div style="display:flex;align-items:center">Étiquettes<span class="sp"></span><span class="toggle on"></span></div>
+          <div style="display:flex;align-items:center">Grouper par matière<span class="sp"></span><span class="toggle"></span></div>
+        </div>
+      </div>
+      <div style="position:relative;background:var(--surface);overflow:hidden" id="graph">
+        <svg id="gsvg" width="1152" height="862" style="position:absolute;inset:0"></svg>
+        <div class="card" style="position:absolute;right:20px;top:20px;width:262px;padding:16px 18px;box-shadow:var(--shadow-pop)">
+          <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:#6F8DB8"></span><span class="faint" style="font-size:11.5px">Note · Fiche de cours</span></div>
+          <div style="font-weight:650;font-size:16px;margin:6px 0">Second principe</div>
+          <div class="muted" style="font-size:12.3px;line-height:1.55">L'entropie est une fonction d'état. Pour une transformation réversible, dS = δQ<sub>rev</sub>/T…</div>
+          <div style="display:flex;gap:16px;margin:12px 0;font-size:12px"><span><b>6</b> <span class="faint">liens sortants</span></span><span><b>4</b> <span class="faint">rétroliens</span></span><span><b>2</b> <span class="faint">sources</span></span></div>
+          <div style="display:flex;gap:8px"><button class="btn sm primary">Ouvrir</button><button class="btn sm">Centrer</button><button class="btn sm">Isoler</button></div>
+        </div>
+        <div style="position:absolute;left:20px;bottom:18px;display:flex;gap:6px"><button class="btn icon"><i data-i="zin" class="s"></i></button><button class="btn icon"><i data-i="zout" class="s"></i></button><button class="btn icon"><i data-i="max" class="s"></i></button><span class="faint" style="align-self:center;margin-left:8px;font-size:11.5px">214 nœuds · 486 liens · disposition calculée en arrière-plan</span></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ═════════════ 8. RÉVISION ═════════════ -->
+<div class="doc-h">8 · Espace de révision<small>Paquets par matière, carte au centre avec sa source cliquable, quatre niveaux de maîtrise avec l'intervalle suivant affiché. Raccourcis 1 à 4, espace pour retourner.</small></div>
+<div class="win" id="s8">
+  <div class="titlebar"><div class="wc"><span></span><span></span><span></span></div><div class="ttl">Révisions · StudyLab</div><div class="cmdk"><i data-i="search" class="s"></i>Rechercher partout…<kbd>Ctrl K</kbd></div></div>
+  <div class="body">
+    <aside class="side" data-nav="review"></aside>
+    <main class="main" style="display:grid;grid-template-columns:270px 1fr">
+      <div style="background:var(--surface2);border-right:1px solid var(--border-soft);padding:18px 12px">
+        <div style="display:flex;align-items:center;padding:0 6px 12px"><b style="font-size:13.5px">Paquets</b><span class="sp"></span><button class="btn ghost icon sm"><i data-i="plus" class="s"></i></button></div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:12.6px">
+          <div style="display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;background:var(--primary-soft);color:var(--primary-strong);font-weight:550"><span class="dot" style="background:#6F8DB8"></span>Thermodynamique<span class="sp"></span><span class="pill" style="background:var(--surface);color:var(--primary-strong)">11</span></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:9px 10px"><span class="dot" style="background:#7FA88A"></span>Mécanique des fluides<span class="sp"></span><span class="pill p-todo">8</span></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:9px 10px"><span class="dot" style="background:#9C8FD0"></span>Automatique<span class="sp"></span><span class="pill p-todo">5</span></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:9px 10px"><span class="dot" style="background:#C7A85C"></span>Mathématiques<span class="sp"></span><span class="faint">0</span></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:9px 10px"><span class="dot" style="background:#B98B7A"></span>RDM<span class="sp"></span><span class="faint">0</span></div>
+        </div>
+        <div class="card" style="padding:14px;margin-top:18px;box-shadow:none">
+          <div style="font-weight:600;margin-bottom:10px">Aujourd'hui</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;font-size:12px"><span class="faint">Révisées</span><b>12</b><span class="faint">Restantes</span><b>12</b><span class="faint">Nouvelles</span><b>4 / 10</b><span class="faint">Réussite</span><b style="color:#5A8A66">86 %</b></div>
+          <div style="display:flex;gap:3px;align-items:flex-end;height:44px;margin-top:14px">
+            <i style="flex:1;height:40%;background:var(--sunken);border-radius:2px"></i><i style="flex:1;height:65%;background:var(--sunken);border-radius:2px"></i><i style="flex:1;height:30%;background:var(--sunken);border-radius:2px"></i><i style="flex:1;height:80%;background:var(--sunken);border-radius:2px"></i><i style="flex:1;height:55%;background:var(--sunken);border-radius:2px"></i><i style="flex:1;height:70%;background:var(--sunken);border-radius:2px"></i><i style="flex:1;height:50%;background:var(--lav);border-radius:2px"></i>
+          </div>
+          <div class="faint" style="font-size:11px;margin-top:4px">7 derniers jours</div>
+        </div>
+        <button class="btn" style="width:100%;justify-content:center;margin-top:12px"><i data-i="note" class="s"></i>Générer une fiche de révision</button>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px 40px 80px">
+        <div style="width:640px;display:flex;align-items:center;gap:12px"><span class="muted">Thermodynamique</span><div class="bar" style="flex:1"><i style="width:52%;background:var(--lav)"></i></div><span class="muted" style="font-size:12px">12 / 23</span><button class="btn ghost icon"><i data-i="x" class="s"></i></button></div>
+        <div class="card flash" style="margin-top:22px">
+          <div class="faint" style="font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:600">Question</div>
+          <div style="font-size:19px;font-weight:550;margin:14px 0 8px;line-height:1.45">Exprimer le rendement maximal d'une machine thermique fonctionnant entre deux sources.</div>
+          <div style="height:1px;background:var(--border-soft);margin:24px 0"></div>
+          <div class="faint" style="font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:600">Réponse</div>
+          <div class="math" style="font-size:24px;margin:14px 0 6px">η<sub>Carnot</sub> = 1 − <span style="display:inline-flex;flex-direction:column;vertical-align:middle;font-size:18px"><span style="border-bottom:1px solid currentColor;padding:0 4px">T<sub>F</sub></span><span>T<sub>C</sub></span></span></div>
+          <div class="muted" style="font-size:13px">Les températures sont absolues (K). Indépendant du fluide.</div>
+          <div style="display:inline-flex;gap:8px;align-items:center;margin-top:22px;padding:7px 12px;border-radius:8px;background:var(--surface2);font-size:12px"><div class="annot-bar y" style="height:16px"></div><span class="muted">Source :</span> <span style="font-family:var(--read);font-style:italic">« Le rendement de Carnot ne dépend que… »</span><span style="color:var(--primary);font-weight:500">Çengel p. 298 ↗</span></div>
+        </div>
+        <div class="rate" style="margin-top:26px">
+          <button class="btn" style="border-color:#EBC6CF"><span style="color:#B5566F;font-weight:600">À revoir</span><small>&lt; 10 min · 1</small></button>
+          <button class="btn"><span style="font-weight:600;color:#9A7A2A">Difficile</span><small>1 jour · 2</small></button>
+          <button class="btn" style="border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)"><span style="font-weight:600;color:var(--primary-strong)">Bien</span><small>4 jours · 3</small></button>
+          <button class="btn"><span style="font-weight:600;color:#5A8A66">Facile</span><small>9 jours · 4</small></button>
+        </div>
+        <div class="faint" style="margin-top:16px;font-size:12px"><kbd>Espace</kbd> retourner · <kbd>1</kbd>–<kbd>4</kbd> noter · <kbd>E</kbd> modifier la carte · <kbd>S</kbd> suspendre</div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ═════════════ 9. PARAMÈTRES ═════════════ -->
+<div class="doc-h">9 · Paramètres<small>Catégories à gauche, réglages groupés en cartes. Exemple : Apparence (thème, accent, taille d'interface, polices, animations).</small></div>
+<div class="win" id="s9">
+  <div class="titlebar"><div class="wc"><span></span><span></span><span></span></div><div class="ttl">Paramètres · StudyLab</div><div class="cmdk"><i data-i="search" class="s"></i>Rechercher partout…<kbd>Ctrl K</kbd></div></div>
+  <div class="body">
+    <aside class="side" data-nav="settings"></aside>
+    <main class="main" style="display:grid;grid-template-columns:240px 1fr">
+      <div style="background:var(--surface2);border-right:1px solid var(--border-soft);padding:18px 10px">
+        <div class="input" style="margin:0 4px 14px"><i data-i="search" class="s"></i>Chercher un réglage…</div>
+        <div class="tree" style="font-size:13px">
+          <div>Général</div><div class="on">Apparence</div><div>Lecture</div><div>Annotations</div><div>Notes et Markdown</div><div>Bibliothèque et import</div><div>Recherche et OCR</div><div>Révisions</div><div>Sauvegarde et données</div><div>Exportation</div><div>Raccourcis clavier</div><div>À propos</div>
+        </div>
+      </div>
+      <div style="padding:26px 40px;overflow:hidden;max-width:860px">
+        <h1 style="font-size:22px;font-weight:650">Apparence</h1>
+        <div class="muted" style="margin-top:4px">Les changements s'appliquent immédiatement, sans redémarrage.</div>
+        <div class="card" style="padding:18px 22px;margin-top:20px">
+          <div style="font-weight:600;margin-bottom:14px">Thème</div>
+          <div style="display:flex;gap:16px">
+            <div class="themecard"><div class="pv" style="background:#F6F5F2"><div style="background:#FBFAF8;border-right:1px solid #E6E3DD"></div><div style="padding:10px"><div style="height:8px;width:60%;background:#E6E3DD;border-radius:4px"></div><div style="height:30px;margin-top:8px;background:#fff;border-radius:6px;border:1px solid #EEECE7"></div></div></div><div class="lb"><span class="radio"></span>Clair</div></div>
+            <div class="themecard"><div class="pv" style="background:#1D2026"><div style="background:#2A2F37;border-right:1px solid #363C46"></div><div style="padding:10px"><div style="height:8px;width:60%;background:#363C46;border-radius:4px"></div><div style="height:30px;margin-top:8px;background:#252930;border-radius:6px;border:1px solid #30353E"></div></div></div><div class="lb"><span class="radio"></span>Sombre</div></div>
+            <div class="themecard on"><div class="pv" style="background:linear-gradient(90deg,#F6F5F2 50%,#1D2026 50%)"><div style="background:#FBFAF8;border-right:1px solid #E6E3DD"></div><div></div></div><div class="lb"><span class="radio on"></span>Système</div></div>
+          </div>
+          <div class="set-row" style="margin-top:6px"><div class="lbl"><b>Couleur d'accent</b><span>Utilisée pour les sélections, liens et boutons principaux.</span></div><div style="display:flex;gap:10px"><span class="swatch on" style="width:22px;height:22px;background:#5B7DB1"></span><span class="swatch" style="width:22px;height:22px;background:#9C8FD0"></span><span class="swatch" style="width:22px;height:22px;background:#7FA88A"></span><span class="swatch" style="width:22px;height:22px;background:#B98B7A"></span><span class="swatch" style="width:22px;height:22px;background:#5E6B7C"></span></div></div>
+          <div class="set-row"><div class="lbl"><b>Taille de l'interface</b><span>Indépendante de la taille du texte de lecture.</span></div><div style="display:flex;align-items:center;gap:12px"><div class="slider"><i style="width:33%"></i><b style="left:30%"></b></div><span style="width:42px;text-align:right">100 %</span></div></div>
+          <div class="set-row"><div class="lbl"><b>Densité</b><span>Espacement des listes et de la bibliothèque.</span></div><div class="seg"><span>Compacte</span><span class="on">Confortable</span><span>Aérée</span></div></div>
+        </div>
+        <div class="card" style="padding:6px 22px;margin-top:16px">
+          <div class="set-row"><div class="lbl"><b>Police de l'interface</b></div><div class="select"><span>Inter</span><i data-i="chd" class="s"></i></div></div>
+          <div class="set-row"><div class="lbl"><b>Police de lecture</b><span>EPUB, aperçu des notes, citations.</span></div><div class="select"><span style="font-family:var(--read)">Literata</span><i data-i="chd" class="s"></i></div></div>
+          <div class="set-row"><div class="lbl"><b>Police monospace</b></div><div class="select"><span style="font-family:var(--mono)">JetBrains Mono</span><i data-i="chd" class="s"></i></div></div>
+          <div class="set-row"><div class="lbl"><b>Police des formules</b></div><div class="select"><span class="math">KaTeX Main</span><i data-i="chd" class="s"></i></div></div>
+        </div>
+        <div class="card" style="padding:6px 22px;margin-top:16px">
+          <div class="set-row"><div class="lbl"><b>Animations</b><span>Transitions douces entre les écrans et les volets.</span></div><span class="toggle on"></span></div>
+          <div class="set-row"><div class="lbl"><b>Respecter « réduire les animations » du système</b></div><span class="toggle on"></span></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ═════════════ 3b. LECTEUR PDF SOMBRE ═════════════ -->
+<div class="doc-h">3 bis · Lecteur PDF en mode sombre<small>Même écran, thème sombre : anthracite bleuté, accents désaturés, page légèrement assombrie (option « inverser les pages » disponible).</small></div>
+<div class="win dark" id="s10"></div>
+
+<script>
+const I={
+home:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+library:'<path d="M4 4h4v16H4zM10 4h4v16h-4z"/><path d="m16.2 4.8 3.9-1 3.6 15.4-3.9 1z" transform="translate(-2 0)"/>',
+book:'<path d="M2 5c3-1 6-1 10 1 4-2 7-2 10-1v14c-3-1-6-1-10 1-4-2-7-2-10-1zM12 6v14"/>',
+note:'<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/>',
+subject:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+layers:'<path d="M12 3 2 8l10 5 10-5zM2 12.5l10 5 10-5M2 16.5l10 5 10-5"/>',
+graph:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="8" r="2.5"/><circle cx="9" cy="18" r="2.5"/><path d="M8.3 7.1 15.6 7.6M7 8.4l1.4 7.2M16.6 10l-5.8 6.3"/>',
+cards:'<rect x="3" y="7" width="14" height="14" rx="2"/><path d="M7 3h12a2 2 0 0 1 2 2v12"/>',
+activity:'<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+settings:'<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+plus:'<path d="M12 5v14M5 12h14"/>',
+import:'<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
+download:'<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
+grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+list:'<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
+chl:'<path d="m15 18-6-6 6-6"/>',chr:'<path d="m9 18 6-6-6-6"/>',chd:'<path d="m6 9 6 6 6-6"/>',
+zin:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M8 11h6M11 8v6"/>',zout:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M8 11h6"/>',
+rotate:'<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>',
+max:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+bookmark:'<path d="M6 3h12v18l-6-4-6 4z"/>',
+hl:'<path d="m9 11-6 6v3h9l3-3M22 12l-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/>',
+underline:'<path d="M6 4v6a6 6 0 0 0 12 0V4M4 21h16"/>',
+strike:'<path d="M16 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H7M4 12h16"/>',
+msg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+link:'<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
+star:'<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>',
+more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+panel:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>',
+sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+check:'<path d="M20 6 9 17l-5-5"/>',x:'<path d="M18 6 6 18M6 6l12 12"/>',
+tag:'<path d="M3 3h8l10 10-8 8L3 11z"/><circle cx="7.5" cy="7.5" r="1.2"/>',
+type:'<path d="M4 7V5h16v2M9 19h6M12 5v14"/>',
+pen:'<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+columns:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16"/>',
+target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+shield:'<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/>',
+sigma:'<path d="M18 4H6l7 8-7 8h12"/>',
+quote:'<path d="M7 7h4v4c0 3-2 5-4 6M15 7h4v4c0 3-2 5-4 6"/>',
+sparkle:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>',
+flame:'<path d="M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-3.5 2-5.5 1 1.5 1.5 2 2.5 2C11 7 11 5 12 3z"/>',
+thumbs:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 4h7M14 8h7M14 15h7M14 19h7"/>',
+eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+filter:'<path d="M3 5h18l-7 8v6l-4 2v-8z"/>',
+};
+const NAV=[['home','home','Accueil'],['library','library','Bibliothèque'],['read','book','Lecture'],['notes','note','Mes notes'],['subjects','subject','Matières'],['collections','layers','Collections'],['graph','graph','Graphe'],['review','cards','Révisions','24'],['activity','activity','Activité'],['settings','settings','Paramètres']];
+function sideHTML(active,rail){
+  let h=`<div class="brand"><div class="logo"><svg class="ic s" viewBox="0 0 24 24" style="stroke:#fff">${I.book}</svg></div>${rail?'':'StudyLab'}</div>`;
+  for(const [k,ic,l,b] of NAV){h+=`<div class="nav ${k===active?'on':''}" title="${l}"><i data-i="${ic}"></i>${rail?'':l}${(!rail&&b)?`<span class="badge">${b}</span>`:''}</div>`}
+  if(!rail){h+=`<div class="sec">Matières</div>`;
+    for(const [c,n] of [['#6F8DB8','Thermodynamique'],['#7FA88A','Mécanique des fluides'],['#9C8FD0','Automatique'],['#C7A85C','Mathématiques']]) h+=`<div class="nav" style="font-weight:450"><span class="dot" style="background:${c};margin:0 3px"></span>${n}</div>`;
+    h+=`<div class="foot"><i data-i="shield" class="s"></i>Hors ligne · local<span class="sp"></span><i data-i="sun" class="s"></i></div>`;}
+  else h+=`<div class="foot" style="border:none;padding:10px 0"><i data-i="sun" class="s"></i></div>`;
+  return h;
+}
+document.querySelectorAll('aside.side').forEach(a=>{a.innerHTML=sideHTML(a.dataset.nav,!!a.dataset.rail)});
+
+/* Library grid */
+const books=[['c1','Thermo-dynamique','Çengel','p-reading','En cours',42],['c3','Mécanique des fluides','Candel','p-reading','En cours',37],['c4','Feedback Systems','Åström','p-reading','En cours',41],['c5','RDM · cours ENSAM','Poly','p-reading','En cours',46],['c2','Analyse numérique','Quarteroni','p-pause','En pause',18],['c6','Transferts thermiques','Incropera','p-todo','À lire',0],['c7','Robotique : modélisation','Khalil','p-reading','En cours',9],['c8','Méthode des éléments finis','Dhatt','p-reread','À relire',100],['c9','Signaux et systèmes','Oppenheim','p-done','Terminé',100],['c10','Conception mécanique','Shigley','p-todo','À lire',0],['c11','Algèbre linéaire','Strang','p-done','Terminé',100],['c12','Simulation numérique','Kuzmin','p-todo','À lire',0]].slice(0,10);
+document.getElementById('libgrid').innerHTML=books.map((b,i)=>`<div style="display:flex;flex-direction:column;gap:7px;${i===0?'':''}"><div class="cover ${b[0]}" style="height:196px;${i===0?'outline:2px solid var(--primary);outline-offset:3px':''}"><b>${b[1]}</b><span>${b[2]}</span></div><div style="font-weight:550;font-size:12.6px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b[1].replace('-','')}</div><div style="display:flex;align-items:center;gap:6px"><span class="faint" style="font-size:11.5px">${b[2]}</span><span class="sp"></span><span class="pill ${b[3]}" style="height:18px;font-size:10.5px">${b[4]}</span></div>${b[5]>0&&b[5]<100?`<div class="bar" style="height:3px"><i style="width:${b[5]}%"></i></div>`:'<div style="height:3px"></div>'}</div>`).join('');
+
+/* Subjects list */
+document.getElementById('subjlist').innerHTML=[['#C7A85C','Mathématiques',14,0],['#5E6B7C','Physique',31,0],['#6F8DB8','Thermodynamique',12,1,1],['#7FA88A','Mécanique des fluides',9,1],['#B98B7A','Résistance des matériaux',11,0],['#7DA3A8','Robotique',7,0],['#9C8FD0','Automatique',10,0],['#486A8F','Simulation numérique',6,0],['#A57C9B','Conception mécanique',8,0]].map(s=>`<div class="${s[4]?'on':''}" style="${s[3]?'padding-left:24px':''}"><span class="dot" style="background:${s[0]}"></span>${s[1]}<span class="sp"></span><span class="faint">${s[2]}</span></div>`).join('');
+
+/* PDF reader (light & dark) */
+function readerPDF(dark){
+return `<div class="titlebar"><div class="wc"><span></span><span></span><span></span></div><div class="ttl">Thermodynamique · Çengel · StudyLab</div><div class="cmdk"><i data-i="search" class="s"></i>Rechercher partout…<kbd>Ctrl K</kbd></div></div>
+<div class="body rail"><aside class="side">${sideHTML('read',true)}</aside>
+<main class="main">
+ <div class="tabs"><div class="tab on"><i data-i="book" class="s"></i>Thermodynamique<i data-i="x" class="s x"></i></div><div class="tab"><i data-i="book" class="s"></i>Feedback Systems<i data-i="x" class="s x"></i></div><div class="tab"><i data-i="book" class="s"></i>Cours Thermo S5<i data-i="x" class="s x"></i></div><div class="tab"><i data-i="plus" class="s"></i></div></div>
+ <div class="toolbar">
+  <button class="btn ghost icon on"><i data-i="thumbs"></i></button><button class="btn ghost icon"><i data-i="list"></i></button><div class="sep"></div>
+  <div class="pg"><button class="btn ghost icon"><i data-i="chl"></i></button><b>412</b> / 980 <span class="faint">(p. 389 imprimée)</span><button class="btn ghost icon"><i data-i="chr"></i></button></div><div class="sep"></div>
+  <button class="btn ghost icon"><i data-i="zout"></i></button><div class="pg"><b>125 %</b></div><button class="btn ghost icon"><i data-i="zin"></i></button><button class="btn ghost icon"><i data-i="rotate"></i></button><button class="btn ghost icon"><i data-i="columns"></i></button>
+  <div class="sp"></div>
+  <div class="seg"><span class="on"><i data-i="hl" class="s"></i></span><span><i data-i="underline" class="s"></i></span><span><i data-i="strike" class="s"></i></span><span><i data-i="msg" class="s"></i></span><span><i data-i="bookmark" class="s"></i></span></div>
+  <span class="swatch on" style="background:var(--a-yellow);margin-left:6px"></span><span class="swatch" style="background:var(--a-green)"></span><span class="swatch" style="background:var(--a-blue)"></span><span class="swatch" style="background:var(--a-pink)"></span><span class="swatch" style="background:var(--a-purple)"></span>
+  <div class="sep"></div><button class="btn ghost icon"><i data-i="search"></i></button><button class="btn ghost icon"><i data-i="eye"></i></button><button class="btn ghost icon"><i data-i="max"></i></button><button class="btn ghost icon on"><i data-i="panel"></i></button>
+ </div>
+ <div class="readarea" style="grid-template-columns:118px 1fr 400px;flex:1">
+  <div class="thumbs">
+   ${[410,411,412,413,414].map(n=>`<div class="thumb ${n===412?'on':''}">${'<i></i>'.repeat(5)}<i style="width:60%"></i>${'<i></i>'.repeat(4)}${n===411?'<span class="hm y"></span>':''}${n===412?'<span class="hm y"></span>':''}${n===413?'<span class="hm g"></span>':''}<small>${n}</small></div>`).join('')}
+  </div>
+  <div class="viewer">
+   <div class="page">
+    <h4>7–3 · Le principe d'accroissement de l'entropie</h4>
+    <p>Considérons un cycle constitué de deux transformations : la transformation 1-2, quelconque (réversible ou irréversible), et la transformation 2-1, intérieurement réversible. L'inégalité de Clausius appliquée à ce cycle donne directement une relation entre la variation d'entropie et le transfert de chaleur.</p>
+    <p class="eq">S<sub>2</sub> − S<sub>1</sub> ≥ ∫<sub>1</sub><sup>2</sup> δQ / T</p>
+    <p>Lorsque le système est isolé, aucun transfert de chaleur n'a lieu et l'intégrale est nulle. On obtient alors le résultat fondamental : <span class="mark-y" style="padding:1px 0">l'entropie d'un système isolé ne peut que croître ou rester constante au cours d'une transformation</span>. C'est le <b>principe d'accroissement de l'entropie</b>.</p>
+    <p>Ce principe signifie qu'une transformation ne peut se produire que dans le sens qui respecte cette règle. <span class="ul-g">La production d'entropie est une mesure des irréversibilités</span> présentes lors de la transformation : frottements, mélange, transferts de chaleur sous un écart fini de température.</p>
+    <p style="position:relative"><span class="mark-b" style="padding:1px 0">Une transformation pour laquelle la production d'entropie serait négative est impossible.</span> Une transformation réversible correspond à une production d'entropie nulle ; c'est un cas limite idéal.</p>
+    <div class="fig">Figure 7–7 · Système isolé et son milieu extérieur</div>
+    <p>Il est important de noter que l'entropie d'un système non isolé peut diminuer, à condition que l'entropie de son environnement augmente d'au moins autant…</p>
+    <div class="margin-note" style="top:300px"><i data-i="msg" class="s"></i></div>
+    <div class="pno">412</div>
+    <div class="selpop" style="left:120px;top:356px"><span class="swatch" style="background:var(--a-yellow);border-color:var(--surface)"></span><span class="swatch" style="background:var(--a-green);border-color:var(--surface)"></span><span class="swatch" style="background:var(--a-blue);border-color:var(--surface)"></span><span class="swatch" style="background:var(--a-pink);border-color:var(--surface)"></span><span class="swatch" style="background:var(--a-purple);border-color:var(--surface)"></span><span class="vs"></span><button class="btn icon"><i data-i="underline" class="s"></i></button><button class="btn icon"><i data-i="strike" class="s"></i></button><span class="vs"></span><button class="btn"><i data-i="msg" class="s"></i>Commenter</button><button class="btn"><i data-i="note" class="s"></i>Note</button><button class="btn"><i data-i="cards" class="s"></i>Carte</button></div>
+   </div>
+  </div>
+  <div class="panes">
+   <div style="flex:0 0 470px;display:flex;flex-direction:column;min-height:0">
+    <div class="pane-h"><i data-i="hl" class="s"></i>Annotations<span class="cnt">148</span><div class="acts"><button class="btn ghost icon"><i data-i="filter" class="s"></i></button><button class="btn ghost icon"><i data-i="download" class="s"></i></button><button class="btn ghost icon"><i data-i="max" class="s"></i></button><button class="btn ghost icon"><i data-i="chd" class="s"></i></button></div></div>
+    <div style="padding:0 14px 10px;display:flex;gap:6px;align-items:center"><div class="input" style="height:28px;flex:1"><i data-i="search" class="s"></i>Rechercher</div><div class="seg"><span class="on">Ce document</span><span>Page</span></div></div>
+    <div style="padding:0 14px 8px;display:flex;gap:6px"><span class="chip on" style="height:22px">Tout</span><span class="chip" style="height:22px"><span class="dot y"></span>52</span><span class="chip" style="height:22px"><span class="dot g"></span>31</span><span class="chip" style="height:22px"><span class="dot b"></span>40</span><span class="chip" style="height:22px"><span class="dot p"></span>15</span><span class="chip" style="height:22px"><span class="dot v"></span>10</span></div>
+    <div style="padding:0 14px;display:flex;flex-direction:column;gap:8px;overflow:hidden">
+     <div class="faint" style="font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase">Chapitre 7 · L'entropie</div>
+     <div class="ann sel"><div class="annot-bar y"></div><div style="flex:1"><q>L'entropie d'un système isolé ne peut que croître ou rester constante au cours d'une transformation</q><div class="meta"><span class="ref">p. 412</span>· Surlignage · à l'instant<span class="sp"></span><i data-i="more" class="s"></i></div></div></div>
+     <div class="ann"><div class="annot-bar g"></div><div style="flex:1"><q>La production d'entropie est une mesure des irréversibilités</q><div class="meta"><span class="ref">p. 412</span>· Soulignement · hier</div><div class="cm"><i data-i="msg" class="s" style="color:#7466B3"></i>Lister les 4 sources d'irréversibilité pour l'examen.</div></div></div>
+     <div class="ann"><div class="annot-bar b"></div><div style="flex:1"><q>Une transformation pour laquelle la production d'entropie serait négative est impossible.</q><div class="meta"><span class="ref">p. 412</span>· Surlignage · hier</div></div></div>
+     <div class="ann"><div class="annot-bar y"></div><div style="flex:1"><q>Inégalité de Clausius : ∮ δQ/T ≤ 0</q><div class="meta"><span class="ref">p. 405</span>· Surlignage · lundi</div></div></div>
+    </div>
+   </div>
+   <div class="splitter"><i></i></div>
+   <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+    <div class="pane-h"><i data-i="msg" class="s"></i>Commentaires<span class="cnt">23</span><div class="acts"><button class="btn ghost icon"><i data-i="search" class="s"></i></button><button class="btn ghost icon"><i data-i="max" class="s"></i></button><button class="btn ghost icon"><i data-i="chd" class="s"></i></button></div></div>
+    <div style="padding:0 14px;display:flex;flex-direction:column;gap:8px">
+     <div class="comment"><div class="who"><i data-i="link" class="s"></i>Sur l'annotation p. 412<span class="sp"></span><span class="faint" style="font-weight:400">à l'instant</span></div>
+      <div class="md-src" style="font-size:11.8px;line-height:1.65"><span class="md-h">Pourquoi ?</span> Pour un système isolé <span class="md-m">$\\delta Q = 0$</span> donc <span class="md-m">$\\Delta S \\ge 0$</span>.<br>Voir <span class="md-l">[[Second principe]]</span> <span class="md-t">#examen</span><span style="border-left:1.5px solid var(--primary)"></span></div>
+      <div style="display:flex;gap:6px;margin-top:8px"><span class="seg"><span class="on">Écrire</span><span>Aperçu</span></span><span class="sp"></span><button class="btn sm primary">Enregistrer</button></div></div>
+    </div>
+   </div>
+  </div>
+ </div>
+</main></div>`}
+document.getElementById('s3').innerHTML=readerPDF(false);
+document.getElementById('s10').innerHTML=readerPDF(true);
+
+/* Graph */
+(function(){
+ const svg=document.getElementById('gsvg');
+ const col={t:'#6F8DB8',f:'#7FA88A',a:'#9C8FD0',m:'#C7A85C'};
+ const N=[
+  ['sp','Second principe','n','t',470,400,1],['cc','Cycle de Carnot','n','t',640,300],['ex','Exergie','n','t',650,500],['ent','Entropie','c','t',330,300],['cl','Inégalité de Clausius','n','t',300,470],
+  ['cg','Çengel · Thermodynamique','d','t',520,580],['poly','Cours Thermo S5','d','t',230,600],['rk','Cycle de Rankine','n','t',800,240],['pac','Pompe à chaleur','n','t',820,380],['irr','Irréversibilités','c','t',470,230],
+  ['re','Nombre de Reynolds','n','f',140,240],['cl2','Couche limite','n','f',90,380],['cand','Candel · Fluides','d','f',170,140],['vis','Viscosité','c','f',290,150],
+  ['bode','Diagramme de Bode','n','a',900,620],['fs','Feedback Systems','d','a',990,520],['rf','Réponse fréquentielle','n','a',800,700],['four','Série de Fourier','n','m',640,720],['lap','Transformée de Laplace','n','m',960,720],['int','Intégrales curvilignes','n','m',360,740],
+  ['tf','Transferts thermiques','d','t',700,130],['conv','Convection','c','f',380,90]
+ ];
+ const E=[['sp','cc'],['sp','ex'],['sp','ent'],['sp','cl'],['sp','cg'],['sp','irr'],['cl','ent'],['cl','poly'],['cl','int'],['cc','rk'],['cc','pac'],['cc','cg'],['ex','cg'],['ex','pac'],['ent','irr'],['ent','poly'],['ent','vis'],['re','cl2'],['re','cand'],['re','vis'],['cl2','cand'],['vis','conv'],['conv','tf'],['tf','irr'],['rk','tf'],['bode','fs'],['bode','rf'],['rf','four'],['rf','fs'],['lap','fs'],['lap','four'],['four','int'],['pac','bode'],['cg','poly']];
+ N.forEach(n=>{n[4]=Math.round(20+n[4]*0.66);n[5]=Math.round(40+n[5]*0.98)});const P=Object.fromEntries(N.map(n=>[n[0],n]));
+ const near=new Set(['sp']);E.forEach(([a,b])=>{if(a==='sp')near.add(b);if(b==='sp')near.add(a)});
+ let s='';
+ for(const [a,b] of E){const A=P[a],B=P[b];const hi=(a==='sp'||b==='sp');s+=`<line x1="${A[4]}" y1="${A[5]}" x2="${B[4]}" y2="${B[5]}" stroke="${hi?'#8AA6D1':'var(--border)'}" stroke-width="${hi?1.8:1.2}" opacity="${hi?1:.9}"/>`}
+ for(const n of N){const [id,l,t,c,x,y,sel]=n;const c0=col[c];const dim=near.has(id)?1:.55;
+  if(t==='n')s+=`<circle cx="${x}" cy="${y}" r="${sel?15:9}" fill="${c0}" opacity="${dim}" ${sel?'stroke="#fff" stroke-width="3"':''}/>`+(sel?`<circle cx="${x}" cy="${y}" r="22" fill="none" stroke="${c0}" stroke-opacity=".35" stroke-width="5"/>`:'');
+  else if(t==='d')s+=`<rect x="${x-12}" y="${y-9}" width="24" height="18" rx="4" fill="var(--surface)" stroke="${c0}" stroke-width="2.5" opacity="${dim}"/>`;
+  else s+=`<rect x="${x-7}" y="${y-7}" width="14" height="14" fill="${c0}" opacity="${dim*.75}" transform="rotate(45 ${x} ${y})"/>`;
+  s+=`<text x="${x}" y="${y+(sel?36:26)}" text-anchor="middle" font-family="Inter" font-size="${sel?13:11.5}" font-weight="${sel?650:500}" fill="var(--text${near.has(id)?'':'2'})" opacity="${near.has(id)?1:.75}">${l}</text>`}
+ svg.innerHTML=s;
+})();
+
+document.querySelectorAll('i[data-i]').forEach(el=>{const k=el.dataset.i;const cls=el.className;el.outerHTML=`<svg class="ic ${cls}" viewBox="0 0 24 24" style="${el.getAttribute('style')||''}">${I[k]||''}</svg>`});
+document.querySelectorAll('.annot-bar,.dot').forEach(e=>{});
+</script>
+</body>
+</html>
