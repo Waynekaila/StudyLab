@@ -46,9 +46,13 @@ bool InstanceChannel::sendToRunning(const QString& dataDir, const QStringList& m
     QByteArray payload;
     for (const QString& m : messages)
         payload += m.toUtf8().replace('\n', ' ') + '\n';
-    socket.write(payload);
-    if (!socket.waitForBytesWritten(timeoutMs))
+    if (socket.write(payload) != payload.size())
         return false;
+    socket.flush();
+    // Sous Windows, une écriture déjà terminée laisse bytesToWrite() à 0 et waitForBytesWritten() renvoie faux.
+    while (socket.bytesToWrite() > 0)
+        if (!socket.waitForBytesWritten(timeoutMs))
+            return false;
     socket.disconnectFromServer();
     if (socket.state() != QLocalSocket::UnconnectedState)
         socket.waitForDisconnected(timeoutMs);
