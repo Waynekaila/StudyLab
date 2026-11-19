@@ -243,8 +243,10 @@ private slots:
         const QJsonObject meta = QJsonDocument::fromJson(json.readAll()).object();
         QCOMPARE(meta.value(QStringLiteral("annotations")).toArray().size(), 5);
         QCOMPARE(meta.value(QStringLiteral("document")).toObject().value(QStringLiteral("uuid")).toString(), m_doc.uuid);
+        json.close();  // Windows : un fichier ouvert ne peut pas être remplacé
         // Un second export remplace le premier sans erreur
-        QVERIFY(MarkdownExporter::exportDocument(out.path(), m_doc, anns, opt).ok());
+        auto again = MarkdownExporter::exportDocument(out.path(), m_doc, anns, opt);
+        QVERIFY2(again.ok(), again.ok() ? "" : qPrintable(again.error().message));
     }
 };
 
