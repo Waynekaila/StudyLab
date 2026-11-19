@@ -175,6 +175,7 @@ void ReaderPage::openDocument(qint64 documentId)
         emit focusModeChanged(on);
     });
     connect(tab, &ReaderTab::fullScreenToggled, this, &ReaderPage::fullScreenRequested);
+    connect(tab, &ReaderTab::noteCreated, this, &ReaderPage::noteCreated);
     if (!m_restoring)
         m_tabs->setCurrentIndex(idx);
     updateEmptyState();

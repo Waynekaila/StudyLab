@@ -6,6 +6,13 @@
   front matter YAML, tags, éditeur Source / Partagé / Aperçu (KaTeX, tableaux, images collées), liens `[[…]]`
   résolus par titre, nom de fichier ou alias, rétroliens, plan, liens non résolus (« créer »), mise à jour des liens
   au renommage, enregistrement automatique et corbeille annulable.
+- **Notes depuis la lecture** (itération V1-2) : création d'une note depuis une annotation, les annotations
+  affichées, un commentaire ou un document, avec citations sourcées et provenance conservée (panneau « Sources »
+  qui rouvre le passage) ; `[[liens]]` vers les documents de la bibliothèque ; autocomplétion après `[[` ; liens
+  `studylab://` cliquables dans l'aperçu.
+- **Export de la bibliothèque** : les notes sont jointes (toutes pour la bibliothèque entière, celles tirées des
+  documents pour une sélection) dans `Notes/<dossier>/`, avec leurs images dans `_attachments/` ; la fiche de
+  chaque document a son titre en alias, pour que `[[Titre]]` y mène dans Obsidian.
 - Correction : les puces (tags) créées avant l'affichage d'un écran se superposaient.
 
 ## 0.1.0 — MVP « Lire, annoter, commenter, exporter » (2026-11-19)

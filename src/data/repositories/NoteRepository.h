@@ -15,8 +15,31 @@ class Database;
 struct NoteLinkRow {
     qint64 id = 0;
     qint64 sourceNoteId = 0;
-    QString targetText;     ///< texte du lien, sans « |alias »
-    qint64 targetNoteId = 0;  ///< 0 : non résolu
+    QString targetText;       ///< texte du lien, sans « |alias »
+    QString targetType = QStringLiteral("note");  ///< « note » ou « document »
+    qint64 targetNoteId = 0;  ///< identifiant de la cible (note ou document) ; 0 : non résolu
+};
+
+/// Source d'une note créée depuis la lecture (lien « derived_from ») : annotation, commentaire ou document.
+struct NoteSourceRow {
+    QString kind;             ///< « annotation », « comment », « document »
+    qint64 id = 0;
+    qint64 documentId = 0;
+    QString documentUuid;
+    QString itemUuid;         ///< annotation ou commentaire
+    QString documentTitle;
+    QStringList authors;
+    QString quote;            ///< passage annoté, texte du commentaire
+    QString pageLabel;        ///< numéro imprimé si connu
+    int unitIndex = -1;       ///< page (PDF) ou section (EPUB)
+    QString format;           ///< « pdf », « epub »
+    bool missing = false;     ///< source supprimée depuis
+};
+
+/// Document désignable par un [[lien]] (titre).
+struct DocumentKey {
+    qint64 id = 0;
+    QString title;
 };
 
 /// Ce qu'il faut pour résoudre un [[lien]] : titre, nom de fichier et alias de chaque note active.
@@ -59,7 +82,16 @@ public:
     Result<QList<NoteLinkRow>> incomingLinks(qint64 noteId);
     /// Tous les liens [[…]] de notes, pour une nouvelle résolution après création, renommage ou suppression.
     Result<QList<NoteLinkRow>> allWikiLinks();
-    Result<void> setLinkTarget(qint64 linkId, qint64 targetNoteId);
+    Result<void> setLinkTarget(qint64 linkId, const QString& targetType, qint64 targetId);
+    /// Titres des documents actifs de la bibliothèque (cibles possibles d'un [[lien]]).
+    Result<QList<DocumentKey>> documentKeys();
+
+    /// Ajoute les sources (« derived_from ») d'une note.
+    Result<void> addSources(qint64 noteId, const QList<QPair<QString, qint64>>& sources);
+    /// Sources d'une note, dans l'ordre d'ajout, avec de quoi les afficher.
+    Result<QList<NoteSourceRow>> sources(qint64 noteId);
+    /// Notes actives tirées d'au moins un des documents (directement ou par leurs annotations et commentaires).
+    Result<QList<qint64>> notesDerivedFrom(const QList<qint64>& documentIds);
 
     /// Enregistre une pièce jointe (image collée) copiée dans le dossier attachments/.
     Result<void> addAttachment(qint64 noteId, const QString& uuid, const QString& fileName, const QString& relPath,

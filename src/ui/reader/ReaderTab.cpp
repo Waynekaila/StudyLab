@@ -4,6 +4,8 @@
 #include "services/comments/CommentService.h"
 #include "services/export/MarkdownExporter.h"
 #include "services/library/LibraryService.h"
+#include "services/notes/NoteDrafts.h"
+#include "services/notes/NoteService.h"
 #include "services/settings/SettingsService.h"
 #include "ui/reader/AnnotationPopup.h"
 #include "ui/reader/AnnotationStyle.h"
@@ -21,13 +23,13 @@
 #include <QFileDialog>
 #include <QHBoxLayout>
 #include <QMenu>
+#include <QToolButton>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QShortcut>
 #include <QSplitter>
 #include <QStandardPaths>
 #include <QTimer>
-#include <QToolButton>
 #include <QUrl>
 
 #include <algorithm>
@@ -177,6 +179,16 @@ void ReaderTab::initAnnotations()
     connect(m_pane, &AnnotationsPane::annotationActivated, this, &ReaderTab::revealAnnotation);
     connect(m_pane, &AnnotationsPane::contextMenuRequested, this, &ReaderTab::showAnnotationMenu);
     connect(m_pane, &AnnotationsPane::exportRequested, this, &ReaderTab::exportWithDialog);
+    connect(m_pane, &AnnotationsPane::noteRequested, this, [this] {
+        QMenu menu(this);
+        menu.addAction(tr("Note de lecture de ce document"), this, [this] { createReadingNote(); });
+        const QList<qint64> visible = m_pane->visibleAnnotationIds();
+        if (!visible.isEmpty())
+            menu.addAction(tr("Note des annotations affichées (%1)").arg(visible.size()), this,
+                           [this, visible] { createNoteFromAnnotations(visible); });
+        QToolButton* b = m_pane->noteButton();
+        menu.exec(b->mapToGlobal(QPoint(0, b->height())));
+    });
     connect(m_pane, &AnnotationsPane::closeRequested, this, [this] { setPaneVisible(false); });
     connect(m_pane, &AnnotationsPane::undoRequested, this, &ReaderTab::undoDelete);
     m_pane->setGroupResolver([this](int unit) { return chapterOf(unit); });
@@ -399,6 +411,9 @@ void ReaderTab::showAnnotationMenu(qint64 id, QPoint globalPos)
         menu.addAction(tr("Copier le texte"), this,
                        [text = a.selectedText] { QApplication::clipboard()->setText(normalizeQuote(text)); });
     menu.addAction(tr("Aller au passage"), this, [this, id] { revealAnnotation(id); });
+    if (a.type != AnnotationType::Bookmark)
+        menu.addAction(Icons::get(QStringLiteral("note"), pal.text2, 16), tr("Créer une note"), this,
+                       [this, id] { createNoteFromAnnotations({id}); });
     menu.addSeparator();
     QAction* del = menu.addAction(Icons::get(QStringLiteral("trash"), pal.danger, 16), tr("Supprimer"), this,
                                   [this, id] { deleteAnnotation(id); });
@@ -609,10 +624,81 @@ void ReaderTab::showCommentMenu(qint64 id, QPoint globalPos)
     if (c.anchor != CommentAnchor::Free)
         menu.addAction(tr("Aller au passage"), this, [this, id] { revealComment(id); });
     menu.addAction(tr("Copier le texte"), this, [body = c.body] { QApplication::clipboard()->setText(body); });
+    menu.addAction(Icons::get(QStringLiteral("note"), pal.text2, 16), tr("Créer une note"), this,
+                   [this, id] { createNoteFromComment(id); });
     menu.addSeparator();
     menu.addAction(Icons::get(QStringLiteral("trash"), pal.danger, 16), tr("Supprimer"), this,
                    [this, id] { deleteComment(id); });
     menu.exec(globalPos);
+}
+
+qint64 ReaderTab::createNoteFromAnnotations(const QList<qint64>& annotationIds)
+{
+    auto doc = m_library.document(m_documentId);
+    if (!doc) {
+        reportError(doc.error());
+        return 0;
+    }
+    QList<AnnotationRecord> list;
+    QList<NoteSourceRef> sources;
+    for (qint64 id : annotationIds) {
+        auto a = m_annotations.find(id);
+        if (!a || a.value().type == AnnotationType::Bookmark)
+            continue;
+        list << a.value();
+        sources << NoteSourceRef{QStringLiteral("annotation"), id};
+    }
+    if (list.isEmpty())
+        return 0;
+    const NoteDraft draft = NoteDrafts::fromAnnotations(doc.value(), list);
+    auto note = m_ctx.notes.createDerived(draft.title, draft.type, draft.folder, draft.body, sources);
+    if (!note) {
+        reportError(note.error());
+        return 0;
+    }
+    emit noteCreated(note.value().id);
+    return note.value().id;
+}
+
+qint64 ReaderTab::createNoteFromComment(qint64 commentId)
+{
+    auto doc = m_library.document(m_documentId);
+    auto c = m_commentService.find(commentId);
+    if (!doc || !c) {
+        reportError(!doc ? doc.error() : c.error());
+        return 0;
+    }
+    QList<NoteSourceRef> sources{{QStringLiteral("comment"), commentId}};
+    if (c.value().annotationId > 0)
+        sources << NoteSourceRef{QStringLiteral("annotation"), c.value().annotationId};
+    const NoteDraft draft = NoteDrafts::fromComment(doc.value(), c.value());
+    auto note = m_ctx.notes.createDerived(draft.title, draft.type, draft.folder, draft.body, sources);
+    if (!note) {
+        reportError(note.error());
+        return 0;
+    }
+    emit noteCreated(note.value().id);
+    return note.value().id;
+}
+
+qint64 ReaderTab::createReadingNote()
+{
+    auto doc = m_library.document(m_documentId);
+    auto annotations = m_annotations.list(m_documentId);
+    auto comments = m_commentService.list(m_documentId);
+    if (!doc || !annotations || !comments) {
+        reportError(!doc ? doc.error() : !annotations ? annotations.error() : comments.error());
+        return 0;
+    }
+    const NoteDraft draft = NoteDrafts::fromDocument(doc.value(), annotations.value(), comments.value());
+    auto note = m_ctx.notes.createDerived(draft.title, draft.type, draft.folder, draft.body,
+                                          {{QStringLiteral("document"), m_documentId}});
+    if (!note) {
+        reportError(note.error());
+        return 0;
+    }
+    emit noteCreated(note.value().id);
+    return note.value().id;
 }
 
 }  // namespace studylab::ui

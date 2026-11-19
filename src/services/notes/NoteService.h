@@ -21,16 +21,33 @@ struct NoteBacklink {
     QString snippet;
 };
 
-/// Lien [[…]] sortant d'une note : résolu (noteId > 0) ou non.
+/// Cible d'un [[lien]] : une note (prioritaire) ou un document de la bibliothèque, sinon rien.
+struct NoteLinkTarget {
+    enum class Kind { None, Note, Document };
+    Kind kind = Kind::None;
+    qint64 id = 0;
+    bool resolved() const { return kind != Kind::None; }
+    bool operator==(const NoteLinkTarget&) const = default;
+};
+
+/// Lien [[…]] sortant d'une note : vers une note (noteId), un document (documentId) ou non résolu.
 struct NoteLink {
     QString target;
     qint64 noteId = 0;
+    qint64 documentId = 0;
+    bool resolved() const { return noteId > 0 || documentId > 0; }
 };
 
+/// Source d'une note tirée de la lecture, prête à afficher (panneau de contexte, « ouvrir le passage »).
+using NoteSource = db::NoteSourceRow;
+/// Référence à une source au moment de la création : (« annotation » | « comment » | « document », id).
+using NoteSourceRef = QPair<QString, qint64>;
+
 /// Espace de notes : création depuis un modèle, enregistrement (front matter, alias, liens [[…]]),
-/// dossiers virtuels, corbeille, rétroliens et liens non résolus, images collées.
+/// dossiers virtuels, corbeille, rétroliens et liens non résolus, images collées, notes tirées de la lecture.
 ///
-/// Un [[lien]] se résout par titre, nom de fichier ou alias, sans tenir compte de la casse. Les liens sont
+/// Un [[lien]] se résout par titre, nom de fichier ou alias de note, sans tenir compte de la casse, ou à défaut
+/// par titre de document. Les liens sont
 /// réévalués à chaque création, renommage, suppression ou restauration : un lien vers une note pas encore
 /// écrite se résout dès qu'elle existe. Renommer une note met à jour les [[liens]] qui la citent.
 class NoteService : public QObject {
@@ -55,10 +72,23 @@ public:
     Result<QList<NoteRecord>> list();
     Result<int> count();
 
+    /// Crée une note tirée de la lecture et enregistre ses sources (provenance), en une transaction.
+    Result<NoteRecord> createDerived(const QString& title, NoteType type, const QString& folder, const QString& body,
+                                     const QList<NoteSourceRef>& sources);
+    Result<QList<NoteSource>> sources(qint64 id);
+    /// Notes tirées des documents (export d'une sélection de la bibliothèque).
+    Result<QList<NoteRecord>> derivedFrom(const QList<qint64>& documentIds);
+
     /// Note désignée par un [[lien]], 0 si aucune.
     Result<qint64> resolve(const QString& target);
-    /// Résolution groupée (aperçu en direct) : cible → note, 0 si aucune.
-    QHash<QString, qint64> resolveMany(const QStringList& targets);
+    /// Note, ou à défaut document, désigné par un [[lien]].
+    NoteLinkTarget resolveTarget(const QString& target);
+    /// Résolution groupée (aperçu en direct).
+    QHash<QString, NoteLinkTarget> resolveMany(const QStringList& targets);
+    /// Réévalue les [[liens]] (documents ajoutés, renommés ou retirés de la bibliothèque depuis).
+    Result<bool> refreshLinks();
+    /// Titres proposés par l'autocomplétion des [[liens]] : notes puis documents, sans doublon.
+    QStringList linkCompletions();
     Result<QList<NoteBacklink>> backlinks(qint64 id);
     Result<QList<NoteLink>> links(qint64 id);
 
@@ -79,6 +109,8 @@ signals:
 private:
     Result<QString> uniqueSlug(const QString& title, qint64 exceptId);
     QHash<QString, qint64> keyMap();
+    QHash<QString, qint64> documentMap();
+    static NoteLinkTarget pick(const QString& target, const QHash<QString, qint64>& notes, const QHash<QString, qint64>& docs);
     /// Liens [[…]] et alias de la note d'après son texte.
     Result<void> indexNote(const NoteRecord& note);
     /// Réévalue la cible de tous les liens. Retourne true si l'une a changé.

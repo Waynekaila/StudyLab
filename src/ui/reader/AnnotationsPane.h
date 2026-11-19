@@ -36,6 +36,8 @@ public:
     void setRows(const QList<AnnotationRecord>& records, const std::function<QString(int)>& groupOf);
     int rowOf(qint64 id) const;
     int annotationCount() const { return m_count; }
+    /// Annotations affichées (après filtres), dans l'ordre du volet.
+    QList<qint64> annotationIds() const;
 
 private:
     struct Row {
@@ -77,12 +79,16 @@ public:
     QLabel* countLabel() const { return m_count; }
     QPushButton* undoButton() const { return m_undo; }
     QToolButton* exportButton() const { return m_export; }
+    QToolButton* noteButton() const { return m_note; }
+    QList<qint64> visibleAnnotationIds() const { return m_model->annotationIds(); }
     int visibleAnnotationCount() const { return m_model->annotationCount(); }
 
 signals:
     void annotationActivated(qint64 id);
     void contextMenuRequested(qint64 id, QPoint globalPos);
     void exportRequested();
+    /// Bouton « Créer une note » (note de lecture du document ou des annotations affichées).
+    void noteRequested();
     void closeRequested();
     void undoRequested();
 
@@ -102,6 +108,7 @@ private:
     QLabel* m_title;
     QLabel* m_count;
     QToolButton* m_export;
+    QToolButton* m_note;
     QToolButton* m_close;
     QLineEdit* m_search;
     SegmentedControl* m_scope;

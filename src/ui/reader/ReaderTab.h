@@ -92,7 +92,14 @@ public:
     /// Bouton de barre d'outils du lecteur (style « readerTool »).
     static QToolButton* makeToolButton(const QString& tooltip, QWidget* parent, bool checkable = false);
 
+    /// Notes tirées de la lecture (V1) : créées dans « Notes de lecture » avec leurs sources. 0 si échec.
+    qint64 createNoteFromAnnotations(const QList<qint64>& annotationIds);
+    qint64 createNoteFromComment(qint64 commentId);
+    qint64 createReadingNote();
+
 signals:
+    /// Une note vient d'être créée depuis la lecture : l'ouvrir dans l'espace de notes.
+    void noteCreated(qint64 noteId);
     void focusModeToggled(bool on);
     /// Un commentaire ou une annotation a été créé, modifié ou supprimé.
     void contentChanged();

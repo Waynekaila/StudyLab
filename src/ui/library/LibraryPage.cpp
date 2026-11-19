@@ -2,6 +2,7 @@
 
 #include "services/export/LibraryExporter.h"
 #include "services/library/LibraryService.h"
+#include "services/notes/NoteService.h"
 #include "services/settings/SettingsService.h"
 #include "ui/components/SegmentedControl.h"
 #include "ui/components/Widgets.h"
@@ -166,7 +167,7 @@ QWidget* LibraryPage::buildHeader()
             if (auto docs = m_ctx.library.documents(); docs)
                 for (const auto& d : docs.value())
                     ids << d.id;
-            exportDocuments(ids);
+            exportDocuments(ids, true);
         });
         all->setEnabled(total > 0);
         for (QAction* a : exportMenu->actions())
@@ -612,7 +613,7 @@ void LibraryPage::showBannerState(const QString& state)
     m_banner->style()->polish(m_banner);
 }
 
-void LibraryPage::exportDocuments(const QList<qint64>& ids)
+void LibraryPage::exportDocuments(const QList<qint64>& ids, bool wholeLibrary)
 {
     if (ids.isEmpty() || m_exporting || m_ctx.library.isImporting())
         return;
@@ -632,7 +633,7 @@ void LibraryPage::exportDocuments(const QList<qint64>& ids)
     // Lecture en base sur le thread principal ; l'écriture des fichiers (et la lecture des sommaires) en arrière-plan.
     auto collected = LibraryExporter::collect(m_ctx.library, m_ctx.annotations, m_ctx.comments, ids);
     if (!collected) {
-        onExportFinished({}, 0, 0, 0, {}, false, collected.error().message);
+        onExportFinished({}, 0, 0, 0, 0, {}, false, collected.error().message);
         return;
     }
     m_exporting = true;
@@ -650,6 +651,11 @@ void LibraryPage::exportDocuments(const QList<qint64>& ids)
 
     LibraryExporter::Options opt;
     opt.appVersion = QApplication::applicationVersion();
+    // Bibliothèque entière : toutes les notes ; sinon celles tirées des documents exportés.
+    auto notes = wholeLibrary ? m_ctx.notes.list() : m_ctx.notes.derivedFrom(ids);
+    if (notes)
+        opt.notes = notes.value();
+    opt.attachmentsDir = m_ctx.notes.attachmentsDir();
     QPointer<LibraryPage> self(this);
     auto cancel = m_exportCancel;
     (void)QtConcurrent::run([self, parent, docs = collected.value(), opt, cancel] {
@@ -671,17 +677,17 @@ void LibraryPage::exportDocuments(const QList<qint64>& ids)
                 if (!self)
                     return;
                 if (!result)
-                    self->onExportFinished({}, 0, 0, 0, {}, false, result.error().message);
+                    self->onExportFinished({}, 0, 0, 0, 0, {}, false, result.error().message);
                 else
                     self->onExportFinished(result.value().folder, result.value().documents, result.value().annotations,
-                                           result.value().comments, result.value().errors, result.value().cancelled,
+                                           result.value().comments, result.value().notes, result.value().errors, result.value().cancelled,
                                            {});
             },
             Qt::QueuedConnection);
     });
 }
 
-void LibraryPage::onExportFinished(const QString& folder, int documents, int annotations, int comments,
+void LibraryPage::onExportFinished(const QString& folder, int documents, int annotations, int comments, int notes,
                                    const QStringList& errors, bool cancelled, const QString& error)
 {
     m_exporting = false;
@@ -693,6 +699,8 @@ void LibraryPage::onExportFinished(const QString& folder, int documents, int ann
         text = countLabel(documents, tr("document exporté"), tr("documents exportés"));
         text += QStringLiteral(" · ") + countLabel(annotations, tr("annotation"), tr("annotations"));
         text += QStringLiteral(" · ") + countLabel(comments, tr("commentaire"), tr("commentaires"));
+        if (notes > 0)
+            text += QStringLiteral(" · ") + countLabel(notes, tr("note"), tr("notes"));
         if (cancelled)
             text = tr("Export annulé · ") + text;
         if (!errors.isEmpty())

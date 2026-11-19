@@ -1,6 +1,10 @@
 #include "core/domain/Note.h"
 #include "data/migrations/Migrator.h"
 #include "data/sqlite/Database.h"
+#include "data/repositories/DocumentRepository.h"
+#include "services/annotations/AnnotationService.h"
+#include "services/comments/CommentService.h"
+#include "services/notes/NoteDrafts.h"
 #include "services/notes/NoteService.h"
 
 #include <QDir>
@@ -209,6 +213,111 @@ private slots:
         QVERIFY(QFile::exists(QDir(notes.attachmentsDir()).filePath(rel.value().mid(12))));
         QCOMPARE(m_db->queryInt(QStringLiteral("SELECT count(*) FROM attachments WHERE note_id = %1").arg(a)).value(), 1);
         QVERIFY(!notes.addImage(a, QByteArray("x"), QStringLiteral("exe")).ok());
+    }
+
+    void notesFromReadingKeepTheirSources()
+    {
+        DocumentRepository docs(*m_db);
+        DocumentRecord doc;
+        doc.title = QStringLiteral("Thermodynamique");
+        doc.fileHash = QStringLiteral("h1");
+        doc.filePath = QStringLiteral("h1.pdf");
+        doc.authors = {QStringLiteral("Yunus A. Çengel"), QStringLiteral("Michael A. Boles")};
+        doc.year = 2019;
+        QVERIFY(docs.insert(doc).ok());
+        doc = docs.findById(doc.id).value();
+
+        AnnotationService annotations(*m_db);
+        auto annotate = [&](int page, double y, const QString& text) {
+            PdfLocator l;
+            l.page = page;
+            l.rects = {QRectF(0.1, y, 0.8, 0.02)};
+            l.exact = text;
+            AnnotationRecord r;
+            r.documentId = doc.id;
+            r.locator = l.toJson();
+            r.selectedText = text;
+            return annotations.create(r).value();
+        };
+        const AnnotationRecord second = annotate(410, 0.5, QStringLiteral("L'entropie d'un système isolé ne peut que croître."));
+        const AnnotationRecord first = annotate(404, 0.2, QStringLiteral("Inégalité de\nClausius"));
+        QVERIFY(annotations.setNote(second.id, QStringLiteral("Principe d'évolution.")).ok());
+        CommentService comments(*m_db);
+        CommentRecord q;
+        q.documentId = doc.id;
+        q.kind = CommentKind::Question;
+        q.body = QStringLiteral("Pourquoi $\\delta Q / T$ et pas $dQ$ ?");
+        const CommentRecord question = comments.create(q).value();
+
+        // Une annotation
+        const NoteDraft one = NoteDrafts::fromAnnotation(doc, annotations.find(second.id).value());
+        QCOMPARE(one.title, QStringLiteral("L'entropie d'un système isolé ne peut que croître."));
+        QCOMPARE(one.folder, QStringLiteral("Notes de lecture"));
+        QVERIFY(one.body.contains(QStringLiteral("> L'entropie d'un système isolé ne peut que croître.")));
+        QVERIFY2(one.body.contains(QStringLiteral("> — *Yunus A. Çengel*, [[Thermodynamique]], [p. 411](studylab://open?doc=")),
+                 qPrintable(one.body));
+        QVERIFY(one.body.contains(QStringLiteral("Principe d'évolution.")));
+        QCOMPARE(parseFrontMatter(one.body).values.value(QStringLiteral("année")).toString(), QStringLiteral("2019"));
+
+        // Plusieurs annotations : ordre de lecture
+        const NoteDraft many = NoteDrafts::fromAnnotations(doc, annotations.list(doc.id).value());
+        QCOMPARE(many.title, QStringLiteral("Thermodynamique — passages"));
+        QVERIFY(many.body.indexOf(QStringLiteral("Clausius")) < many.body.indexOf(QStringLiteral("isolé")));
+        QVERIFY(many.body.contains(QStringLiteral("> Inégalité de Clausius")));
+
+        // Commentaire (question → note de recherche)
+        const NoteDraft fromQ = NoteDrafts::fromComment(doc, comments.find(question.id).value());
+        QCOMPARE(fromQ.type, NoteType::Research);
+        QCOMPARE(fromQ.title, QStringLiteral("Pourquoi \\delta Q / T et pas dQ ?"));
+        QVERIFY(fromQ.body.contains(QStringLiteral("&comment=") + question.uuid));
+
+        // Document entier
+        const NoteDraft reading = NoteDrafts::fromDocument(doc, annotations.list(doc.id).value(), comments.list(doc.id).value());
+        QCOMPARE(reading.title, QStringLiteral("Lecture · Thermodynamique"));
+        QVERIFY(reading.body.contains(QStringLiteral("## Passages annotés")));
+        QVERIFY(reading.body.contains(QStringLiteral("## Questions en suspens\n\n- [ ] Pourquoi")));
+
+        NoteService notes = service();
+        auto created = notes.createDerived(reading.title, reading.type, reading.folder, reading.body,
+                                           {{QStringLiteral("document"), doc.id},
+                                            {QStringLiteral("annotation"), second.id},
+                                            {QStringLiteral("comment"), question.id}});
+        QVERIFY2(created.ok(), qPrintable(created.ok() ? QString() : created.error().message));
+        const qint64 id = created.value().id;
+        auto sources = notes.sources(id).value();
+        QCOMPARE(sources.size(), 3);
+        QCOMPARE(sources.at(0).kind, QStringLiteral("document"));
+        QCOMPARE(sources.at(0).documentTitle, QStringLiteral("Thermodynamique"));
+        QCOMPARE(sources.at(0).authors.first(), QStringLiteral("Yunus A. Çengel"));
+        QCOMPARE(sources.at(1).kind, QStringLiteral("annotation"));
+        QCOMPARE(sources.at(1).documentId, doc.id);
+        QCOMPARE(sources.at(1).itemUuid, second.uuid);
+        QCOMPARE(sources.at(1).unitIndex, 410);
+        QVERIFY(sources.at(1).quote.contains(QStringLiteral("isolé")));
+        QCOMPARE(sources.at(2).kind, QStringLiteral("comment"));
+        QVERIFY(!sources.at(2).missing);
+        QVERIFY(!notes.createDerived(QStringLiteral("x"), NoteType::Personal, {}, {}, {{QStringLiteral("carte"), 1}}).ok());
+
+        // Source supprimée : signalée, la note reste.
+        QVERIFY(annotations.remove(second.id).ok());
+        QVERIFY(notes.sources(id).value().at(1).missing);
+
+        // Notes tirées d'un document (export d'une sélection)
+        QCOMPARE(notes.derivedFrom({doc.id}).value().size(), 1);
+        QVERIFY(notes.derivedFrom({doc.id + 100}).value().isEmpty());
+
+        // [[Thermodynamique]] désigne le document (aucune note de ce titre).
+        const auto links = notes.links(id).value();
+        QCOMPARE(links.size(), 1);
+        QCOMPARE(links.first().documentId, doc.id);
+        QCOMPARE(links.first().noteId, 0);
+        QVERIFY(links.first().resolved());
+        QCOMPARE(notes.resolveTarget(QStringLiteral("thermodynamique")).kind, NoteLinkTarget::Kind::Document);
+        // Une note du même titre devient prioritaire.
+        const qint64 homonym = notes.create(QStringLiteral("Thermodynamique"), NoteType::Course).value().id;
+        QCOMPARE(notes.links(id).value().first().noteId, homonym);
+        QVERIFY(notes.linkCompletions().contains(QStringLiteral("Lecture · Thermodynamique")));
+        QCOMPARE(notes.linkCompletions().count(QStringLiteral("Thermodynamique")), 1);
     }
 
     void fullTextSearchSeesNotes()

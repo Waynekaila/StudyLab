@@ -52,7 +52,8 @@ public:
     QPushButton* openExportButton() const { return m_openExport; }
 
     /// Exporte des documents en Markdown (coffre Obsidian + CSV) dans un dossier choisi, en arrière-plan.
-    void exportDocuments(const QList<qint64>& ids);
+    /// wholeLibrary joint toutes les notes ; sinon, seulement celles tirées de ces documents.
+    void exportDocuments(const QList<qint64>& ids, bool wholeLibrary = false);
     bool isExporting() const { return m_exporting; }
     QList<qint64> selectedIds() const;
     QList<qint64> visibleIds() const;
@@ -87,7 +88,7 @@ private:
     void onImportFinished(const ImportReport& report);
     void resetFilters();
     void showBannerState(const QString& state);
-    void onExportFinished(const QString& folder, int documents, int annotations, int comments,
+    void onExportFinished(const QString& folder, int documents, int annotations, int comments, int notes,
                           const QStringList& errors, bool cancelled, const QString& error);
 
     AppContext& m_ctx;

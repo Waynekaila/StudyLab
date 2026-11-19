@@ -267,6 +267,7 @@ private slots:
 
         const QString fiche = MarkdownExporter::documentNote(m_doc, anns, opt);
         QVERIFY(fiche.contains(QStringLiteral("title: \"Thermodynamique : une approche pragmatique\"")));
+        QVERIFY(fiche.contains(QStringLiteral("aliases:\n  - \"Thermodynamique : une approche pragmatique\"")));
         QVERIFY(fiche.contains(QStringLiteral("authors:\n  - \"Yunus A. Çengel\"\n  - \"Michael A. Boles\"")));
         QVERIFY(fiche.contains(QStringLiteral("  - \"examen-S5\"")));
         QVERIFY(fiche.contains(QStringLiteral("uuid: ") + m_doc.uuid));

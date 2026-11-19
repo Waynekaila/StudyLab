@@ -59,6 +59,7 @@ NoteLinkRow readLink(const Statement& s)
     l.sourceNoteId = s.columnInt64(1);
     l.targetText = s.columnText(2);
     l.targetNoteId = s.isNull(3) ? 0 : s.columnInt64(3);
+    l.targetType = s.columnText(4);
     return l;
 }
 
@@ -267,7 +268,7 @@ Result<void> NoteRepository::replaceWikiLinks(qint64 noteId, const QList<NoteLin
         return r;
     auto ins = m_db.prepare(QStringLiteral(
         "INSERT INTO links(source_type, source_id, target_type, target_id, target_text, kind, origin, created_at) "
-        "VALUES ('note', ?1, 'note', ?2, ?3, 'reference', 'wikilink', ?4)"));
+        "VALUES ('note', ?1, ?5, ?2, ?3, 'reference', 'wikilink', ?4)"));
     if (!ins)
         return ins.error();
     const QString now = nowIsoUtc();
@@ -278,7 +279,8 @@ Result<void> NoteRepository::replaceWikiLinks(qint64 noteId, const QList<NoteLin
             ins.value().bind(2, l.targetNoteId);
         else
             ins.value().bindNull(2);
-        if (auto r = ins.value().bind(3, l.targetText).bind(4, now).run(); !r)
+        const QString type = l.targetNoteId > 0 ? l.targetType : QStringLiteral("note");
+        if (auto r = ins.value().bind(3, l.targetText).bind(4, now).bind(5, type).run(); !r)
             return r;
     }
     return {};
@@ -287,7 +289,7 @@ Result<void> NoteRepository::replaceWikiLinks(qint64 noteId, const QList<NoteLin
 Result<QList<NoteLinkRow>> NoteRepository::outgoingLinks(qint64 noteId)
 {
     auto stmt = m_db.prepare(QStringLiteral(
-        "SELECT id, source_id, target_text, target_id FROM links "
+        "SELECT id, source_id, target_text, target_id, target_type FROM links "
         "WHERE source_type = 'note' AND source_id = ?1 AND origin = 'wikilink' ORDER BY id"));
     if (!stmt)
         return stmt.error();
@@ -298,7 +300,7 @@ Result<QList<NoteLinkRow>> NoteRepository::outgoingLinks(qint64 noteId)
 Result<QList<NoteLinkRow>> NoteRepository::incomingLinks(qint64 noteId)
 {
     auto stmt = m_db.prepare(QStringLiteral(
-        "SELECT l.id, l.source_id, l.target_text, l.target_id FROM links l JOIN notes s ON s.id = l.source_id "
+        "SELECT l.id, l.source_id, l.target_text, l.target_id, l.target_type FROM links l JOIN notes s ON s.id = l.source_id "
         "WHERE l.source_type = 'note' AND l.target_type = 'note' AND l.target_id = ?1 AND l.source_id <> ?1 "
         "AND s.deleted_at IS NULL ORDER BY s.updated_at DESC, l.id"));
     if (!stmt)
@@ -310,23 +312,109 @@ Result<QList<NoteLinkRow>> NoteRepository::incomingLinks(qint64 noteId)
 Result<QList<NoteLinkRow>> NoteRepository::allWikiLinks()
 {
     auto stmt = m_db.prepare(QStringLiteral(
-        "SELECT id, source_id, target_text, target_id FROM links WHERE source_type = 'note' AND origin = 'wikilink'"));
+        "SELECT id, source_id, target_text, target_id, target_type FROM links WHERE source_type = 'note' AND origin = 'wikilink'"));
     if (!stmt)
         return stmt.error();
     return collect<NoteLinkRow>(stmt.value(), readLink);
 }
 
-Result<void> NoteRepository::setLinkTarget(qint64 linkId, qint64 targetNoteId)
+Result<void> NoteRepository::setLinkTarget(qint64 linkId, const QString& targetType, qint64 targetId)
 {
-    auto stmt = m_db.prepare(QStringLiteral("UPDATE links SET target_id = ?2 WHERE id = ?1"));
+    auto stmt = m_db.prepare(QStringLiteral("UPDATE links SET target_type = ?2, target_id = ?3 WHERE id = ?1"));
     if (!stmt)
         return stmt.error();
-    stmt.value().bind(1, linkId);
-    if (targetNoteId > 0)
-        stmt.value().bind(2, targetNoteId);
+    stmt.value().bind(1, linkId).bind(2, targetId > 0 ? targetType : QStringLiteral("note"));
+    if (targetId > 0)
+        stmt.value().bind(3, targetId);
     else
-        stmt.value().bindNull(2);
+        stmt.value().bindNull(3);
     return stmt.value().run();
+}
+
+Result<QList<DocumentKey>> NoteRepository::documentKeys()
+{
+    auto stmt = m_db.prepare(QStringLiteral("SELECT id, title FROM documents WHERE deleted_at IS NULL ORDER BY id"));
+    if (!stmt)
+        return stmt.error();
+    return collect<DocumentKey>(stmt.value(), [](const Statement& s) { return DocumentKey{s.columnInt64(0), s.columnText(1)}; });
+}
+
+Result<void> NoteRepository::addSources(qint64 noteId, const QList<QPair<QString, qint64>>& sources)
+{
+    auto ins = m_db.prepare(QStringLiteral(
+        "INSERT INTO links(source_type, source_id, target_type, target_id, kind, origin, created_at) "
+        "VALUES ('note', ?1, ?2, ?3, 'derived_from', 'derived', ?4)"));
+    if (!ins)
+        return ins.error();
+    const QString now = nowIsoUtc();
+    for (const auto& [kind, id] : sources) {
+        if (kind != QLatin1String("annotation") && kind != QLatin1String("comment") && kind != QLatin1String("document"))
+            return invalid(QStringLiteral("Source de note inconnue : %1").arg(kind));
+        ins.value().reset();
+        if (auto r = ins.value().bind(1, noteId).bind(2, kind).bind(3, id).bind(4, now).run(); !r)
+            return r;
+    }
+    return {};
+}
+
+Result<QList<NoteSourceRow>> NoteRepository::sources(qint64 noteId)
+{
+    // Une ligne par source ; les colonnes de l'annotation ou du commentaire sont NULL pour les autres types.
+    auto stmt = m_db.prepare(QStringLiteral(
+        "SELECT l.target_type, l.target_id, d.id, d.uuid, d.title, d.format, "
+        "       coalesce(a.uuid, c.uuid), coalesce(a.selected_text, c.body_md), "
+        "       coalesce(a.page_label, json_extract(c.locator_json, '$.pageLabel')), coalesce(a.unit_index, c.unit_index), "
+        "       (d.id IS NULL OR d.deleted_at IS NOT NULL OR a.deleted_at IS NOT NULL OR c.deleted_at IS NOT NULL "
+        "        OR (l.target_type = 'annotation' AND a.id IS NULL) OR (l.target_type = 'comment' AND c.id IS NULL)), "
+        "       (SELECT group_concat(name, char(31)) FROM (SELECT au.name FROM document_authors da "
+        "          JOIN authors au ON au.id = da.author_id WHERE da.document_id = d.id ORDER BY da.position)) "
+        "FROM links l "
+        "LEFT JOIN annotations a ON l.target_type = 'annotation' AND a.id = l.target_id "
+        "LEFT JOIN comments c ON l.target_type = 'comment' AND c.id = l.target_id "
+        "LEFT JOIN documents d ON d.id = CASE l.target_type WHEN 'document' THEN l.target_id "
+        "     WHEN 'annotation' THEN a.document_id WHEN 'comment' THEN c.document_id END "
+        "WHERE l.source_type = 'note' AND l.source_id = ?1 AND l.kind = 'derived_from' ORDER BY l.id"));
+    if (!stmt)
+        return stmt.error();
+    stmt.value().bind(1, noteId);
+    return collect<NoteSourceRow>(stmt.value(), [](const Statement& s) {
+        NoteSourceRow r;
+        r.kind = s.columnText(0);
+        r.id = s.columnInt64(1);
+        r.documentId = s.isNull(2) ? 0 : s.columnInt64(2);
+        r.documentUuid = s.columnText(3);
+        r.documentTitle = s.columnText(4);
+        r.format = s.columnText(5);
+        r.itemUuid = s.columnText(6);
+        r.quote = s.columnText(7);
+        r.pageLabel = s.columnText(8);
+        r.unitIndex = s.isNull(9) ? -1 : int(s.columnInt64(9));
+        r.missing = s.columnInt64(10) != 0;
+        if (!s.isNull(11))
+            r.authors = s.columnText(11).split(QChar(31));
+        return r;
+    });
+}
+
+Result<QList<qint64>> NoteRepository::notesDerivedFrom(const QList<qint64>& documentIds)
+{
+    QList<qint64> out;
+    if (documentIds.isEmpty())
+        return out;
+    QStringList ids;
+    for (qint64 id : documentIds)
+        ids << QString::number(id);
+    const QString list = ids.join(u',');
+    auto stmt = m_db.prepare(QStringLiteral(
+        "SELECT DISTINCT n.id FROM notes n JOIN links l ON l.source_type = 'note' AND l.source_id = n.id "
+        "AND l.kind = 'derived_from' "
+        "LEFT JOIN annotations a ON l.target_type = 'annotation' AND a.id = l.target_id "
+        "LEFT JOIN comments c ON l.target_type = 'comment' AND c.id = l.target_id "
+        "WHERE n.deleted_at IS NULL AND ((l.target_type = 'document' AND l.target_id IN (%1)) "
+        "OR a.document_id IN (%1) OR c.document_id IN (%1)) ORDER BY n.id").arg(list));
+    if (!stmt)
+        return stmt.error();
+    return collect<qint64>(stmt.value(), [](const Statement& s) { return s.columnInt64(0); });
 }
 
 Result<void> NoteRepository::addAttachment(qint64 noteId, const QString& uuid, const QString& fileName,

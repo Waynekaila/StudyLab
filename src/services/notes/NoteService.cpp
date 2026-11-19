@@ -113,16 +113,59 @@ QHash<QString, qint64> NoteService::keyMap()
     return map;
 }
 
+QHash<QString, qint64> NoteService::documentMap()
+{
+    QHash<QString, qint64> map;
+    auto docs = m_repo.documentKeys();
+    if (!docs)
+        return map;
+    for (const auto& d : docs.value()) {
+        const QString key = wikiLinkKey(d.title);
+        if (!key.isEmpty() && !map.contains(key))
+            map.insert(key, d.id);
+    }
+    return map;
+}
+
+NoteLinkTarget NoteService::pick(const QString& target, const QHash<QString, qint64>& notes, const QHash<QString, qint64>& docs)
+{
+    if (target.trimmed().startsWith(u'@'))
+        return {};
+    const QString key = wikiLinkKey(target);
+    if (const qint64 n = notes.value(key, 0); n > 0)
+        return {NoteLinkTarget::Kind::Note, n};
+    if (const qint64 d = docs.value(key, 0); d > 0)
+        return {NoteLinkTarget::Kind::Document, d};
+    return {};
+}
+
+namespace {
+QString typeKey(const NoteLinkTarget& t)
+{
+    return t.kind == NoteLinkTarget::Kind::Document ? QStringLiteral("document") : QStringLiteral("note");
+}
+NoteLinkTarget fromRow(const db::NoteLinkRow& l)
+{
+    if (l.targetNoteId <= 0)
+        return {};
+    return {l.targetType == QLatin1String("document") ? NoteLinkTarget::Kind::Document : NoteLinkTarget::Kind::Note,
+            l.targetNoteId};
+}
+}  // namespace
+
 Result<void> NoteService::indexNote(const NoteRecord& note)
 {
     if (auto r = m_repo.setAliases(note.id, noteAliases(note.body)); !r)
         return r;
-    const QHash<QString, qint64> map = keyMap();
+    const QHash<QString, qint64> notes = keyMap();
+    const QHash<QString, qint64> docs = documentMap();
     QList<db::NoteLinkRow> rows;
     for (const QString& target : noteTargets(note.body)) {
+        const NoteLinkTarget t = pick(target, notes, docs);
         db::NoteLinkRow row;
         row.targetText = target;
-        row.targetNoteId = map.value(wikiLinkKey(target), 0);
+        row.targetType = typeKey(t);
+        row.targetNoteId = t.id;
         rows << row;
     }
     return m_repo.replaceWikiLinks(note.id, rows);
@@ -130,16 +173,17 @@ Result<void> NoteService::indexNote(const NoteRecord& note)
 
 Result<bool> NoteService::relinkAll()
 {
-    const QHash<QString, qint64> map = keyMap();
+    const QHash<QString, qint64> notes = keyMap();
+    const QHash<QString, qint64> docs = documentMap();
     auto links = m_repo.allWikiLinks();
     if (!links)
         return links.error();
     bool changed = false;
     for (const auto& l : links.value()) {
-        const qint64 target = map.value(wikiLinkKey(l.targetText), 0);
-        if (target == l.targetNoteId)
+        const NoteLinkTarget t = pick(l.targetText, notes, docs);
+        if (t == fromRow(l))
             continue;
-        if (auto r = m_repo.setLinkTarget(l.id, target); !r)
+        if (auto r = m_repo.setLinkTarget(l.id, typeKey(t), t.id); !r)
             return r.error();
         changed = true;
     }
@@ -262,7 +306,7 @@ Result<NoteRecord> NoteService::save(qint64 id, const QString& title, const QStr
     auto targets = [](const QList<db::NoteLinkRow>& rows) {
         QStringList out;
         for (const auto& r : rows)
-            out << QStringLiteral("%1→%2").arg(r.targetText).arg(r.targetNoteId);
+            out << QStringLiteral("%1→%2:%3").arg(r.targetText, r.targetType).arg(r.targetNoteId);
         return out;
     };
     if (renamed || relinked.value() || oldAliases != noteAliases(note.body)
@@ -381,12 +425,97 @@ Result<qint64> NoteService::resolve(const QString& target)
     return keyMap().value(wikiLinkKey(target), 0);
 }
 
-QHash<QString, qint64> NoteService::resolveMany(const QStringList& targets)
+NoteLinkTarget NoteService::resolveTarget(const QString& target) { return pick(target, keyMap(), documentMap()); }
+
+QHash<QString, NoteLinkTarget> NoteService::resolveMany(const QStringList& targets)
 {
-    const QHash<QString, qint64> map = keyMap();
-    QHash<QString, qint64> out;
+    const QHash<QString, qint64> notes = keyMap();
+    const QHash<QString, qint64> docs = documentMap();
+    QHash<QString, NoteLinkTarget> out;
     for (const QString& t : targets)
-        out.insert(t, t.trimmed().startsWith(u'@') ? 0 : map.value(wikiLinkKey(t), 0));
+        out.insert(t, pick(t, notes, docs));
+    return out;
+}
+
+Result<bool> NoteService::refreshLinks()
+{
+    auto changed = relinkAll();
+    if (changed && changed.value())
+        emit linksChanged();
+    return changed;
+}
+
+QStringList NoteService::linkCompletions()
+{
+    QStringList out;
+    QStringList keys;
+    auto add = [&](const QString& title) {
+        const QString key = wikiLinkKey(title);
+        if (key.isEmpty() || keys.contains(key))
+            return;
+        keys << key;
+        out << title;
+    };
+    if (auto notes = m_repo.keys())
+        for (const auto& k : notes.value()) {
+            add(k.title);
+            for (const QString& a : k.aliases)
+                add(a);
+        }
+    if (auto docs = m_repo.documentKeys())
+        for (const auto& d : docs.value())
+            add(d.title);
+    return out;
+}
+
+Result<NoteRecord> NoteService::createDerived(const QString& title, NoteType type, const QString& folder,
+                                              const QString& body, const QList<NoteSourceRef>& sources)
+{
+    QString t = title.simplified();
+    if (t.isEmpty())
+        t = tr("Sans titre");
+    db::Transaction tx(m_db);
+    if (!tx.isActive())
+        return tx.beginError();
+    auto slug = uniqueSlug(t, 0);
+    if (!slug)
+        return slug.error();
+    NoteRecord note;
+    note.title = slug.value() == noteSlug(t) ? t : slug.value();
+    note.slug = slug.value();
+    note.type = type;
+    note.folder = normalizeFolder(folder);
+    note.body = body;
+    note.frontMatter = parseFrontMatter(body).values;
+    if (auto r = m_repo.insert(note); !r)
+        return r.error();
+    if (auto r = m_repo.addSources(note.id, sources); !r)
+        return r.error();
+    if (auto r = indexNote(note); !r)
+        return r.error();
+    if (auto r = relinkAll(); !r)
+        return r.error();
+    if (auto r = tx.commit(); !r)
+        return r.error();
+    auto stored = m_repo.findById(note.id);
+    if (stored) {
+        emit noteAdded(stored.value());
+        emit linksChanged();
+    }
+    return stored;
+}
+
+Result<QList<NoteSource>> NoteService::sources(qint64 id) { return m_repo.sources(id); }
+
+Result<QList<NoteRecord>> NoteService::derivedFrom(const QList<qint64>& documentIds)
+{
+    auto ids = m_repo.notesDerivedFrom(documentIds);
+    if (!ids)
+        return ids.error();
+    QList<NoteRecord> out;
+    for (qint64 id : ids.value())
+        if (auto n = m_repo.findById(id))
+            out << n.value();
     return out;
 }
 
@@ -420,8 +549,15 @@ Result<QList<NoteLink>> NoteService::links(qint64 id)
     if (!rows)
         return rows.error();
     QList<NoteLink> out;
-    for (const auto& r : rows.value())
-        out.append({r.targetText, r.targetNoteId});
+    for (const auto& r : rows.value()) {
+        NoteLink l;
+        l.target = r.targetText;
+        if (r.targetNoteId > 0 && r.targetType == QLatin1String("document"))
+            l.documentId = r.targetNoteId;
+        else
+            l.noteId = r.targetNoteId;
+        out << l;
+    }
     return out;
 }
 

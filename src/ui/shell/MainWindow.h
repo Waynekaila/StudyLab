@@ -17,6 +17,7 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 public:
     explicit MainWindow(AppContext& ctx, QWidget* parent = nullptr);
+    ~MainWindow() override;
 
     void navigateTo(const QString& pageId);
     QString currentPage() const;
