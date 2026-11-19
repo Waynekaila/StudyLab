@@ -3,12 +3,14 @@
 #include "services/settings/SettingsService.h"
 #include "ui/components/FadeStackedWidget.h"
 #include "ui/library/LibraryPage.h"
+#include "ui/reader/ReaderPage.h"
 #include "ui/pages/HomePage.h"
 #include "ui/pages/SettingsPage.h"
 #include "ui/shell/Sidebar.h"
 #include "ui/theme/ThemeManager.h"
 
 #include <QCloseEvent>
+#include <QShortcut>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QMimeData>
@@ -37,6 +39,7 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
                             {
                                 {QStringLiteral("home"), QStringLiteral("home"), tr("Accueil")},
                                 {QStringLiteral("library"), QStringLiteral("library"), tr("Bibliothèque")},
+                                {QStringLiteral("reader"), QStringLiteral("book"), tr("Lecture")},
                                 {QStringLiteral("settings"), QStringLiteral("settings"), tr("Paramètres")},
                             },
                             root);
@@ -52,7 +55,19 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
     auto* home = new HomePage(ctx, m_stack);
     addPage(QStringLiteral("home"), home);
     connect(home, &HomePage::navigateRequested, this, &MainWindow::navigateTo);
-    addPage(QStringLiteral("library"), new LibraryPage(ctx, m_stack));
+    auto* library = new LibraryPage(ctx, m_stack);
+    addPage(QStringLiteral("library"), library);
+    auto* reader = new ReaderPage(ctx, m_stack);
+    addPage(QStringLiteral("reader"), reader);
+    connect(library, &LibraryPage::openDocumentRequested, this, [this, reader](qint64 id) {
+        navigateTo(QStringLiteral("reader"));
+        reader->openDocument(id);
+    });
+    connect(reader, &ReaderPage::libraryRequested, this, [this] { navigateTo(QStringLiteral("library")); });
+    connect(reader, &ReaderPage::focusModeChanged, this, [this](bool on) { m_sidebar->setVisible(!on); });
+    connect(reader, &ReaderPage::fullScreenRequested, this, &MainWindow::toggleFullScreen);
+    auto* fullScreen = new QShortcut(QKeySequence(Qt::Key_F11), this, this, &MainWindow::toggleFullScreen);
+    fullScreen->setContext(Qt::WindowShortcut);
     addPage(QStringLiteral("settings"), new SettingsPage(ctx, m_stack));
 
     connect(m_sidebar, &Sidebar::navigated, this, &MainWindow::navigateTo);
@@ -120,8 +135,15 @@ void MainWindow::dropEvent(QDropEvent* event)
         library->importPaths(paths);
 }
 
+void MainWindow::toggleFullScreen()
+{
+    setWindowState(windowState() ^ Qt::WindowFullScreen);
+}
+
 void MainWindow::closeEvent(QCloseEvent* event)
 {
+    if (auto* reader = qobject_cast<ReaderPage*>(m_pages.value(QStringLiteral("reader"))))
+        reader->saveSession();
     QSettings qs;
     qs.setValue(QStringLiteral("ui/geometry"), saveGeometry());
     QMainWindow::closeEvent(event);

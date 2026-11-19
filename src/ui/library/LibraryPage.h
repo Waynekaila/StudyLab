@@ -45,6 +45,10 @@ public:
     QLabel* importStatusLabel() const { return m_bannerText; }
     QWidget* emptyState() const { return m_empty; }
 
+signals:
+    /// Demande d'ouverture d'un document dans le lecteur.
+    void openDocumentRequested(qint64 id);
+
 protected:
     void showEvent(QShowEvent* event) override;
 

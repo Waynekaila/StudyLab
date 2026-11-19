@@ -229,6 +229,28 @@ QToolButton#FavoriteButton:hover { background: %{sunken}; }
 QFrame#ImportBanner { background: %{primarySoft}; border: 1px solid %{primarySoft}; border-radius: 10px; }
 QFrame#ImportBanner[state="done"] { background: %{sageSoft}; border-color: %{sageSoft}; }
 QFrame#ImportBanner[state="warning"] { background: %{amberSoft}; border-color: %{amberSoft}; }
+QFrame#ReaderToolbar { background: %{surface}; border: none; border-bottom: 1px solid %{borderSoft}; }
+QFrame#ReaderSearchBar { background: %{surface}; border: none; border-bottom: 1px solid %{borderSoft}; }
+QFrame#ReaderSide { background: %{surface2}; border: none; border-right: 1px solid %{borderSoft}; }
+QListView#Thumbnails, QTreeView#Outline { background: transparent; border: none; outline: none; }
+QTreeView#Outline::item { padding: %{p4} %{p4}; border-radius: 6px; color: %{text2}; }
+QTreeView#Outline::item:hover { background: %{sunken}; }
+QTreeView#Outline::item:selected { background: %{primarySoft}; color: %{primaryStrong}; }
+QToolButton[readerTool="true"] { background: transparent; border: 1px solid transparent; border-radius: 6px; padding: %{p4}; }
+QToolButton[readerTool="true"]:hover { background: %{sunken}; }
+QToolButton[readerTool="true"]:checked { background: %{primarySoft}; }
+QToolButton[readerTool="true"]:disabled { background: transparent; }
+QLineEdit#PageEdit { padding: %{p4} %{p4}; }
+QTabWidget#ReaderTabs::pane { border: none; }
+QTabWidget#ReaderTabs QTabBar { background: %{surface2}; }
+QTabBar::tab {
+    background: transparent; color: %{text2}; border: none; border-right: 1px solid %{borderSoft};
+    padding: %{p7} %{p12}; min-width: 60px;
+}
+QTabBar::tab:selected { background: %{surface}; color: %{text}; }
+QTabBar::tab:hover:!selected { background: %{sunken}; }
+QToolButton#TabClose { border: none; border-radius: 4px; padding: 2px; background: transparent; }
+QToolButton#TabClose:hover { background: %{sunken}; }
 QProgressBar { background: %{sunken}; border: none; border-radius: 3px; }
 QProgressBar::chunk { background: %{primary}; border-radius: 3px; }
 QMessageBox { background: %{surface}; }

@@ -81,6 +81,12 @@ LibraryPage::LibraryPage(AppContext& ctx, QWidget* parent)
     m_searchDebounce.setInterval(160);
     connect(&m_searchDebounce, &QTimer::timeout, this, &LibraryPage::applyFilters);
     connect(m_view->selectionModel(), &QItemSelectionModel::currentChanged, this, &LibraryPage::onSelectionChanged);
+    connect(m_view, &QListView::activated, this, [this](const QModelIndex& idx) {
+        const auto* r = m_model->recordAt(idx.row());
+        if (r && r->format == DocumentFormat::Pdf)
+            emit openDocumentRequested(r->id);
+    });
+    connect(m_detail, &DocumentDetailPanel::readRequested, this, &LibraryPage::openDocumentRequested);
     connect(m_detail, &DocumentDetailPanel::removed, this, [this] {
         m_selectedId = 0;
         m_detail->hide();

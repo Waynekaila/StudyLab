@@ -4,6 +4,7 @@
 #include "core/Result.h"
 #include "core/domain/Document.h"
 #include "data/repositories/DocumentRepository.h"
+#include "data/repositories/ReadingRepository.h"
 #include "services/library/ImportWorker.h"
 
 #include <QFutureWatcher>
@@ -51,6 +52,11 @@ public:
     /// Retire le document de la bibliothèque (ses annotations restent en base, le fichier géré est conservé).
     Result<void> remove(qint64 id);
 
+    /// Ouverture d'un document : date d'ouverture, et statut « À lire » → « En cours ».
+    Result<void> markOpened(qint64 id);
+    std::optional<db::ReadingPosition> readingPosition(qint64 id);
+    Result<void> saveReadingPosition(qint64 id, const db::ReadingPosition& position);
+
     /// Chemin absolu du fichier du document, et de sa couverture (vide si aucune).
     QString documentFile(const DocumentRecord& record) const;
     QString coverFile(const DocumentRecord& record) const;
@@ -74,6 +80,7 @@ private:
 
     db::Database& m_db;
     db::DocumentRepository m_repo;
+    db::ReadingRepository m_reading;
     AppPaths m_paths;
     QFutureWatcher<ImportCandidate> m_watcher;
     QList<QPair<QStringList, StorageMode>> m_queue;

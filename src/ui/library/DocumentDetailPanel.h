@@ -48,12 +48,14 @@ public:
     QComboBox* statusCombo() const { return m_status; }
     QToolButton* favoriteButton() const { return m_favorite; }
     QPushButton* editButton() const { return m_edit; }
+    QPushButton* readButton() const { return m_read; }
     QPushButton* removeButton() const { return m_remove; }
     QLabel* titleLabel() const { return m_title; }
 
 signals:
     /// Le document a été retiré de la bibliothèque.
     void removed(qint64 id);
+    void readRequested(qint64 id);
 
 private:
     void render();
@@ -69,6 +71,7 @@ private:
     QLabel* m_authors;
     QComboBox* m_status;
     QToolButton* m_favorite;
+    QPushButton* m_read;
     QPushButton* m_edit;
     QPushButton* m_remove;
     QPushButton* m_reveal;

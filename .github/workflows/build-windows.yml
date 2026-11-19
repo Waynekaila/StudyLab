@@ -29,3 +29,16 @@ jobs:
         run: cmake --build --preset windows-msvc-release
       - name: Tests
         run: ctest --preset windows-msvc-release
+      - name: Détail des tests en échec
+        if: failure()
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = "offscreen"
+          Get-ChildItem build/windows-msvc-release -Recurse -Filter "tst_*.exe" | Where-Object { $_.FullName -notmatch "CMakeFiles" } | ForEach-Object {
+            & $_.FullName -o "$($_.BaseName).txt,txt" | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "::group::$($_.BaseName) (code $LASTEXITCODE)"
+              Get-Content "$($_.BaseName).txt" -ErrorAction SilentlyContinue
+              Write-Host "::endgroup::"
+            }
+          }

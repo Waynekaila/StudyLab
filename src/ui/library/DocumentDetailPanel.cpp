@@ -119,12 +119,17 @@ DocumentDetailPanel::DocumentDetailPanel(LibraryService& library, ThemeManager& 
     statusRow->addWidget(m_favorite);
     v->addLayout(statusRow);
 
-    // Actions (la lecture arrive à l'itération 3 : pas de bouton « Lire » d'ici là)
+    // Actions (le lecteur EPUB arrive à l'itération 5 : « Lire » n'apparaît que pour les PDF d'ici là)
     auto* actions = new QHBoxLayout;
+    m_read = new QPushButton(tr("Lire"));
+    m_read->setProperty("variant", QStringLiteral("primary"));
+    m_read->setCursor(Qt::PointingHandCursor);
+    connect(m_read, &QPushButton::clicked, this, [this] { emit readRequested(m_record.id); });
     m_edit = new QPushButton(tr("Modifier"));
-    m_edit->setProperty("variant", QStringLiteral("primary"));
     connect(m_edit, &QPushButton::clicked, this, &DocumentDetailPanel::editDocument);
-    m_reveal = new QPushButton(tr("Afficher le fichier"));
+    m_reveal = new QPushButton;
+    m_reveal->setToolTip(tr("Afficher le fichier dans son dossier"));
+    m_reveal->setAccessibleName(m_reveal->toolTip());
     connect(m_reveal, &QPushButton::clicked, this, [this] {
         const QString file = m_library.documentFile(m_record);
         QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(file).absolutePath()));
@@ -132,6 +137,7 @@ DocumentDetailPanel::DocumentDetailPanel(LibraryService& library, ThemeManager& 
     m_remove = new QPushButton(tr("Retirer"));
     m_remove->setProperty("variant", QStringLiteral("ghost"));
     connect(m_remove, &QPushButton::clicked, this, &DocumentDetailPanel::removeDocument);
+    actions->addWidget(m_read);
     actions->addWidget(m_edit);
     actions->addWidget(m_reveal);
     actions->addStretch(1);
@@ -227,6 +233,9 @@ void DocumentDetailPanel::render()
     if (!available)
         addField(QString(), tr("⚠ Fichier introuvable sur le disque"));
     m_reveal->setEnabled(available);
+    m_reveal->setIcon(Icons::get(QStringLiteral("folder"), m_theme.palette().text2, 16));
+    m_read->setVisible(r.format == DocumentFormat::Pdf);
+    m_read->setEnabled(available);
     const QDateTime added = QDateTime::fromString(r.addedAt, Qt::ISODate).toLocalTime();
     addField(tr("Ajouté le"), fr.toString(added.date(), QStringLiteral("d MMMM yyyy")));
 
