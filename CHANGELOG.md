@@ -10,6 +10,10 @@
   affichées, un commentaire ou un document, avec citations sourcées et provenance conservée (panneau « Sources »
   qui rouvre le passage) ; `[[liens]]` vers les documents de la bibliothèque ; autocomplétion après `[[` ; liens
   `studylab://` cliquables dans l'aperçu.
+- **Matières et collections** (itération V1-3) : matières hiérarchiques (couleur, glisser-déposer, archivage) et
+  page de matière (chiffres clés, documents, notes) ; collections manuelles, listes de lecture, projets et
+  collections intelligentes à règles (matière, statut, format, tag, favori, ajouté, annoté ou ouvert récemment),
+  avec aperçu du nombre de résultats ; rattachement depuis la bibliothèque et les notes.
 - **Export de la bibliothèque** : les notes sont jointes (toutes pour la bibliothèque entière, celles tirées des
   documents pour une sélection) dans `Notes/<dossier>/`, avec leurs images dans `_attachments/` ; la fiche de
   chaque document a son titre en alias, pour que `[[Titre]]` y mène dans Obsidian.

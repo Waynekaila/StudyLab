@@ -79,6 +79,7 @@ LibraryPage::LibraryPage(AppContext& ctx, QWidget* parent)
     h->addWidget(main, 1);
 
     m_detail = new DocumentDetailPanel(ctx.library, ctx.theme, this);
+    m_detail->setOrganize(&ctx.organize);
     m_detail->setFixedWidth(ctx.theme.px(352));
     m_detail->hide();
     h->addWidget(m_detail);

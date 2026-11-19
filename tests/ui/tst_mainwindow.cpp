@@ -6,6 +6,7 @@
 #include "services/backup/BackupService.h"
 #include "services/comments/CommentService.h"
 #include "services/notes/NoteService.h"
+#include "services/organize/OrganizeService.h"
 #include "services/search/SearchService.h"
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
@@ -98,7 +99,8 @@ private slots:
         SearchService search(database);
         BackupService backups(paths, database);
         NoteService notes(database, paths.attachmentsDir());
-        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups, notes};
+        OrganizeService organize(database);
+        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups, notes, organize};
         ui::MainWindow window(ctx);
         window.resize(1280, 820);
         window.show();
@@ -163,7 +165,8 @@ private slots:
         SearchService search(database);
         BackupService backups(paths, database);
         NoteService notes(database, paths.attachmentsDir());
-        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups, notes};
+        OrganizeService organize(database);
+        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups, notes, organize};
         ui::MainWindow window(ctx);
         QCOMPARE(window.currentPage(), QStringLiteral("settings"));
     }
@@ -183,7 +186,8 @@ private slots:
         SearchService search(database);
         BackupService backups(paths, database);
         NoteService notes(database, paths.attachmentsDir());
-        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups, notes};
+        OrganizeService organize(database);
+        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups, notes, organize};
         ui::SettingsPage page(ctx);
         QPushButton* backup = nullptr;
         for (auto* b : page.findChildren<QPushButton*>()) {

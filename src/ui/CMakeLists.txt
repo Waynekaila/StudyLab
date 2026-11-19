@@ -36,7 +36,11 @@ add_library(studylab_ui STATIC
     reader/MarkdownView.h reader/MarkdownView.cpp
     reader/CommentsPane.h reader/CommentsPane.cpp
     notes/NoteEditor.h notes/NoteEditor.cpp
-    notes/NotesPage.h notes/NotesPage.cpp)
+    notes/NotesPage.h notes/NotesPage.cpp
+    organize/OrganizeWidgets.h organize/OrganizeWidgets.cpp
+    organize/SmartCollectionDialog.h organize/SmartCollectionDialog.cpp
+    organize/SubjectsPage.h organize/SubjectsPage.cpp
+    organize/CollectionsPage.h organize/CollectionsPage.cpp)
 target_link_libraries(studylab_ui PUBLIC studylab_library studylab_annotations studylab_comments studylab_notes studylab_organize studylab_search studylab_backup studylab_export studylab_settings studylab_epub studylab_data studylab_core Qt6::Widgets Qt6::Svg Qt6::WebEngineWidgets Qt6::WebChannel Qt6::Network)
 studylab_set_warnings(studylab_ui)
 

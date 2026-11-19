@@ -7,6 +7,7 @@
 #include "services/backup/BackupService.h"
 #include "services/comments/CommentService.h"
 #include "services/notes/NoteService.h"
+#include "services/organize/OrganizeService.h"
 #include "services/search/SearchService.h"
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
@@ -55,6 +56,7 @@ class TstPdfReader : public QObject {
         std::unique_ptr<SearchService> search;
         std::unique_ptr<BackupService> backups;
         std::unique_ptr<NoteService> notes;
+        std::unique_ptr<OrganizeService> organize;
         std::unique_ptr<AppContext> ctx;
         Env()
         {
@@ -70,7 +72,8 @@ class TstPdfReader : public QObject {
             search = std::make_unique<SearchService>(*db);
             backups = std::make_unique<BackupService>(paths, *db);
             notes = std::make_unique<NoteService>(*db, paths.attachmentsDir());
-            ctx = std::make_unique<AppContext>(AppContext{paths, *db, *settings, *theme, *library, *annotations, *comments, *search, *backups, *notes});
+            organize = std::make_unique<OrganizeService>(*db);
+            ctx = std::make_unique<AppContext>(AppContext{paths, *db, *settings, *theme, *library, *annotations, *comments, *search, *backups, *notes, *organize});
         }
         qint64 import(const QString& file)
         {
