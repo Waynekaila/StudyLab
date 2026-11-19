@@ -1,0 +1,21 @@
+name: Debian 13
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-24.04
+    container: debian:trixie
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dépendances
+        run: ./scripts/install-deps-debian.sh --yes
+      - name: Configuration
+        run: cmake --preset debian-release
+      - name: Compilation
+        run: cmake --build --preset debian-release
+      - name: Tests
+        run: ctest --preset debian-release

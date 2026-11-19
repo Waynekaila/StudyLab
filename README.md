@@ -11,12 +11,29 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | Phase | Contenu | État |
 |---|---|---|
 | 1 · Conception | Vision, architecture, choix des bibliothèques, schéma SQLite, maquettes, plan | ✅ Terminée — voir [`docs/design/`](docs/design/README.md) |
-| 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | ⏳ À venir |
+| 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | 🚧 En cours — itération 1/7 (socle) |
 | 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | — |
 | 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | — |
 | 5 · Finalisation | Optimisation, packaging, documentation | — |
 
-Aucun code applicatif n'est encore publié : ce dépôt contient pour l'instant la conception validée.
+### Ce qui fonctionne aujourd'hui (itération 1)
+
+- Fenêtre principale avec navigation latérale, écrans **Accueil** et **Paramètres**.
+- Thème **clair / sombre / système**, taille d'interface réglable, animations désactivables, police Inter embarquée.
+- Base **SQLite** locale avec migrations versionnées, recherche plein texte FTS5, vérification d'intégrité après
+  une fermeture anormale, sauvegarde automatique avant migration et sauvegarde manuelle.
+- Tests automatisés (base, migrations, préférences, thème, interface) et intégration continue Windows + Debian 13.
+
+La bibliothèque, les lecteurs PDF/EPUB et les annotations arrivent dans les itérations suivantes
+(plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md)).
+
+## Compiler
+
+Voir [`docs/build.md`](docs/build.md). En bref, sur Debian 13 :
+
+```sh
+./scripts/install-deps-debian.sh && ./scripts/build.sh
+```
 
 ## Maquettes
 

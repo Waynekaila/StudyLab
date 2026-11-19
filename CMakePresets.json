@@ -1,0 +1,46 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    { "name": "debian-debug",   "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" } },
+    { "name": "debian-release", "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "STUDYLAB_BUILD_TESTS": "ON" } },
+    {
+      "name": "debian-asan", "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-fsanitize=address,undefined -fno-omit-frame-pointer",
+        "CMAKE_C_FLAGS": "-fsanitize=address,undefined -fno-omit-frame-pointer"
+      }
+    },
+    {
+      "name": "windows-msvc-debug", "inherits": "base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "windows-msvc-release", "inherits": "base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "CMAKE_C_COMPILER": "cl", "CMAKE_CXX_COMPILER": "cl" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "debian-debug", "configurePreset": "debian-debug" },
+    { "name": "debian-release", "configurePreset": "debian-release" },
+    { "name": "debian-asan", "configurePreset": "debian-asan" },
+    { "name": "windows-msvc-debug", "configurePreset": "windows-msvc-debug" },
+    { "name": "windows-msvc-release", "configurePreset": "windows-msvc-release" }
+  ],
+  "testPresets": [
+    { "name": "debian-debug", "configurePreset": "debian-debug", "output": { "outputOnFailure": true }, "environment": { "QT_QPA_PLATFORM": "offscreen" } },
+    { "name": "debian-release", "configurePreset": "debian-release", "output": { "outputOnFailure": true }, "environment": { "QT_QPA_PLATFORM": "offscreen" } },
+    { "name": "debian-asan", "configurePreset": "debian-asan", "output": { "outputOnFailure": true }, "environment": { "QT_QPA_PLATFORM": "offscreen" } },
+    { "name": "windows-msvc-debug", "configurePreset": "windows-msvc-debug", "output": { "outputOnFailure": true }, "environment": { "QT_QPA_PLATFORM": "offscreen" } },
+    { "name": "windows-msvc-release", "configurePreset": "windows-msvc-release", "output": { "outputOnFailure": true }, "environment": { "QT_QPA_PLATFORM": "offscreen" } }
+  ]
+}
