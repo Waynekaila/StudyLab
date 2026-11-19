@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:
+    inputs:
+      ref:
+        description: Référence à construire (étiquette de version)
+        type: string
+        default: ''
 
 jobs:
   build-test:
@@ -11,6 +17,8 @@ jobs:
     container: debian:trixie
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
       - name: Dépendances
         run: ./scripts/install-deps-debian.sh --yes
       - name: Configuration
