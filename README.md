@@ -12,7 +12,7 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 |---|---|---|
 | 1 · Conception | Vision, architecture, choix des bibliothèques, schéma SQLite, maquettes, plan | ✅ Terminée — voir [`docs/design/`](docs/design/README.md) |
 | 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | ✅ Terminée — **version 0.1.0** (7 itérations) |
-| 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | 🚧 En cours — itération 2/7 (notes depuis la lecture) |
+| 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | 🚧 En cours — itération 3/7 (matières et collections) |
 | 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | — |
 | 5 · Finalisation | Optimisation, packaging, documentation | — |
 
@@ -30,6 +30,12 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
   un `[[lien]]` vers le document et la page reliée au passage ; ses **sources** restent listées à côté et rouvrent
   le passage dans le lecteur. Un `[[lien]]` peut viser un document de la bibliothèque ; taper `[[` propose les
   titres des notes et des documents.
+- **Matières et collections** (V1) : matières hiérarchiques (« Physique › Thermodynamique ») avec couleur,
+  glisser-déposer pour réordonner ou ranger, archivage ; page de matière avec chiffres clés (documents, annotations,
+  notes, progression) et listes, sous-matières comprises. Collections manuelles, listes de lecture et projets
+  (documents et notes, dans l'ordre voulu) ; **collections intelligentes** décrites par des règles lisibles
+  (« Matière est Thermodynamique · Statut n'est pas Terminé ») avec le nombre de résultats en direct. Rattachement
+  depuis le panneau d'un document de la bibliothèque ou par clic droit sur une note.
 - **Accueil** : reprendre la lecture à la page exacte, autres lectures en cours, dernières annotations et derniers
   commentaires (un clic ouvre le passage), état de la bibliothèque et de la dernière sauvegarde.
 - **Export de la bibliothèque** (entière, documents affichés ou sélection avec Ctrl / Maj) en coffre Obsidian :
@@ -100,8 +106,9 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | ![Export de la bibliothèque](docs/screenshots/iteration7-export.png) | |
 | ![Mes notes (V1)](docs/screenshots/v1-1-notes.png) | ![Mes notes, sombre](docs/screenshots/v1-1-notes-sombre.png) |
 | ![Note de lecture et ses sources](docs/screenshots/v1-2-note-lecture.png) | ![Note de lecture, sombre](docs/screenshots/v1-2-note-lecture-sombre.png) |
+| ![Matières](docs/screenshots/v1-3-matieres.png) | ![Collection intelligente, sombre](docs/screenshots/v1-3-collections-sombre.png) |
 
-Suite de la V1 : matières et collections, graphe, recherche plein texte ; puis cartes mémoire et répétition espacée (V2) —
+Suite de la V1 : graphe, recherche plein texte ; puis cartes mémoire et répétition espacée (V2) —
 plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md). Historique : [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Installer

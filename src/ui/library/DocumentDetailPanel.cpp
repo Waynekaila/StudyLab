@@ -1,10 +1,12 @@
 #include "ui/library/DocumentDetailPanel.h"
 
 #include "services/library/LibraryService.h"
+#include "services/organize/OrganizeService.h"
 #include "ui/components/FlowLayout.h"
 #include "ui/components/Widgets.h"
 #include "ui/library/CoverArt.h"
 #include "ui/library/EditDocumentDialog.h"
+#include "ui/organize/OrganizeWidgets.h"
 #include "ui/theme/Icons.h"
 #include "ui/theme/ThemeManager.h"
 
@@ -16,6 +18,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLocale>
+#include <QMenu>
 #include <QMessageBox>
 #include <QPainter>
 #include <QPushButton>
@@ -157,6 +160,36 @@ DocumentDetailPanel::DocumentDetailPanel(LibraryService& library, ThemeManager& 
     new FlowLayout(m_tagsBox, 6);
     v->addWidget(m_tagsBox);
 
+    // Matières et collections : visibles une fois le service branché (setOrganize).
+    m_orgCaption = makeLabel(tr("MATIÈRES ET COLLECTIONS"), "caption");
+    m_orgCaption->hide();
+    v->addWidget(m_orgCaption);
+    m_orgBox = new QWidget;
+    new FlowLayout(m_orgBox, 6);
+    m_orgBox->hide();
+    v->addWidget(m_orgBox);
+    m_orgButtons = new QWidget;
+    auto* ob = new QHBoxLayout(m_orgButtons);
+    ob->setContentsMargins(0, 0, 0, 0);
+    ob->setSpacing(6);
+    m_subjectsButton = new QToolButton(m_orgButtons);
+    m_collectionsButton = new QToolButton(m_orgButtons);
+    for (QToolButton* b : {m_subjectsButton, m_collectionsButton}) {
+        b->setObjectName(QStringLiteral("FilterChip"));
+        b->setPopupMode(QToolButton::InstantPopup);
+        b->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+        b->setCursor(Qt::PointingHandCursor);
+        b->setMenu(new QMenu(b));
+        ob->addWidget(b);
+    }
+    m_subjectsButton->setText(tr("Matières"));
+    m_subjectsButton->setAccessibleName(tr("Rattacher à des matières"));
+    m_collectionsButton->setText(tr("Collections"));
+    m_collectionsButton->setAccessibleName(tr("Ajouter à des collections"));
+    ob->addStretch(1);
+    m_orgButtons->hide();
+    v->addWidget(m_orgButtons);
+
     m_descriptionCaption = makeLabel(tr("DESCRIPTION"), "caption");
     v->addWidget(m_descriptionCaption);
     m_description = makeLabel(QString(), "muted");
@@ -247,9 +280,120 @@ void DocumentDetailPanel::render()
     }
     m_tagsCaption->setVisible(!r.tags.isEmpty());
     m_tagsBox->setVisible(!r.tags.isEmpty());
+    renderOrganize();
     m_descriptionCaption->setVisible(!r.description.isEmpty());
     m_description->setVisible(!r.description.isEmpty());
     m_description->setText(r.description);
+}
+
+void DocumentDetailPanel::setOrganize(OrganizeService* organize)
+{
+    m_organize = organize;
+    if (!organize)
+        return;
+    const Palette& pal = m_theme.palette();
+    m_subjectsButton->setIcon(Icons::get(QStringLiteral("folder"), pal.text2, 14));
+    m_collectionsButton->setIcon(Icons::get(QStringLiteral("layers"), pal.text2, 14));
+    // Menus cochables remplis à l'ouverture : cocher rattache, décocher détache.
+    connect(m_subjectsButton->menu(), &QMenu::aboutToShow, this, [this] {
+        QMenu* menu = m_subjectsButton->menu();
+        menu->clear();
+        auto all = m_organize->subjects();
+        auto mine = m_organize->subjectsOf(OrganizeService::Entity::Document, m_record.id);
+        if (!all || all.value().isEmpty()) {
+            menu->addAction(tr("Aucune matière : créez-en dans « Matières »"))->setEnabled(false);
+            return;
+        }
+        for (const SubjectRecord& s : all.value()) {
+            if (s.archived)
+                continue;
+            QAction* a = menu->addAction(colorDot(m_theme.palette(), s.color, 12), m_organize->subjectPath(s.id, all.value()));
+            a->setCheckable(true);
+            a->setChecked(mine && mine.value().contains(s.id));
+            const qint64 sid = s.id;
+            connect(a, &QAction::toggled, this, [this, sid](bool on) {
+                if (on)
+                    (void)m_organize->attach(sid, OrganizeService::Entity::Document, m_record.id);
+                else
+                    (void)m_organize->detach(sid, OrganizeService::Entity::Document, m_record.id);
+                renderOrganize();
+            });
+        }
+    });
+    connect(m_collectionsButton->menu(), &QMenu::aboutToShow, this, [this] {
+        QMenu* menu = m_collectionsButton->menu();
+        menu->clear();
+        auto all = m_organize->collections();
+        auto mine = m_organize->collectionsOf(OrganizeService::Entity::Document, m_record.id);
+        int n = 0;
+        for (const CollectionRecord& c : all ? all.value() : QList<CollectionRecord>{}) {
+            if (c.kind == CollectionKind::Smart)
+                continue;  // se remplit d'après ses règles
+            ++n;
+            QAction* a = menu->addAction(Icons::get(collectionKindIcon(c.kind), m_theme.palette().text2, 14), c.name);
+            a->setCheckable(true);
+            a->setChecked(mine && mine.value().contains(c.id));
+            const qint64 cid = c.id;
+            connect(a, &QAction::toggled, this, [this, cid](bool on) {
+                if (on)
+                    (void)m_organize->addToCollection(cid, OrganizeService::Entity::Document, m_record.id);
+                else
+                    (void)m_organize->removeFromCollection(cid, OrganizeService::Entity::Document, m_record.id);
+                renderOrganize();
+            });
+        }
+        if (n == 0)
+            menu->addAction(tr("Aucune collection : créez-en dans « Collections »"))->setEnabled(false);
+    });
+    connect(m_organize, &OrganizeService::subjectsChanged, this, &DocumentDetailPanel::renderOrganize);
+    connect(m_organize, &OrganizeService::collectionsChanged, this, &DocumentDetailPanel::renderOrganize);
+    renderOrganize();
+}
+
+void DocumentDetailPanel::renderOrganize()
+{
+    if (!m_organize)
+        return;
+    clearLayout(m_orgBox->layout());
+    const bool shown = m_record.id > 0;
+    m_orgCaption->setVisible(shown);
+    m_orgButtons->setVisible(shown);
+    if (!shown) {
+        m_orgBox->hide();
+        return;
+    }
+    const Palette& pal = m_theme.palette();
+    int chips = 0;
+    auto subjects = m_organize->subjects();
+    auto mine = m_organize->subjectsOf(OrganizeService::Entity::Document, m_record.id);
+    if (subjects && mine) {
+        for (const SubjectRecord& s : subjects.value()) {
+            if (!mine.value().contains(s.id))
+                continue;
+            auto* chip = new QLabel;
+            chip->setProperty("chip", true);
+            chip->setText(QStringLiteral("<span style=\"color:%1\">●</span> %2")
+                              .arg(organizeColor(pal, s.color).name(), s.name.toHtmlEscaped()));
+            chip->setToolTip(m_organize->subjectPath(s.id, subjects.value()));
+            m_orgBox->layout()->addWidget(chip);
+            ++chips;
+        }
+    }
+    auto collections = m_organize->collections();
+    auto in = m_organize->collectionsOf(OrganizeService::Entity::Document, m_record.id);
+    if (collections && in) {
+        for (const CollectionRecord& c : collections.value()) {
+            if (!in.value().contains(c.id))
+                continue;
+            auto* chip = new QLabel(c.name);
+            chip->setProperty("chip", true);
+            chip->setToolTip(collectionKindLabel(c.kind));
+            m_orgBox->layout()->addWidget(chip);
+            ++chips;
+        }
+    }
+    m_orgBox->setVisible(chips > 0);
+    m_orgBox->layout()->invalidate();
 }
 
 void DocumentDetailPanel::editDocument()

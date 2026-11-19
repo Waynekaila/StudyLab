@@ -2,12 +2,14 @@
 
 #include "core/domain/Comment.h"
 #include "services/notes/NoteService.h"
+#include "services/organize/OrganizeService.h"
 #include "services/settings/SettingsService.h"
 #include "ui/components/FlowLayout.h"
 #include "ui/components/MarkdownHighlighter.h"
 #include "ui/components/SegmentedControl.h"
 #include "ui/components/Widgets.h"
 #include "ui/notes/NoteEditor.h"
+#include "ui/organize/OrganizeWidgets.h"
 #include "ui/reader/MarkdownView.h"
 #include "ui/theme/Icons.h"
 #include "ui/theme/ThemeManager.h"
@@ -863,11 +865,62 @@ void NotesPage::showTreeMenu(const QPoint& pos)
                                QMessageBox::warning(this, tr("Épingler"), r.error().message);
                        });
         menu.addAction(tr("Déplacer vers un dossier…"), this, [this, id] { moveNote(id); });
+        addOrganizeMenus(&menu, id);
         menu.addSeparator();
         menu.addAction(Icons::get(QStringLiteral("trash"), m_ctx.theme.palette().danger, 16), tr("Mettre à la corbeille"),
                        this, [this, id] { deleteNote(id); });
     }
     menu.exec(m_tree->viewport()->mapToGlobal(pos));
+}
+
+void NotesPage::addOrganizeMenus(QMenu* menu, qint64 noteId)
+{
+    const Palette& pal = m_ctx.theme.palette();
+    QMenu* subjects = menu->addMenu(Icons::get(QStringLiteral("folder"), pal.text2, 16), tr("Matières"));
+    subjects->setObjectName(QStringLiteral("NoteSubjectsMenu"));
+    auto all = m_ctx.organize.subjects();
+    auto mine = m_ctx.organize.subjectsOf(OrganizeService::Entity::Note, noteId);
+    int n = 0;
+    for (const SubjectRecord& s : all ? all.value() : QList<SubjectRecord>{}) {
+        if (s.archived)
+            continue;
+        ++n;
+        QAction* a = subjects->addAction(colorDot(pal, s.color, 12), m_ctx.organize.subjectPath(s.id, all.value()));
+        a->setCheckable(true);
+        a->setChecked(mine && mine.value().contains(s.id));
+        const qint64 sid = s.id;
+        connect(a, &QAction::toggled, this, [this, sid, noteId](bool on) {
+            if (on)
+                (void)m_ctx.organize.attach(sid, OrganizeService::Entity::Note, noteId);
+            else
+                (void)m_ctx.organize.detach(sid, OrganizeService::Entity::Note, noteId);
+        });
+    }
+    if (n == 0)
+        subjects->addAction(tr("Aucune matière : créez-en dans « Matières »"))->setEnabled(false);
+
+    QMenu* collections = menu->addMenu(Icons::get(QStringLiteral("layers"), pal.text2, 16), tr("Collections"));
+    collections->setObjectName(QStringLiteral("NoteCollectionsMenu"));
+    auto cols = m_ctx.organize.collections();
+    auto in = m_ctx.organize.collectionsOf(OrganizeService::Entity::Note, noteId);
+    n = 0;
+    for (const CollectionRecord& c : cols ? cols.value() : QList<CollectionRecord>{}) {
+        if (c.kind == CollectionKind::Smart)
+            continue;
+        ++n;
+        QAction* a = collections->addAction(Icons::get(collectionKindIcon(c.kind), pal.text2, 14), c.name);
+        a->setCheckable(true);
+        a->setChecked(in && in.value().contains(c.id));
+        const qint64 cid = c.id;
+        connect(a, &QAction::toggled, this, [this, cid, noteId](bool on) {
+            if (on)
+                (void)m_ctx.organize.addToCollection(cid, OrganizeService::Entity::Note, noteId);
+            else
+                (void)m_ctx.organize.removeFromCollection(cid, OrganizeService::Entity::Note, noteId);
+        });
+    }
+    if (n == 0)
+        collections->addAction(tr("Aucune collection : créez-en dans « Collections »"))->setEnabled(false);
 }
 
 void NotesPage::moveNote(qint64 id)

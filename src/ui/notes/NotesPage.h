@@ -12,6 +12,7 @@
 class QFrame;
 class QLabel;
 class QLineEdit;
+class QMenu;
 class QPushButton;
 class QSplitter;
 class QStackedWidget;
@@ -73,6 +74,8 @@ public:
     /// Recherche les notes d'un tag (clic sur un tag) ; vide = tous.
     void setTagFilter(const QString& tag);
     void deleteNote(qint64 id);
+    /// Sous-menus « Matières » et « Collections » d'une note (cocher rattache, décocher détache).
+    void addOrganizeMenus(QMenu* menu, qint64 noteId);
     void undoDelete();
     QFrame* undoBar() const { return m_undoBar; }
 

@@ -6,6 +6,8 @@
 #include "ui/components/FadeStackedWidget.h"
 #include "ui/library/LibraryPage.h"
 #include "ui/notes/NotesPage.h"
+#include "ui/organize/CollectionsPage.h"
+#include "ui/organize/SubjectsPage.h"
 #include "ui/reader/ReaderPage.h"
 #include "ui/pages/HomePage.h"
 #include "ui/pages/SettingsPage.h"
@@ -46,6 +48,8 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
                                 {QStringLiteral("library"), QStringLiteral("library"), tr("Bibliothèque")},
                                 {QStringLiteral("reader"), QStringLiteral("book"), tr("Lecture")},
                                 {QStringLiteral("notes"), QStringLiteral("note"), tr("Mes notes")},
+                                {QStringLiteral("subjects"), QStringLiteral("folder"), tr("Matières")},
+                                {QStringLiteral("collections"), QStringLiteral("layers"), tr("Collections")},
                                 {QStringLiteral("settings"), QStringLiteral("settings"), tr("Paramètres")},
                             },
                             root);
@@ -96,6 +100,22 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
         navigateTo(QStringLiteral("reader"));
         reader->openItem(doc, comment, item);
     });
+    auto* subjects = new SubjectsPage(ctx, m_stack);
+    addPage(QStringLiteral("subjects"), subjects);
+    auto* collections = new CollectionsPage(ctx, m_stack);
+    addPage(QStringLiteral("collections"), collections);
+    const auto openDoc = [this, reader](qint64 id) {
+        navigateTo(QStringLiteral("reader"));
+        reader->openDocument(id);
+    };
+    const auto openNote = [this, notes](qint64 id) {
+        navigateTo(QStringLiteral("notes"));
+        notes->openNote(id);
+    };
+    connect(subjects, &SubjectsPage::openDocumentRequested, this, openDoc);
+    connect(subjects, &SubjectsPage::openNoteRequested, this, openNote);
+    connect(collections, &CollectionsPage::openDocumentRequested, this, openDoc);
+    connect(collections, &CollectionsPage::openNoteRequested, this, openNote);
     connect(notes, &NotesPage::appLinkActivated, this, [this](const QString& link) {
         auto opened = openLink(link);
         if (!opened)

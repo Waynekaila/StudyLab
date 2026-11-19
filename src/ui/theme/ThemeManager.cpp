@@ -284,6 +284,13 @@ QToolButton#FilterChip {
     padding: %{p2} %{p7}; font-size: %{fs11};
 }
 QToolButton#FilterChip:hover { background: %{sunken}; }
+QToolButton#SmartValues {
+    background: %{surface}; border: 1px solid %{border}; border-radius: 8px; color: %{text};
+    padding: %{p5} %{p10}; min-height: %{h20}; text-align: left;
+}
+QToolButton#SmartValues::menu-indicator { subcontrol-position: right center; right: %{p7}; }
+QFrame#StatTile QProgressBar { background: %{sunken}; border: none; border-radius: 3px; }
+QFrame#StatTile QProgressBar::chunk { background: %{primary}; border-radius: 3px; }
 QToolButton#FilterChip:checked { background: %{primarySoft}; color: %{primaryStrong}; border-color: %{primarySoft}; }
 QFrame#UndoBar { background: %{text}; border-radius: 8px; }
 QFrame#UndoBar QLabel { color: %{surface}; }

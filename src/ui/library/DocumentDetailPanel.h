@@ -13,6 +13,7 @@ class QToolButton;
 class QVBoxLayout;
 
 namespace studylab {
+class OrganizeService;
 class LibraryService;
 }
 
@@ -51,6 +52,11 @@ public:
     QPushButton* readButton() const { return m_read; }
     QPushButton* removeButton() const { return m_remove; }
     QLabel* titleLabel() const { return m_title; }
+    /// Active la section « Matières et collections » (rattachement du document).
+    void setOrganize(OrganizeService* organize);
+    QToolButton* subjectsButton() const { return m_subjectsButton; }
+    QToolButton* collectionsButton() const { return m_collectionsButton; }
+    QWidget* organizeChips() const { return m_orgBox; }
 
 signals:
     /// Le document a été retiré de la bibliothèque.
@@ -62,6 +68,7 @@ private:
     void editDocument();
     void removeDocument();
     void addField(const QString& label, const QString& value);
+    void renderOrganize();
 
     LibraryService& m_library;
     ThemeManager& m_theme;
@@ -77,6 +84,12 @@ private:
     QPushButton* m_reveal;
     QGridLayout* m_fields;
     QWidget* m_tagsBox;
+    OrganizeService* m_organize = nullptr;
+    QLabel* m_orgCaption = nullptr;
+    QWidget* m_orgBox = nullptr;
+    QWidget* m_orgButtons = nullptr;
+    QToolButton* m_subjectsButton = nullptr;
+    QToolButton* m_collectionsButton = nullptr;
     QLabel* m_tagsCaption;
     QLabel* m_descriptionCaption;
     QLabel* m_description;
