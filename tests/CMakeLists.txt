@@ -13,6 +13,7 @@ studylab_add_test(tst_migrator   SOURCES unit/tst_migrator.cpp   LIBS studylab_d
 studylab_add_test(tst_document_repository SOURCES unit/tst_document_repository.cpp LIBS studylab_data)
 studylab_add_test(tst_annotations SOURCES unit/tst_annotations.cpp LIBS studylab_annotations studylab_export)
 studylab_add_test(tst_notes     SOURCES unit/tst_notes.cpp     LIBS studylab_notes studylab_annotations studylab_comments)
+studylab_add_test(tst_organize  SOURCES unit/tst_organize.cpp  LIBS studylab_organize)
 studylab_add_test(tst_comments  SOURCES unit/tst_comments.cpp  LIBS studylab_comments studylab_annotations studylab_search studylab_export)
 studylab_add_test(tst_backup    SOURCES unit/tst_backup.cpp ../src/app/Bootstrap.cpp LIBS studylab_backup)
 target_include_directories(tst_backup PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
