@@ -1,5 +1,6 @@
 #include "ui/library/LibraryPage.h"
 
+#include "services/export/LibraryExporter.h"
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
 #include "ui/components/SegmentedControl.h"
@@ -12,6 +13,11 @@
 #include "ui/theme/ThemeManager.h"
 
 #include <QAction>
+#include <QApplication>
+#include <QDesktopServices>
+#include <QPointer>
+#include <QUrl>
+#include <QtConcurrent/QtConcurrentRun>
 #include <QDir>
 #include <QFileInfo>
 #include <QStyle>
@@ -34,6 +40,7 @@ namespace studylab::ui {
 
 namespace {
 const QString kLastImportDir = QStringLiteral("library/lastImportDir");
+const QString kLastExportDir = QStringLiteral("export/lastDirectory");  // partagé avec l'export d'un document
 }
 
 LibraryPage::LibraryPage(AppContext& ctx, QWidget* parent)
@@ -59,7 +66,7 @@ LibraryPage::LibraryPage(AppContext& ctx, QWidget* parent)
     m_view->setModel(m_model);
     m_view->setItemDelegate(m_delegate);
     m_view->setFrameShape(QFrame::NoFrame);
-    m_view->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_view->setSelectionMode(QAbstractItemView::ExtendedSelection);  // Ctrl et Maj : export d'une sélection
     m_view->setUniformItemSizes(true);
     m_view->setMouseTracking(true);
     m_view->viewport()->setAttribute(Qt::WA_Hover);
@@ -136,6 +143,40 @@ QWidget* LibraryPage::buildHeader()
     connect(&m_ctx.theme, &ThemeManager::themeChanged, importBtn, [this, importBtn] {
         importBtn->setIcon(Icons::get(QStringLiteral("plus"), m_ctx.theme.palette().onPrimary, 16));
     });
+    m_exportButton = new QPushButton(tr("Exporter"));
+    m_exportButton->setObjectName(QStringLiteral("ExportButton"));
+    m_exportButton->setIcon(Icons::get(QStringLiteral("download"), m_ctx.theme.palette().text2, 16));
+    m_exportButton->setCursor(Qt::PointingHandCursor);
+    m_exportButton->setToolTip(tr("Exporter en Markdown (coffre Obsidian) avec un CSV des annotations"));
+    auto* exportMenu = new QMenu(m_exportButton);
+    connect(exportMenu, &QMenu::aboutToShow, this, [this, exportMenu] {
+        exportMenu->clear();
+        const QList<qint64> selected = selectedIds();
+        const QList<qint64> visible = visibleIds();
+        QAction* sel = exportMenu->addAction(
+            selected.size() <= 1 ? tr("Document sélectionné…") : tr("%1 documents sélectionnés…").arg(selected.size()),
+            this, [this, selected] { exportDocuments(selected); });
+        sel->setEnabled(!selected.isEmpty());
+        QAction* vis = exportMenu->addAction(tr("Documents affichés (%1)…").arg(visible.size()), this,
+                                             [this, visible] { exportDocuments(visible); });
+        vis->setEnabled(!visible.isEmpty());
+        const int total = m_ctx.library.count();
+        QAction* all = exportMenu->addAction(tr("Toute la bibliothèque (%1)…").arg(total), this, [this] {
+            QList<qint64> ids;
+            if (auto docs = m_ctx.library.documents(); docs)
+                for (const auto& d : docs.value())
+                    ids << d.id;
+            exportDocuments(ids);
+        });
+        all->setEnabled(total > 0);
+        for (QAction* a : exportMenu->actions())
+            a->setEnabled(a->isEnabled() && !m_exporting);
+    });
+    m_exportButton->setMenu(exportMenu);
+    connect(&m_ctx.theme, &ThemeManager::themeChanged, m_exportButton, [this] {
+        m_exportButton->setIcon(Icons::get(QStringLiteral("download"), m_ctx.theme.palette().text2, 16));
+    });
+    h->addWidget(m_exportButton, 0, Qt::AlignTop);
     h->addWidget(importBtn, 0, Qt::AlignTop);
     return w;
 }
@@ -155,12 +196,21 @@ QWidget* LibraryPage::buildBanner()
     m_progress->setFixedHeight(6);
     m_cancel = new QPushButton(tr("Annuler"));
     m_cancel->setProperty("variant", QStringLiteral("ghost"));
-    connect(m_cancel, &QPushButton::clicked, &m_ctx.library, &LibraryService::cancelImport);
+    connect(m_cancel, &QPushButton::clicked, this, [this] {
+        if (m_exporting && m_exportCancel)
+            m_exportCancel->store(true);
+        else
+            m_ctx.library.cancelImport();
+    });
     m_details = new QPushButton(tr("Détails"));
     connect(m_details, &QPushButton::clicked, this, [this] {
-        QMessageBox box(QMessageBox::Information, tr("Rapport d'import"), m_bannerText->text(), QMessageBox::Ok, window());
+        QMessageBox box(QMessageBox::Information, m_exporting || !m_exportFolder.isEmpty() ? tr("Rapport d'export") : tr("Rapport d'import"), m_bannerText->text(), QMessageBox::Ok, window());
         box.setDetailedText(m_reportDetails);
         box.exec();
+    });
+    m_openExport = new QPushButton(tr("Ouvrir le dossier"));
+    connect(m_openExport, &QPushButton::clicked, this, [this] {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(m_exportFolder));
     });
     m_closeBanner = new QPushButton(tr("Fermer"));
     m_closeBanner->setProperty("variant", QStringLiteral("ghost"));
@@ -169,6 +219,7 @@ QWidget* LibraryPage::buildBanner()
     h->addWidget(m_progress);
     h->addWidget(m_cancel);
     h->addWidget(m_details);
+    h->addWidget(m_openExport);
     h->addWidget(m_closeBanner);
     m_banner->hide();
     return m_banner;
@@ -480,11 +531,13 @@ void LibraryPage::onImportStarted()
     m_banner->setProperty("state", QStringLiteral("running"));
     m_banner->style()->unpolish(m_banner);
     m_banner->style()->polish(m_banner);
+    m_exportFolder.clear();
     m_bannerText->setText(tr("Recherche des fichiers…"));
     m_progress->setRange(0, 0);
     m_progress->show();
     m_cancel->show();
     m_details->hide();
+    m_openExport->hide();
     m_closeBanner->hide();
     m_banner->show();
 }
@@ -526,11 +579,135 @@ void LibraryPage::onImportFinished(const ImportReport& report)
     m_progress->hide();
     m_cancel->hide();
     m_details->setVisible(!details.isEmpty());
+    m_openExport->hide();
     m_closeBanner->show();
     m_banner->show();
     refresh();
     if (report.importedIds.size() == 1)
         selectDocument(report.importedIds.first());
+}
+
+QList<qint64> LibraryPage::selectedIds() const
+{
+    QList<qint64> ids;
+    for (const QModelIndex& idx : m_view->selectionModel()->selectedIndexes())
+        ids << idx.data(LibraryModel::IdRole).toLongLong();
+    std::sort(ids.begin(), ids.end());
+    ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+    return ids;
+}
+
+QList<qint64> LibraryPage::visibleIds() const
+{
+    QList<qint64> ids;
+    for (int r = 0; r < m_model->rowCount(); ++r)
+        ids << m_model->index(r, 0).data(LibraryModel::IdRole).toLongLong();
+    return ids;
+}
+
+void LibraryPage::showBannerState(const QString& state)
+{
+    m_banner->setProperty("state", state);
+    m_banner->style()->unpolish(m_banner);
+    m_banner->style()->polish(m_banner);
+}
+
+void LibraryPage::exportDocuments(const QList<qint64>& ids)
+{
+    if (ids.isEmpty() || m_exporting || m_ctx.library.isImporting())
+        return;
+    QString parent;
+    if (m_chooseExportDir) {
+        parent = m_chooseExportDir();
+    } else {
+        QString start = m_ctx.settings.value(kLastExportDir).toString();
+        if (start.isEmpty() || !QDir(start).exists())
+            start = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+        parent = QFileDialog::getExistingDirectory(window(), tr("Dossier où créer l'export"), start);
+    }
+    if (parent.isEmpty())
+        return;
+    m_ctx.settings.setValue(kLastExportDir, parent);
+
+    // Lecture en base sur le thread principal ; l'écriture des fichiers (et la lecture des sommaires) en arrière-plan.
+    auto collected = LibraryExporter::collect(m_ctx.library, m_ctx.annotations, m_ctx.comments, ids);
+    if (!collected) {
+        onExportFinished({}, 0, 0, 0, {}, false, collected.error().message);
+        return;
+    }
+    m_exporting = true;
+    m_exportCancel = std::make_shared<std::atomic_bool>(false);
+    showBannerState(QStringLiteral("running"));
+    m_bannerText->setText(tr("Export en cours : 0 sur %1").arg(ids.size()));
+    m_progress->setRange(0, int(ids.size()));
+    m_progress->setValue(0);
+    m_progress->show();
+    m_cancel->show();
+    m_details->hide();
+    m_openExport->hide();
+    m_closeBanner->hide();
+    m_banner->show();
+
+    LibraryExporter::Options opt;
+    opt.appVersion = QApplication::applicationVersion();
+    QPointer<LibraryPage> self(this);
+    auto cancel = m_exportCancel;
+    (void)QtConcurrent::run([self, parent, docs = collected.value(), opt, cancel] {
+        auto result = LibraryExporter::write(parent, docs, opt, [self, cancel](int done, int total) {
+            QMetaObject::invokeMethod(
+                qApp,
+                [self, done, total] {
+                    if (!self)
+                        return;
+                    self->m_progress->setValue(done);
+                    self->m_bannerText->setText(tr("Export en cours : %1 sur %2").arg(done).arg(total));
+                },
+                Qt::QueuedConnection);
+            return !cancel->load();
+        });
+        QMetaObject::invokeMethod(
+            qApp,
+            [self, result] {
+                if (!self)
+                    return;
+                if (!result)
+                    self->onExportFinished({}, 0, 0, 0, {}, false, result.error().message);
+                else
+                    self->onExportFinished(result.value().folder, result.value().documents, result.value().annotations,
+                                           result.value().comments, result.value().errors, result.value().cancelled,
+                                           {});
+            },
+            Qt::QueuedConnection);
+    });
+}
+
+void LibraryPage::onExportFinished(const QString& folder, int documents, int annotations, int comments,
+                                   const QStringList& errors, bool cancelled, const QString& error)
+{
+    m_exporting = false;
+    m_exportFolder = folder;
+    QString text;
+    if (!error.isEmpty()) {
+        text = tr("Export impossible : %1").arg(error);
+    } else {
+        text = countLabel(documents, tr("document exporté"), tr("documents exportés"));
+        text += QStringLiteral(" · ") + countLabel(annotations, tr("annotation"), tr("annotations"));
+        text += QStringLiteral(" · ") + countLabel(comments, tr("commentaire"), tr("commentaires"));
+        if (cancelled)
+            text = tr("Export annulé · ") + text;
+        if (!errors.isEmpty())
+            text += QStringLiteral(" · ") + countLabel(errors.size(), tr("échec"), tr("échecs"));
+    }
+    m_bannerText->setText(text);
+    m_reportDetails = errors.join(QLatin1Char('\n'));
+    showBannerState(error.isEmpty() && errors.isEmpty() ? QStringLiteral("done") : QStringLiteral("warning"));
+    m_progress->hide();
+    m_cancel->hide();
+    m_details->setVisible(!errors.isEmpty());
+    m_openExport->setVisible(!folder.isEmpty());
+    m_closeBanner->show();
+    m_banner->show();
+    emit exportFinished(folder);
 }
 
 }  // namespace studylab::ui

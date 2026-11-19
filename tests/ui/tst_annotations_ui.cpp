@@ -485,7 +485,9 @@ private slots:
         QFile md(QDir(folder.value()).filePath(QStringLiteral("Annotations.md")));
         QVERIFY(md.open(QIODevice::ReadOnly));
         const QString text = QString::fromUtf8(md.readAll());
-        QVERIFY2(text.contains(QStringLiteral("> [!quote] p. 1 · Surlignage · jaune")), qPrintable(text));
+        // Le numéro de page est un lien studylab:// vers le passage (gestionnaire installé par les paquets)
+        QVERIFY2(text.contains(QStringLiteral("> [!quote] [p. 1](studylab://open?doc=")) && text.contains(QStringLiteral(") · Surlignage · jaune")),
+                 qPrintable(text));
         QVERIFY(text.contains(QStringLiteral("## Signets")));
         QVERIFY(QFile::exists(QDir(folder.value()).filePath(QStringLiteral("metadata.json"))));
     }

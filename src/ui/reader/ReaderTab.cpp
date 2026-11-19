@@ -420,6 +420,7 @@ Result<QString> ReaderTab::exportMarkdown(const QString& directory)
     MarkdownExporter::Options opt;
     opt.chapterOf = [this](int unit) { return chapterOf(unit); };
     opt.comments = comments.value();
+    opt.appLinks = true;
     return MarkdownExporter::exportDocument(directory, doc.value(), list.value(), opt);
 }
 

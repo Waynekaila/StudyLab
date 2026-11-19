@@ -195,6 +195,9 @@ QPushButton#SidebarSearch {
     padding: %{p6} %{p10}; font-weight: 400;
 }
 QPushButton#SidebarSearch:hover { border-color: %{border}; color: %{text2}; }
+QPushButton#HomeRow { text-align: left; background: transparent; border: none; border-radius: 8px; padding: 0; }
+QPushButton#HomeRow:hover { background: %{surface2}; }
+QPushButton#HomeRow:focus { background: %{primarySoft}; }
 QFrame#SearchPalette { background: %{surface}; border: 1px solid %{border}; border-radius: 14px; }
 QListWidget#SearchResults { background: transparent; border: none; outline: none; }
 QListWidget#SearchResults::item { border-radius: 8px; }

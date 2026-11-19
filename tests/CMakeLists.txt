@@ -28,6 +28,8 @@ target_link_libraries(studylab_test_support PUBLIC Qt6::Gui PRIVATE Qt6::GuiPriv
 target_compile_definitions(studylab_test_support PRIVATE STUDYLAB_TEST_FONT="${CMAKE_SOURCE_DIR}/src/ui/resources/fonts/Inter-Regular.otf")
 
 studylab_add_test(tst_import SOURCES integration/tst_import.cpp LIBS studylab_library studylab_test_support)
+studylab_add_test(tst_export_library SOURCES integration/tst_export_library.cpp
+    LIBS studylab_library studylab_annotations studylab_comments studylab_export studylab_epub studylab_test_support)
 studylab_add_test(tst_library_ui SOURCES ui/tst_library_ui.cpp ../src/app/Bootstrap.cpp LIBS studylab_ui studylab_test_support)
 target_include_directories(tst_library_ui PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
 studylab_add_test(tst_pdf_reader SOURCES ui/tst_pdf_reader.cpp ../src/app/Bootstrap.cpp LIBS studylab_ui studylab_test_support)
@@ -40,3 +42,6 @@ set_tests_properties(tst_epub_reader PROPERTIES TIMEOUT 300)
 studylab_add_test(tst_comments_ui SOURCES ui/tst_comments_ui.cpp ../src/app/Bootstrap.cpp LIBS studylab_ui studylab_test_support)
 target_include_directories(tst_comments_ui PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
 set_tests_properties(tst_comments_ui PROPERTIES TIMEOUT 300)
+studylab_add_test(tst_mvp_ui SOURCES ui/tst_mvp_ui.cpp ../src/app/Bootstrap.cpp LIBS studylab_ui studylab_test_support)
+target_include_directories(tst_mvp_ui PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
+set_tests_properties(tst_mvp_ui PROPERTIES TIMEOUT 300)

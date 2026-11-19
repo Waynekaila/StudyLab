@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/AppLink.h"
 #include "core/Result.h"
 #include "core/domain/Annotation.h"
 #include "core/domain/Document.h"
@@ -40,6 +41,13 @@ struct SearchResults {
     int total() const { return int(documents.size() + annotations.size() + comments.size()); }
 };
 
+/// Cible d'un lien studylab:// dans la base.
+struct ResolvedLink {
+    qint64 documentId = 0;
+    bool comment = false;  ///< itemId désigne un commentaire (sinon une annotation)
+    qint64 itemId = 0;     ///< 0 : ouvrir le document sans aller à un passage (annotation supprimée…)
+};
+
 /// Recherche minimale du MVP (index FTS5) : métadonnées des documents, annotations (passage cité et
 /// titre) et commentaires. Le texte intégral des documents arrive en V1. Chaque mot est cherché comme
 /// préfixe, sans tenir compte des accents ni de la casse ; tous les mots doivent être présents.
@@ -49,6 +57,9 @@ public:
 
     /// Au plus `perGroup` résultats par groupe, les plus pertinents d'abord. Requête vide : aucun résultat.
     Result<SearchResults> search(const QString& text, int perGroup = 8);
+
+    /// Retrouve le document et le passage d'un lien d'export. Document supprimé ou inconnu : NotFound.
+    Result<ResolvedLink> resolve(const AppLink& link);
 
     /// Retire les marqueurs d'un extrait.
     static QString plain(const QString& snippet);

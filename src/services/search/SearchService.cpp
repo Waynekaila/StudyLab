@@ -5,6 +5,7 @@
 #include "data/sqlite/Database.h"
 #include "data/sqlite/Statement.h"
 
+#include <QCoreApplication>
 #include <QJsonDocument>
 
 namespace studylab {
@@ -142,6 +143,45 @@ Result<SearchResults> SearchService::search(const QString& text, int perGroup)
         }
     }
     return out;
+}
+
+Result<ResolvedLink> SearchService::resolve(const AppLink& link)
+{
+    auto lookup = [this](const QString& sql, const QString& uuid, qint64 documentId) -> Result<qint64> {
+        auto stmt = m_db.prepare(sql);
+        if (!stmt)
+            return stmt.error();
+        stmt.value().bind(1, uuid);
+        if (documentId > 0)
+            stmt.value().bind(2, documentId);
+        auto row = stmt.value().step();
+        if (!row)
+            return row.error();
+        return row.value() ? stmt.value().columnInt64(0) : qint64(0);
+    };
+    ResolvedLink r;
+    auto doc = lookup(QStringLiteral("SELECT id FROM documents WHERE uuid = ?1 AND deleted_at IS NULL"), link.documentUuid, 0);
+    if (!doc)
+        return doc.error();
+    if (doc.value() == 0)
+        return Error::make(Error::Code::NotFound,
+                           QCoreApplication::translate("SearchService", "Ce document n'est plus dans la bibliothèque."));
+    r.documentId = doc.value();
+    if (!link.annotationUuid.isEmpty()) {
+        auto id = lookup(QStringLiteral("SELECT id FROM annotations WHERE uuid = ?1 AND document_id = ?2 AND deleted_at IS NULL"),
+                         link.annotationUuid, r.documentId);
+        if (!id)
+            return id.error();
+        r.itemId = id.value();
+    } else if (!link.commentUuid.isEmpty()) {
+        auto id = lookup(QStringLiteral("SELECT id FROM comments WHERE uuid = ?1 AND document_id = ?2 AND deleted_at IS NULL"),
+                         link.commentUuid, r.documentId);
+        if (!id)
+            return id.error();
+        r.itemId = id.value();
+        r.comment = true;
+    }
+    return r;
 }
 
 }  // namespace studylab

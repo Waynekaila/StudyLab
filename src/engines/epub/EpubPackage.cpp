@@ -206,6 +206,137 @@ QByteArray EpubPackage::fileData(const QString& pathInArchive) const
     return m_zip->fileData(pathInArchive);
 }
 
+namespace {
+
+QString dirOf(const QString& path)
+{
+    const int slash = path.lastIndexOf(QLatin1Char('/'));
+    return slash < 0 ? QString() : path.left(slash);
+}
+
+/// <nav epub:type="toc"> : listes <ol> imbriquées de <li><a href>…</a>.
+QList<EpubNavPoint> parseNav(const QByteArray& data, const QString& baseDir)
+{
+    QList<EpubNavPoint> out;
+    QXmlStreamReader x(data);
+    int navDepth = 0;     // profondeur d'imbrication dans le nav de la table des matières
+    int olDepth = 0;
+    bool inLink = false;
+    EpubNavPoint current;
+    while (!x.atEnd()) {
+        x.readNext();
+        if (x.isStartElement()) {
+            const auto name = x.name();
+            if (name == u"nav") {
+                if (navDepth > 0) {
+                    ++navDepth;
+                } else {
+                    const QString type = x.attributes().value(QStringLiteral("http://www.idpf.org/2007/ops"),
+                                                              QStringLiteral("type")).toString();
+                    const QString typeAttr = type.isEmpty() ? x.attributes().value(QStringLiteral("epub:type")).toString() : type;
+                    if (typeAttr.split(QLatin1Char(' ')).contains(QLatin1String("toc")))
+                        navDepth = 1;
+                }
+            } else if (navDepth > 0 && name == u"ol") {
+                ++olDepth;
+            } else if (navDepth > 0 && (name == u"a" || name == u"span") && olDepth > 0 && !inLink) {
+                inLink = true;
+                current = {};
+                current.depth = olDepth - 1;
+                const QString href = x.attributes().value(QStringLiteral("href")).toString();
+                if (!href.isEmpty())
+                    current.href = resolveHref(baseDir, href);
+            }
+        } else if (x.isCharacters() && inLink) {
+            current.label += x.text();
+        } else if (x.isEndElement()) {
+            const auto name = x.name();
+            if (inLink && (name == u"a" || name == u"span")) {
+                inLink = false;
+                current.label = current.label.simplified();
+                if (!current.label.isEmpty())
+                    out << current;
+            } else if (navDepth > 0 && name == u"ol") {
+                --olDepth;
+            } else if (navDepth > 0 && name == u"nav") {
+                if (--navDepth == 0)
+                    break;  // seule la table des matières nous intéresse
+            }
+        }
+    }
+    return out;
+}
+
+/// NCX : <navPoint><navLabel><text>…</text></navLabel><content src="…"/> imbriqués.
+QList<EpubNavPoint> parseNcx(const QByteArray& data, const QString& baseDir)
+{
+    QList<EpubNavPoint> out;
+    QXmlStreamReader x(data);
+    int depth = 0;
+    QList<int> pending;  // index dans out du navPoint ouvert à chaque niveau
+    bool inText = false;
+    while (!x.atEnd()) {
+        x.readNext();
+        if (x.isStartElement()) {
+            const auto name = x.name();
+            if (name == u"navMap") {
+                depth = 0;
+            } else if (name == u"navPoint") {
+                EpubNavPoint p;
+                p.depth = depth++;
+                out << p;
+                pending << int(out.size()) - 1;
+            } else if (name == u"text" && !pending.isEmpty()) {
+                inText = true;
+            } else if (name == u"content" && !pending.isEmpty()) {
+                out[pending.last()].href = resolveHref(baseDir, x.attributes().value(QStringLiteral("src")).toString());
+            } else if (name == u"pageList" || name == u"navList") {
+                break;
+            }
+        } else if (x.isCharacters() && inText) {
+            out[pending.last()].label += x.text();
+        } else if (x.isEndElement()) {
+            if (x.name() == u"text") {
+                inText = false;
+            } else if (x.name() == u"navPoint") {
+                --depth;
+                pending.removeLast();
+            }
+        }
+    }
+    QList<EpubNavPoint> clean;
+    for (EpubNavPoint p : out) {
+        p.label = p.label.simplified();
+        if (!p.label.isEmpty())
+            clean << p;
+    }
+    return clean;
+}
+
+}  // namespace
+
+QList<EpubNavPoint> EpubPackage::toc() const
+{
+    QList<EpubNavPoint> entries;
+    for (const auto& it : m_manifest)
+        if (it.properties.split(QLatin1Char(' ')).contains(QLatin1String("nav"))) {
+            entries = parseNav(fileData(it.href), dirOf(it.href));
+            break;
+        }
+    if (entries.isEmpty())
+        for (const auto& it : m_manifest)
+            if (it.mediaType == QLatin1String("application/x-dtbncx+xml")) {
+                entries = parseNcx(fileData(it.href), dirOf(it.href));
+                break;
+            }
+    QHash<QString, int> spineIndex;
+    for (int i = 0; i < m_spine.size(); ++i)
+        spineIndex.insert(m_spine.at(i).href, i);
+    for (EpubNavPoint& e : entries)
+        e.section = spineIndex.value(e.href, -1);
+    return entries;
+}
+
 QHash<QString, qint64> EpubPackage::fileSizes() const
 {
     QHash<QString, qint64> out;

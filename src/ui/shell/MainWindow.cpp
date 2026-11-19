@@ -1,5 +1,7 @@
 #include "ui/shell/MainWindow.h"
 
+#include "core/AppLink.h"
+
 #include "services/settings/SettingsService.h"
 #include "ui/components/FadeStackedWidget.h"
 #include "ui/library/LibraryPage.h"
@@ -11,6 +13,7 @@
 #include "ui/theme/ThemeManager.h"
 
 #include <QCloseEvent>
+#include <QMessageBox>
 #include <QShortcut>
 #include <QDragEnterEvent>
 #include <QDropEvent>
@@ -63,6 +66,14 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
     connect(library, &LibraryPage::openDocumentRequested, this, [this, reader](qint64 id) {
         navigateTo(QStringLiteral("reader"));
         reader->openDocument(id);
+    });
+    connect(home, &HomePage::openDocumentRequested, this, [this, reader](qint64 id) {
+        navigateTo(QStringLiteral("reader"));
+        reader->openDocument(id);
+    });
+    connect(home, &HomePage::openItemRequested, this, [this, reader](qint64 doc, bool comment, qint64 item) {
+        navigateTo(QStringLiteral("reader"));
+        reader->openItem(doc, comment, item);
     });
     connect(reader, &ReaderPage::libraryRequested, this, [this] { navigateTo(QStringLiteral("library")); });
     connect(reader, &ReaderPage::focusModeChanged, this, [this](bool on) { m_sidebar->setVisible(!on); });
@@ -163,6 +174,43 @@ void MainWindow::closeEvent(QCloseEvent* event)
     QSettings qs;
     qs.setValue(QStringLiteral("ui/geometry"), saveGeometry());
     QMainWindow::closeEvent(event);
+}
+
+Result<void> MainWindow::openLink(const QString& link)
+{
+    const auto parsed = AppLink::parse(link);
+    if (!parsed)
+        return Error::make(Error::Code::InvalidArgument, tr("Lien StudyLab non reconnu : %1").arg(link));
+    auto target = m_ctx.search.resolve(*parsed);
+    if (!target)
+        return target.error();
+    auto* reader = qobject_cast<ReaderPage*>(m_pages.value(QStringLiteral("reader")));
+    if (!reader)
+        return Error::make(Error::Code::Generic, tr("Lecteur indisponible."));
+    navigateTo(QStringLiteral("reader"));
+    if (target.value().itemId > 0)
+        reader->openItem(target.value().documentId, target.value().comment, target.value().itemId);
+    else
+        reader->openDocument(target.value().documentId);
+    return {};
+}
+
+void MainWindow::handleInstanceMessage(const QString& message)
+{
+    bringToFront();
+    if (!AppLink::looksLikeLink(message))
+        return;
+    if (auto r = openLink(message); !r)
+        QMessageBox::information(this, QStringLiteral("StudyLab"), r.error().message);
+}
+
+void MainWindow::bringToFront()
+{
+    if (isMinimized())
+        setWindowState((windowState() & ~Qt::WindowMinimized) | Qt::WindowActive);
+    show();
+    raise();
+    activateWindow();
 }
 
 }  // namespace studylab::ui

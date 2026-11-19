@@ -30,7 +30,14 @@ public:
         QDate date = QDate::currentDate();
         ChapterResolver chapterOf;
         QList<CommentRecord> comments;  ///< commentaires du document (Commentaires.md)
+        QString baseName;               ///< nom du dossier et de la fiche ; vide : documentBaseName()
+        bool appLinks = false;          ///< liens « studylab:// » vers le passage (gestionnaire installé)
     };
+
+    /// Nom de base effectif (Options::baseName ou documentBaseName()).
+    static QString baseName(const DocumentRecord& doc, const Options& options);
+    /// « studylab://open?doc=<uuid> » ; avec annotation ou commentaire : « …&annotation=<uuid> ».
+    static QString appLink(const QString& documentUuid, const QString& itemKey = {}, const QString& itemUuid = {});
 
     /// « Çengel - Thermodynamique (2019) », sans caractères interdits dans un nom de fichier.
     static QString documentBaseName(const DocumentRecord& doc);

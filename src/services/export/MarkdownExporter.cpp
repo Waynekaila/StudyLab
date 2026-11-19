@@ -153,6 +153,8 @@ QString MarkdownExporter::documentNote(const DocumentRecord& doc, const QList<An
         facts << QStringLiteral("**%1** : %2").arg(tr("Édition"), ed.join(QStringLiteral(", ")));
     }
     facts << QStringLiteral("**%1** : %2").arg(tr("Statut"), readingStatusLabel(doc.status));
+    if (options.appLinks)
+        facts << QStringLiteral("[%1](%2)").arg(tr("Ouvrir dans StudyLab"), appLink(doc.uuid));
     for (const QString& f : facts)
         md << QStringLiteral("- ") + f;
     if (!doc.description.isEmpty())
@@ -165,14 +167,14 @@ QString MarkdownExporter::documentNote(const DocumentRecord& doc, const QList<An
     md << QString() << QStringLiteral("## ") + tr("Annotations") << QString();
     if (count > 0)
         md << tr("%1 — voir [[%2/Annotations|Annotations]].")
-                  .arg(count == 1 ? tr("1 annotation") : tr("%1 annotations").arg(count), documentBaseName(doc));
+                  .arg(count == 1 ? tr("1 annotation") : tr("%1 annotations").arg(count), baseName(doc, options));
     else
         md << tr("Aucune annotation.");
     const int comments = int(options.comments.size());
     if (comments > 0) {
         md << QString() << QStringLiteral("## ") + tr("Commentaires") << QString();
         md << tr("%1 — voir [[%2/Commentaires|Commentaires]].")
-                  .arg(comments == 1 ? tr("1 commentaire") : tr("%1 commentaires").arg(comments), documentBaseName(doc));
+                  .arg(comments == 1 ? tr("1 commentaire") : tr("%1 commentaires").arg(comments), baseName(doc, options));
     }
     return md.join(QLatin1Char('\n')) + QLatin1Char('\n');
 }
@@ -180,7 +182,7 @@ QString MarkdownExporter::documentNote(const DocumentRecord& doc, const QList<An
 QString MarkdownExporter::annotationsNote(const DocumentRecord& doc, const QList<AnnotationRecord>& annotations,
                                           const Options& options)
 {
-    const QString base = documentBaseName(doc);
+    const QString base = baseName(doc, options);
     QStringList md;
     md << QStringLiteral("---") << QStringLiteral("type: annotations")
        << QStringLiteral("document: ") + yamlString(QStringLiteral("[[%1]]").arg(base))
@@ -220,7 +222,10 @@ QString MarkdownExporter::annotationsNote(const DocumentRecord& doc, const QList
             firstGroup = false;
         }
         const QString calloutType = a.type == AnnotationType::Note ? QStringLiteral("note") : QStringLiteral("quote");
-        QString header = QStringLiteral("> [!%1] %2 · %3").arg(calloutType, pageRef(a), annotationTypeLabel(a.type));
+        const QString where = options.appLinks
+                                  ? QStringLiteral("[%1](%2)").arg(pageRef(a), appLink(doc.uuid, QStringLiteral("annotation"), a.uuid))
+                                  : pageRef(a);
+        QString header = QStringLiteral("> [!%1] %2 · %3").arg(calloutType, where, annotationTypeLabel(a.type));
         if (a.type != AnnotationType::Note)
             header += QStringLiteral(" · ") + annotationColorLabel(a.color).toLower();
         md << QString() << header;
@@ -258,7 +263,7 @@ QString calloutFor(CommentKind kind)
 QString MarkdownExporter::commentsNote(const DocumentRecord& doc, const QList<CommentRecord>& comments,
                                        const Options& options)
 {
-    const QString base = documentBaseName(doc);
+    const QString base = baseName(doc, options);
     QStringList md;
     md << QStringLiteral("---") << QStringLiteral("type: comments")
        << QStringLiteral("document: ") + yamlString(QStringLiteral("[[%1]]").arg(base))
@@ -296,7 +301,10 @@ QString MarkdownExporter::commentsNote(const DocumentRecord& doc, const QList<Co
         QStringList head{commentKindLabel(c.kind)};
         const QString where = commentLocation(c);
         if (!where.isEmpty())
-            head << where;
+            head << (options.appLinks ? QStringLiteral("[%1](%2)").arg(where, appLink(doc.uuid, QStringLiteral("comment"), c.uuid))
+                                      : where);
+        else if (options.appLinks)
+            head << QStringLiteral("[%1](%2)").arg(tr("ouvrir"), appLink(doc.uuid, QStringLiteral("comment"), c.uuid));
         if (c.kind == CommentKind::Question)
             head << (c.resolved ? tr("résolue") : tr("ouverte"));
         md << QString() << QStringLiteral("> [!%1] %2").arg(calloutFor(c.kind), head.join(QStringLiteral(" · ")));
@@ -375,10 +383,23 @@ QJsonObject MarkdownExporter::metadata(const DocumentRecord& doc, const QList<An
                        {QStringLiteral("comments"), coms}};
 }
 
+QString MarkdownExporter::baseName(const DocumentRecord& doc, const Options& options)
+{
+    return options.baseName.isEmpty() ? documentBaseName(doc) : options.baseName;
+}
+
+QString MarkdownExporter::appLink(const QString& documentUuid, const QString& itemKey, const QString& itemUuid)
+{
+    QString link = QStringLiteral("studylab://open?doc=") + documentUuid;
+    if (!itemKey.isEmpty() && !itemUuid.isEmpty())
+        link += QLatin1Char('&') + itemKey + QLatin1Char('=') + itemUuid;
+    return link;
+}
+
 Result<QString> MarkdownExporter::exportDocument(const QString& targetDir, const DocumentRecord& doc,
                                                  const QList<AnnotationRecord>& annotations, const Options& options)
 {
-    const QString base = documentBaseName(doc);
+    const QString base = baseName(doc, options);
     QDir root(targetDir);
     if (!root.exists() || !root.mkpath(base))
         return Error::make(Error::Code::Io, tr("Impossible de créer le dossier %1.").arg(root.filePath(base)));

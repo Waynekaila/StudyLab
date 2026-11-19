@@ -14,7 +14,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(STUDYLAB_BUILD_TESTS "Compiler les tests automatisés" ON)
 
 # Qt 6.8 LTS est la cible (Debian 13, Windows). 6.4 est le minimum accepté pour compiler.
-find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Widgets Svg Concurrent Pdf WebEngineWidgets WebChannel)
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Widgets Svg Concurrent Network Pdf WebEngineWidgets WebChannel)
 if(Qt6_VERSION VERSION_GREATER_EQUAL 6.9)
     find_package(Qt6 REQUIRED COMPONENTS CorePrivate GuiPrivate)  # QZipReader (lecture EPUB)
 endif()
@@ -25,6 +25,7 @@ include(StudyLabCompilerOptions)
 
 add_subdirectory(third_party/sqlite)
 add_subdirectory(src)
+include(StudyLabPackaging)
 
 if(STUDYLAB_BUILD_TESTS)
     enable_testing()

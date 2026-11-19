@@ -209,6 +209,18 @@ Result<AnnotationRecord> AnnotationRepository::findById(qint64 id)
     return rows.value().first();
 }
 
+Result<QList<AnnotationRecord>> AnnotationRepository::listRecent(int limit)
+{
+    auto stmt = m_db.prepare(kSelect + QStringLiteral(
+        "JOIN documents d ON d.id = a.document_id "
+        "WHERE a.deleted_at IS NULL AND d.deleted_at IS NULL AND a.type <> 'bookmark' "
+        "ORDER BY a.created_at DESC, a.id DESC LIMIT ?1"));
+    if (!stmt)
+        return stmt.error();
+    stmt.value().bind(1, limit);
+    return collect(stmt.value());
+}
+
 Result<QList<AnnotationRecord>> AnnotationRepository::listForDocument(qint64 documentId)
 {
     auto stmt = m_db.prepare(kSelect + QStringLiteral(

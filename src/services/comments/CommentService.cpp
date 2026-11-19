@@ -74,6 +74,8 @@ Result<std::optional<CommentRecord>> CommentService::forAnnotation(qint64 annota
     return m_repo.findForAnnotation(annotationId);
 }
 Result<QList<CommentRecord>> CommentService::list(qint64 documentId) { return m_repo.listForDocument(documentId); }
+
+Result<QList<CommentRecord>> CommentService::recent(int limit) { return m_repo.listRecent(limit); }
 Result<int> CommentService::count(qint64 documentId) { return m_repo.countForDocument(documentId); }
 
 }  // namespace studylab
