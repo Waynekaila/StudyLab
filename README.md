@@ -11,13 +11,22 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | Phase | Contenu | État |
 |---|---|---|
 | 1 · Conception | Vision, architecture, choix des bibliothèques, schéma SQLite, maquettes, plan | ✅ Terminée — voir [`docs/design/`](docs/design/README.md) |
-| 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | 🚧 En cours — itération 4/7 (annotations PDF) |
+| 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | 🚧 En cours — itération 5/7 (lecteur EPUB) |
 | 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | — |
 | 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | — |
 | 5 · Finalisation | Optimisation, packaging, documentation | — |
 
-### Ce qui fonctionne aujourd'hui (itération 4)
+### Ce qui fonctionne aujourd'hui (itération 5)
 
+- **Lecteur EPUB** (EPUB 2 et 3) : table des matières avec le chapitre courant en évidence, pages ou défilement
+  continu, progression et temps restant estimé dans le chapitre, chapitre précédent/suivant, historique,
+  recherche dans tout le livre (accents et casse ignorés). Panneau **Affichage du texte** : police, taille,
+  interligne, marges, mise en page et quatre thèmes de page (blanc, sépia, vert d'eau, sombre). Reprise à la
+  position exacte (CFI) à la réouverture. Hors ligne : les fichiers sont lus dans l'archive sans extraction,
+  aucune requête réseau, les scripts des livres ne s'exécutent pas.
+- **Annotations EPUB** : surlignage, soulignement, barré, note et signet, en 5 couleurs, avec la même barre
+  flottante, le même volet et le même export Markdown que pour les PDF ; elles restent ancrées après un
+  changement de police, de taille ou de mise en page.
 - **Annotations PDF** : surlignage, soulignement, barré, zone rectangulaire, note ponctuelle et signet (Ctrl + D),
   en 5 couleurs. Une sélection fait apparaître une barre flottante (couleur, type, note, copier) ; un outil actif
   annote directement. Les annotations restent ancrées au texte quel que soit le zoom, la rotation ou le redémarrage
@@ -50,8 +59,9 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | ![Bibliothèque](docs/screenshots/iteration2-bibliotheque-grille.png) | ![Bibliothèque sombre](docs/screenshots/iteration2-bibliotheque-sombre.png) |
 | ![Lecteur PDF](docs/screenshots/iteration3-lecteur-pdf.png) | ![Lecteur PDF sombre, recherche](docs/screenshots/iteration3-lecteur-pdf-sombre.png) |
 | ![Annotations](docs/screenshots/iteration4-annotations.png) | ![Annotations sombre](docs/screenshots/iteration4-annotations-sombre.png) |
+| ![Lecteur EPUB, affichage du texte](docs/screenshots/iteration5-epub.png) | ![Lecteur EPUB sombre](docs/screenshots/iteration5-epub-sombre.png) |
 
-Le lecteur EPUB, les commentaires et la sauvegarde complète arrivent dans les itérations suivantes
+Les commentaires, la recherche universelle et la sauvegarde complète arrivent dans les itérations suivantes
 (plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md)).
 
 ## Compiler

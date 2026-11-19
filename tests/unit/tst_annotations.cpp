@@ -65,6 +65,46 @@ private slots:
         QVERIFY(docs.insert(m_doc).ok());
     }
 
+    void epubLocatorAndLocation()
+    {
+        EpubLocator l;
+        l.cfi = QStringLiteral("epubcfi(/6/4!/4/2,/1:0,/1:24)");
+        l.section = 1;
+        l.fraction = 0.25;
+        l.progress = 0.4234;
+        l.exact = QStringLiteral("système isolé");
+        l.prefix = QStringLiteral("L'entropie d'un ");
+        const QJsonObject json = l.toJson();
+        QCOMPARE(json.value(QStringLiteral("kind")).toString(), QStringLiteral("epub"));
+        const auto back = EpubLocator::fromJson(json);
+        QVERIFY(back.has_value());
+        QCOMPARE(back->cfi, l.cfi);
+        QCOMPARE(back->section, 1);
+        QCOMPARE(back->exact, l.exact);
+        QCOMPARE(back->prefix, l.prefix);
+        QVERIFY(!PdfLocator::fromJson(json));
+        QVERIFY(!EpubLocator::fromJson(QJsonObject{{QStringLiteral("kind"), QStringLiteral("epub")}}));
+
+        AnnotationService service(*m_db);
+        AnnotationRecord r;
+        r.documentId = m_doc.id;
+        r.locator = json;
+        r.selectedText = l.exact;
+        auto created = service.create(r);
+        QVERIFY(created.ok());
+        QCOMPARE(created.value().unitIndex, 1);
+        QCOMPARE(created.value().sortKey, 1.25);
+        QCOMPARE(annotationLocation(created.value()), QStringLiteral("42 %"));
+        QCOMPARE(annotationGroupFallback(created.value()), QStringLiteral("Section 2"));
+        AnnotationRecord pdf;
+        pdf.unitIndex = 9;
+        pdf.locator = locator(9, 0.1, QStringLiteral("x")).toJson();
+        QCOMPARE(annotationLocation(pdf), QStringLiteral("p. 10"));
+        pdf.pageLabel = QStringLiteral("ix");
+        QCOMPARE(annotationGroupFallback(pdf), QStringLiteral("Page ix"));
+        QVERIFY(service.remove(created.value().id).ok());
+    }
+
     void locatorRoundTrip()
     {
         const PdfLocator l = locator(41, 0.304, QStringLiteral("L'entropie d'un système isolé"));

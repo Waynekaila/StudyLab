@@ -99,4 +99,38 @@ double contrastRatio(const QColor& a, const QColor& b)
     return (std::max(la, lb) + 0.05) / (std::min(la, lb) + 0.05);
 }
 
+ReadingColors readingColors(ReadingTheme theme)
+{
+    ReadingColors r;
+    switch (theme) {
+    case ReadingTheme::White:
+        r.bg = c("#FFFFFF");
+        r.text = c("#24272E");
+        r.muted = c("#6B7080");
+        r.link = c("#3D63A8");
+        break;
+    case ReadingTheme::Sepia:
+        r.bg = c("#F7F0E3");
+        r.text = c("#3B3226");
+        r.muted = c("#7A6C58");
+        r.link = c("#8A5A1F");
+        break;
+    case ReadingTheme::Green:
+        r.bg = c("#E9EFEA");
+        r.text = c("#26302A");
+        r.muted = c("#5F6E64");
+        r.link = c("#2F6B55");
+        break;
+    case ReadingTheme::Dark:
+        r.dark = true;
+        r.bg = c("#1D2026");
+        r.text = c("#D9DCE3");
+        r.muted = c("#8C92A0");
+        r.link = c("#8FB3F0");
+        break;
+    }
+    r.selection = r.dark ? QColor(143, 179, 240, 90) : QColor(61, 99, 168, 60);
+    return r;
+}
+
 }  // namespace studylab::ui

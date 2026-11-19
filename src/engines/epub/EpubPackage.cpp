@@ -206,4 +206,13 @@ QByteArray EpubPackage::fileData(const QString& pathInArchive) const
     return m_zip->fileData(pathInArchive);
 }
 
+QHash<QString, qint64> EpubPackage::fileSizes() const
+{
+    QHash<QString, qint64> out;
+    for (const QZipReader::FileInfo& fi : m_zip->fileInfoList())
+        if (fi.isFile)
+            out.insert(fi.filePath, fi.size);
+    return out;
+}
+
 }  // namespace studylab

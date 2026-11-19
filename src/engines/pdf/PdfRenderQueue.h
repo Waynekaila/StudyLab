@@ -9,6 +9,8 @@
 #include <QPointer>
 #include <QRect>
 #include <QSize>
+#include <QSizeF>
+#include <QStringList>
 #include <QThread>
 #include <QWaitCondition>
 
@@ -52,6 +54,12 @@ public:
     explicit PdfRenderQueue(QPdfDocument* document, QObject* parent = nullptr);
     ~PdfRenderQueue() override;
 
+    /// Numéro imprimé d'une page (vide s'il n'y en a pas) et taille en points, lus une fois à la construction :
+    /// PDFium n'est pas réentrant et le rendu tourne sur un autre thread (QPdfDocument::pageLabel ne se
+    /// protège pas en Qt 6.4).
+    QString pageLabel(int page) const { return m_pageLabels.value(page); }
+    QSizeF pagePointSize(int page) const { return m_pageSizes.value(page); }
+
     /// Taille de la page entière, en pixels physiques, pour une largeur rendue donnée.
     QSize scaledPageSize(int page, int scaledWidth) const;
     /// Rectangle (pixels physiques) couvert par une tuile.
@@ -71,6 +79,7 @@ signals:
     void tileReady(const studylab::PdfTileKey& key);
 
 private:
+    QStringList m_pageLabels;
     class Worker;
     void onRendered(const PdfTileKey& key, const QImage& image);
 

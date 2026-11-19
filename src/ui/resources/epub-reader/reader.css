@@ -1,0 +1,6 @@
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg, #fff); color: var(--fg, #222); }
+body { font: 13px Inter, system-ui, sans-serif; }
+foliate-view { display: block; height: 100%; }
+#status { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+          color: var(--muted, #888); padding: 32px; text-align: center; }
+#status.visible { display: flex; }

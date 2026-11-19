@@ -102,8 +102,10 @@ PdfRenderQueue::PdfRenderQueue(QPdfDocument* document, QObject* parent)
     : QObject(parent), m_document(document), m_cache(160 * 1024)
 {
     qRegisterMetaType<PdfTileKey>();
-    for (int i = 0; i < document->pageCount(); ++i)
+    for (int i = 0; i < document->pageCount(); ++i) {
         m_pageSizes << document->pagePointSize(i);
+        m_pageLabels << document->pageLabel(i);
+    }
     m_worker = new Worker(this, document);
     m_worker->start(QThread::LowPriority);
 }

@@ -40,6 +40,17 @@ private slots:
         }
     }
 
+    void readingThemesAreReadable()
+    {
+        for (ReadingTheme t : {ReadingTheme::White, ReadingTheme::Sepia, ReadingTheme::Green, ReadingTheme::Dark}) {
+            const ReadingColors c = readingColors(t);
+            QVERIFY2(contrastRatio(c.text, c.bg) >= 7.0, "texte des livres : contraste AAA");
+            QVERIFY(contrastRatio(c.link, c.bg) >= 4.5);
+            QVERIFY(contrastRatio(c.muted, c.bg) >= 3.0);
+            QCOMPARE(c.dark, t == ReadingTheme::Dark);
+        }
+    }
+
     void contrastFormula()
     {
         QCOMPARE(qRound(contrastRatio(Qt::black, Qt::white)), 21);

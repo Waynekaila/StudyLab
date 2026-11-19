@@ -232,7 +232,7 @@ private slots:
             QVERIFY(QTest::qWaitForWindowExposed(&reader));
             reader.openDocument(id);
             QCOMPARE(reader.tabCount(), 1);
-            auto* tab = reader.currentTab();
+            auto* tab = qobject_cast<ui::PdfReaderTab*>(reader.currentTab());
             QTRY_VERIFY(tab->isLoaded());
             QCOMPARE(env.library->document(id).value().status, ReadingStatus::Reading);  // « À lire » → « En cours »
             QVERIFY(!env.library->document(id).value().lastOpenedAt.isEmpty());
@@ -260,7 +260,7 @@ private slots:
         reader.show();
         QVERIFY(QTest::qWaitForWindowExposed(&reader));
         QCOMPARE(reader.tabCount(), 1);
-        auto* tab = reader.currentTab();
+        auto* tab = qobject_cast<ui::PdfReaderTab*>(reader.currentTab());
         QTRY_VERIFY(tab->isLoaded());
         QCOMPARE(tab->view()->currentPage(), 4);
         QCOMPARE(tab->view()->rotation(), 180);
@@ -335,7 +335,7 @@ private slots:
         auto* reader = qobject_cast<ui::ReaderPage*>(window.page(QStringLiteral("reader")));
         reader->openDocument(id);
         QTRY_VERIFY(reader->currentTab()->isLoaded());
-        auto* tab = reader->currentTab();
+        auto* tab = qobject_cast<ui::PdfReaderTab*>(reader->currentTab());
         tab->view()->selectText(0, QPointF(20, 40), 0, QPointF(300, 70));
         maybeScreenshot(window, QStringLiteral("iteration3-lecteur-pdf"));
         env.settings->setThemeMode(ThemeMode::Dark);

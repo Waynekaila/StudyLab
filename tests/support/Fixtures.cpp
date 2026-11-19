@@ -109,6 +109,25 @@ bool writeEpub(const QString& path, const EpubSpec& spec)
                         .arg(spec.chapters.at(i))
                         .toUtf8());
     }
+    if (!spec.tocTitles.isEmpty()) {
+        QString items;
+        for (int i = 0; i < spec.tocTitles.size() && i < spec.chapters.size(); ++i)
+            items += spec.epub3 ? QStringLiteral("<li><a href=\"Text/ch%1.xhtml\">%2</a></li>").arg(i + 1).arg(spec.tocTitles.at(i).toHtmlEscaped())
+                                : QStringLiteral("<navPoint id=\"n%1\" playOrder=\"%1\"><navLabel><text>%2</text></navLabel>"
+                                                 "<content src=\"Text/ch%1.xhtml\"/></navPoint>").arg(i + 1).arg(spec.tocTitles.at(i).toHtmlEscaped());
+        if (spec.epub3) {
+            manifest += QStringLiteral("<item id=\"nav\" href=\"nav.xhtml\" media-type=\"application/xhtml+xml\" properties=\"nav\"/>");
+            zip.addFile(QStringLiteral("OEBPS/nav.xhtml"),
+                        QStringLiteral("<?xml version=\"1.0\" encoding=\"utf-8\"?><html xmlns=\"http://www.w3.org/1999/xhtml\" "
+                                       "xmlns:epub=\"http://www.idpf.org/2007/ops\"><head><title>Sommaire</title></head><body>"
+                                       "<nav epub:type=\"toc\"><ol>%1</ol></nav></body></html>").arg(items).toUtf8());
+        } else {
+            manifest += QStringLiteral("<item id=\"ncx\" href=\"toc.ncx\" media-type=\"application/x-dtbncx+xml\"/>");
+            zip.addFile(QStringLiteral("OEBPS/toc.ncx"),
+                        QStringLiteral("<?xml version=\"1.0\" encoding=\"utf-8\"?><ncx xmlns=\"http://www.daisy.org/z3986/2005/ncx/\" "
+                                       "version=\"2005-1\"><head/><docTitle><text>T</text></docTitle><navMap>%1</navMap></ncx>").arg(items).toUtf8());
+        }
+    }
     if (spec.withCover) {
         QImage img(600, 900, QImage::Format_RGB32);
         img.fill(QColor(0x4A, 0x5D, 0x7E));
@@ -128,8 +147,9 @@ bool writeEpub(const QString& path, const EpubSpec& spec)
                             "<?xml version=\"1.0\" encoding=\"utf-8\"?><package xmlns=\"http://www.idpf.org/2007/opf\" "
                             "version=\"%1\" unique-identifier=\"uid\"><metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\" "
                             "xmlns:opf=\"http://www.idpf.org/2007/opf\">%2</metadata><manifest>%3</manifest>"
-                            "<spine>%4</spine></package>")
-                            .arg(spec.epub3 ? QStringLiteral("3.0") : QStringLiteral("2.0"), meta, manifest, spine);
+                            "<spine%5>%4</spine></package>")
+                            .arg(spec.epub3 ? QStringLiteral("3.0") : QStringLiteral("2.0"), meta, manifest, spine,
+                                 !spec.epub3 && !spec.tocTitles.isEmpty() ? QStringLiteral(" toc=\"ncx\"") : QString());
     zip.addFile(QStringLiteral("OEBPS/content.opf"), opf.toUtf8());
     zip.close();
     return zip.status() == QZipWriter::NoError;

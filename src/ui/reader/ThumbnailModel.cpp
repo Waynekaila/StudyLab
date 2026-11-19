@@ -53,7 +53,7 @@ QVariant ThumbnailModel::data(const QModelIndex& index, int role) const
     }
     case LabelRole:
     case Qt::DisplayRole: {
-        const QString label = m_doc->pageLabel(page);
+        const QString label = m_queue->pageLabel(page);
         return label.isEmpty() ? QString::number(page + 1) : label;
     }
     case Qt::AccessibleTextRole:

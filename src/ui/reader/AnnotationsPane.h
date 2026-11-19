@@ -56,6 +56,8 @@ public:
 
     void setAnnotations(const QList<AnnotationRecord>& records);
     void setCurrentPage(int page);
+    /// Unité de la portée restreinte : page (PDF, par défaut) ou chapitre (EPUB).
+    void setUnitIsChapter(bool chapter);
     /// Titre de groupe d'une page (chapitre du sommaire), vide → « Page N ».
     void setGroupResolver(std::function<QString(int)> resolver);
     /// Annotation mise en évidence (dernière créée ou cliquée dans le lecteur).
@@ -93,6 +95,7 @@ private:
     QList<AnnotationRecord> m_all;
     std::function<QString(int)> m_groupOf;
     int m_currentPage = 0;
+    bool m_unitIsChapter = false;
     qint64 m_active = 0;
     std::optional<AnnotationColor> m_colorFilter;
 

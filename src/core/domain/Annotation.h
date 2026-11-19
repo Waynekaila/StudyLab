@@ -45,6 +45,21 @@ struct PdfLocator {
     double relativeY() const;
 };
 
+/// Ancre d'une annotation EPUB (02-architecture §2.6) : CFI de plage (standard EPUB), citation avec
+/// contexte et position dans la section, pour l'ordre de lecture et un réancrage de secours.
+struct EpubLocator {
+    QString cfi;          ///< « epubcfi(/6/4!/4/2,/1:0,/1:24) » ; plage réduite à un point pour un signet
+    int section = 0;      ///< index dans le spine
+    double fraction = 0;  ///< position du début dans la section (0..1)
+    double progress = 0;  ///< position dans le livre (0..1)
+    QString exact;
+    QString prefix;
+    QString suffix;
+
+    QJsonObject toJson() const;
+    static std::optional<EpubLocator> fromJson(const QJsonObject& o);
+};
+
 /// Annotation telle que stockée (table annotations + commentaire lié servant de note).
 struct AnnotationRecord {
     qint64 id = 0;
@@ -67,6 +82,11 @@ struct AnnotationRecord {
 
 /// Clé d'ordre de lecture : page + position relative dans la page.
 double annotationSortKey(int unitIndex, double relativeY);
+
+/// Emplacement lisible : « p. 389 » (PDF) ou « 42 % » (EPUB).
+QString annotationLocation(const AnnotationRecord& r);
+/// Titre de groupe quand le document n'a pas de sommaire : « Page 389 » ou « Section 3 ».
+QString annotationGroupFallback(const AnnotationRecord& r);
 
 /// Texte d'une annotation normalisé pour l'affichage et l'export (espaces et coupures de ligne fusionnés,
 /// césures « -\n » recollées).

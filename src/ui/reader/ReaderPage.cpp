@@ -3,6 +3,7 @@
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
 #include "ui/components/Widgets.h"
+#include "ui/reader/EpubReaderTab.h"
 #include "ui/reader/PdfReaderTab.h"
 #include "ui/theme/Icons.h"
 #include "ui/theme/ThemeManager.h"
@@ -58,7 +59,7 @@ ReaderPage::ReaderPage(AppContext& ctx, QWidget* parent) : QWidget(parent), m_ct
     cv->setContentsMargins(32, 28, 32, 28);
     auto* title = makeLabel(tr("Aucun document ouvert"), "h2");
     title->setAlignment(Qt::AlignCenter);
-    auto* text = makeLabel(tr("Ouvrez un PDF depuis la bibliothèque : il s'affichera ici, à la position où vous "
+    auto* text = makeLabel(tr("Ouvrez un PDF ou un EPUB depuis la bibliothèque : il s'affichera ici, à la position où vous "
                               "l'aviez laissé."),
                            "muted");
     text->setAlignment(Qt::AlignCenter);
@@ -89,7 +90,7 @@ ReaderPage::ReaderPage(AppContext& ctx, QWidget* parent) : QWidget(parent), m_ct
     connect(&ctx.library, &LibraryService::documentsChanged, this, [this] {
         // Un document retiré de la bibliothèque ferme son onglet.
         for (int i = m_tabs->count() - 1; i >= 0; --i) {
-            auto* tab = static_cast<PdfReaderTab*>(m_tabs->widget(i));
+            auto* tab = static_cast<ReaderTab*>(m_tabs->widget(i));
             if (!m_ctx.library.document(tab->documentId()))
                 closeTab(i);
         }
@@ -109,15 +110,15 @@ int ReaderPage::tabCount() const
     return m_tabs->count();
 }
 
-PdfReaderTab* ReaderPage::currentTab() const
+ReaderTab* ReaderPage::currentTab() const
 {
-    return static_cast<PdfReaderTab*>(m_tabs->currentWidget());
+    return static_cast<ReaderTab*>(m_tabs->currentWidget());
 }
 
-PdfReaderTab* ReaderPage::tabFor(qint64 documentId) const
+ReaderTab* ReaderPage::tabFor(qint64 documentId) const
 {
     for (int i = 0; i < m_tabs->count(); ++i) {
-        auto* tab = static_cast<PdfReaderTab*>(m_tabs->widget(i));
+        auto* tab = static_cast<ReaderTab*>(m_tabs->widget(i));
         if (tab->documentId() == documentId)
             return tab;
     }
@@ -131,9 +132,15 @@ void ReaderPage::openDocument(qint64 documentId)
         return;
     }
     auto doc = m_ctx.library.document(documentId);
-    if (!doc || doc.value().format != DocumentFormat::Pdf)
+    if (!doc)
         return;
-    auto* tab = new PdfReaderTab(m_ctx, documentId, m_tabs);
+    ReaderTab* tab = nullptr;
+    if (doc.value().format == DocumentFormat::Pdf)
+        tab = new PdfReaderTab(m_ctx, documentId, m_tabs);
+    else if (doc.value().format == DocumentFormat::Epub)
+        tab = new EpubReaderTab(m_ctx, documentId, m_tabs);
+    else
+        return;
     const QString title = doc.value().title;
     const int idx = m_tabs->addTab(tab, QFontMetrics(font()).elidedText(title, Qt::ElideRight, 180));
     m_tabs->setTabToolTip(idx, title);
@@ -155,12 +162,12 @@ void ReaderPage::openDocument(qint64 documentId)
             closeTab(i);
     });
     m_tabs->tabBar()->setTabButton(idx, QTabBar::RightSide, close);
-    connect(tab, &PdfReaderTab::focusModeToggled, this, [this](bool on) {
+    connect(tab, &ReaderTab::focusModeToggled, this, [this](bool on) {
         m_exitFocus->setEnabled(on);
         m_tabs->tabBar()->setVisible(!on);
         emit focusModeChanged(on);
     });
-    connect(tab, &PdfReaderTab::fullScreenToggled, this, &ReaderPage::fullScreenRequested);
+    connect(tab, &ReaderTab::fullScreenToggled, this, &ReaderPage::fullScreenRequested);
     if (!m_restoring)
         m_tabs->setCurrentIndex(idx);
     updateEmptyState();
@@ -169,7 +176,7 @@ void ReaderPage::openDocument(qint64 documentId)
 
 void ReaderPage::closeTab(int index)
 {
-    auto* tab = static_cast<PdfReaderTab*>(m_tabs->widget(index));
+    auto* tab = static_cast<ReaderTab*>(m_tabs->widget(index));
     if (!tab)
         return;
     tab->setFocusMode(false);
@@ -190,7 +197,7 @@ void ReaderPage::persistTabs()
         return;
     QJsonArray ids;
     for (int i = 0; i < m_tabs->count(); ++i)
-        ids.append(static_cast<PdfReaderTab*>(m_tabs->widget(i))->documentId());
+        ids.append(static_cast<ReaderTab*>(m_tabs->widget(i))->documentId());
     m_ctx.settings.setValue(kOpenTabs, ids);
     m_ctx.settings.setValue(kCurrentTab, m_tabs->currentIndex());
 }
@@ -210,7 +217,7 @@ void ReaderPage::restoreSession()
 void ReaderPage::saveSession()
 {
     for (int i = 0; i < m_tabs->count(); ++i)
-        static_cast<PdfReaderTab*>(m_tabs->widget(i))->savePosition();
+        static_cast<ReaderTab*>(m_tabs->widget(i))->savePosition();
     persistTabs();
 }
 

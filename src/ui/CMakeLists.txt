@@ -25,8 +25,12 @@ add_library(studylab_ui STATIC
     reader/ReaderPage.h reader/ReaderPage.cpp
     reader/AnnotationStyle.h reader/AnnotationStyle.cpp
     reader/AnnotationPopup.h reader/AnnotationPopup.cpp
-    reader/AnnotationsPane.h reader/AnnotationsPane.cpp)
-target_link_libraries(studylab_ui PUBLIC studylab_library studylab_annotations studylab_export studylab_settings studylab_data studylab_core Qt6::Widgets Qt6::Svg)
+    reader/AnnotationsPane.h reader/AnnotationsPane.cpp
+    reader/ReaderTab.h reader/ReaderTab.cpp
+    reader/EpubWeb.h reader/EpubWeb.cpp
+    reader/EpubView.h reader/EpubView.cpp
+    reader/EpubReaderTab.h reader/EpubReaderTab.cpp)
+target_link_libraries(studylab_ui PUBLIC studylab_library studylab_annotations studylab_export studylab_settings studylab_epub studylab_data studylab_core Qt6::Widgets Qt6::Svg Qt6::WebEngineWidgets Qt6::WebChannel)
 studylab_set_warnings(studylab_ui)
 
 file(GLOB STUDYLAB_ICONS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS resources/icons/*.svg)
@@ -47,3 +51,11 @@ qt_add_resources(studylab_ui "theme"
     FILES
         resources/theme/chevron-down-light.svg
         resources/theme/chevron-down-dark.svg)
+
+# Lecteur EPUB : foliate-js (MIT, version figée dans foliate/VERSION) et notre adaptateur.
+file(GLOB_RECURSE STUDYLAB_EPUB_READER RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS
+    resources/epub-reader/*.js resources/epub-reader/*.html resources/epub-reader/*.css)
+qt_add_resources(studylab_ui "epub_reader"
+    PREFIX "/epub-reader"
+    BASE resources/epub-reader
+    FILES ${STUDYLAB_EPUB_READER})

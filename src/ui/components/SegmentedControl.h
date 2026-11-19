@@ -18,6 +18,7 @@ public:
     void setCurrentIndex(int index);  ///< N'émet pas currentIndexChanged.
     /// Remplace le libellé d'un segment par une icône (le libellé devient l'infobulle et le nom accessible).
     void setSegmentIcon(int index, const QIcon& icon);
+    void setSegmentText(int index, const QString& text);
 
 signals:
     void currentIndexChanged(int index);

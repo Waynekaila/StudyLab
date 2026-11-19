@@ -47,9 +47,8 @@ QVariant AnnotationListModel::data(const QModelIndex& index, int role) const
     case Qt::AccessibleTextRole:
         if (row.header)
             return row.title;
-        return QStringLiteral("%1, p. %2 : %3")
-            .arg(annotationTypeLabel(row.record.type),
-                 row.record.pageLabel.isEmpty() ? QString::number(row.record.unitIndex + 1) : row.record.pageLabel,
+        return QStringLiteral("%1, %2 : %3")
+            .arg(annotationTypeLabel(row.record.type), annotationLocation(row.record),
                  row.record.selectedText.isEmpty() ? row.record.note : row.record.selectedText);
     default: return {};
     }
@@ -72,7 +71,7 @@ void AnnotationListModel::setRows(const QList<AnnotationRecord>& records, const 
     for (const auto& r : records) {
         QString group = groupOf ? groupOf(r.unitIndex) : QString();
         if (group.isEmpty())
-            group = tr("Page %1").arg(r.pageLabel.isEmpty() ? QString::number(r.unitIndex + 1) : r.pageLabel);
+            group = annotationGroupFallback(r);
         if (first || group != current) {
             m_rows.append({true, group, {}});
             current = group;
@@ -214,7 +213,7 @@ public:
         const QFont sf = smallFont();
         QFont pageFont = sf;
         pageFont.setWeight(QFont::DemiBold);
-        const QString page = QStringLiteral("p. %1").arg(r.pageLabel.isEmpty() ? QString::number(r.unitIndex + 1) : r.pageLabel);
+        const QString page = annotationLocation(r);
         p->setFont(pageFont);
         p->setPen(pal.text2);
         const int pw = QFontMetrics(pageFont).horizontalAdvance(page);
@@ -456,6 +455,13 @@ void AnnotationsPane::setCurrentPage(int page)
         rebuild();
 }
 
+void AnnotationsPane::setUnitIsChapter(bool chapter)
+{
+    m_unitIsChapter = chapter;
+    m_scope->setSegmentText(1, chapter ? tr("Chapitre") : tr("Page"));
+    rebuild();
+}
+
 void AnnotationsPane::setGroupResolver(std::function<QString(int)> resolver)
 {
     m_groupOf = std::move(resolver);
@@ -532,7 +538,7 @@ void AnnotationsPane::rebuild()
         m_empty->setText(tr("Aucune annotation pour l'instant.\nSélectionnez un passage pour le surligner, "
                             "ou choisissez un outil dans la barre du lecteur."));
     else if (pageOnly && needle.isEmpty() && !m_colorFilter && typeKey.isEmpty())
-        m_empty->setText(tr("Aucune annotation sur cette page."));
+        m_empty->setText(m_unitIsChapter ? tr("Aucune annotation dans ce chapitre.") : tr("Aucune annotation sur cette page."));
     else
         m_empty->setText(tr("Aucune annotation ne correspond aux filtres."));
 }
