@@ -101,7 +101,7 @@ Transverses : **recherche universelle** (Ctrl+K), **palette de commandes** (Ctrl
 | Primaire (bleu ardoise) | `#5B7DB1` | `#8AA6D1` |
 | Secondaire (lavande) | `#9C8FD0` | `#B4A9DF` |
 | Accent (sauge) | `#7FA88A` | `#9BBFA4` |
-| Annotation jaune | `#F6E7A1` | `#7A6E3A` (40 % opacité sur la page) |
+| Annotation jaune | `#F6E7A1` | `#4D4630` |
 | Annotation verte | `#CDE7C9` | … |
 | Annotation bleue | `#CFE0F5` | … |
 | Annotation rose | `#F5D0DC` | … |
