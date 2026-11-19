@@ -299,6 +299,12 @@ QProgressBar { background: %{sunken}; border: none; border-radius: 3px; }
 QProgressBar::chunk { background: %{primary}; border-radius: 3px; }
 QMessageBox { background: %{surface}; }
 QFrame#NotesNav { background: %{surface2}; border: none; border-right: 1px solid %{borderSoft}; }
+QToolButton#GraphZoomIn, QToolButton#GraphZoomOut, QToolButton#GraphFit, QToolButton#GraphShowAll {
+    background: %{surface}; color: %{text2}; border: 1px solid %{border}; border-radius: 8px; padding: %{p6};
+}
+QToolButton#GraphZoomIn:hover, QToolButton#GraphZoomOut:hover, QToolButton#GraphFit:hover, QToolButton#GraphShowAll:hover {
+    background: %{sunken};
+}
 QTreeWidget#NoteTree { background: transparent; border: none; outline: none; }
 QTreeWidget#NoteTree::item { padding: %{p4} %{p2}; border-radius: 6px; color: %{text}; }
 QTreeWidget#NoteTree::item:hover { background: %{sunken}; }

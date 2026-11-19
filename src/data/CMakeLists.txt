@@ -8,7 +8,8 @@ add_library(studylab_data STATIC
     repositories/AnnotationRepository.h repositories/AnnotationRepository.cpp
     repositories/CommentRepository.h repositories/CommentRepository.cpp
     repositories/NoteRepository.h repositories/NoteRepository.cpp
-    repositories/OrganizeRepository.h repositories/OrganizeRepository.cpp)
+    repositories/OrganizeRepository.h repositories/OrganizeRepository.cpp
+    repositories/GraphRepository.h repositories/GraphRepository.cpp)
 target_link_libraries(studylab_data PUBLIC studylab_core studylab_sqlite3 Qt6::Core)
 studylab_set_warnings(studylab_data)
 
