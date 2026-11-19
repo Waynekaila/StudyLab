@@ -22,6 +22,8 @@
 #include "ui/theme/ThemeManager.h"
 
 #include <QApplication>
+#include <QFuture>
+#include <QtConcurrent/QtConcurrentRun>
 #include <QDir>
 #include <QFile>
 #include <QItemSelectionModel>
@@ -314,7 +316,13 @@ private slots:
         QVERIFY(channel.listen());
         QSignalSpy received(&channel, &ui::InstanceChannel::messageReceived);
         const QString link = QStringLiteral("studylab://open?doc=00000000-0000-4000-8000-000000000000");
-        QVERIFY(ui::InstanceChannel::sendToRunning(data.path(), {link, QStringLiteral("activate")}));
+        // Le second lancement est un autre processus : l'envoi part d'un autre thread pendant que la boucle
+        // d'événements de l'instance tourne (sous Windows, l'écriture sur le tube attend la lecture du serveur).
+        QFuture<bool> sent = QtConcurrent::run([path = data.path(), link] {
+            return ui::InstanceChannel::sendToRunning(path, {link, QStringLiteral("activate")});
+        });
+        QTRY_VERIFY_WITH_TIMEOUT(sent.isFinished(), 10000);
+        QVERIFY(sent.result());
         QTRY_COMPARE_WITH_TIMEOUT(received.count(), 2, 5000);
         QCOMPARE(received.at(0).at(0).toString(), link);
         QCOMPARE(received.at(1).at(0).toString(), QStringLiteral("activate"));
