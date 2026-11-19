@@ -18,7 +18,11 @@ add_library(studylab_ui STATIC
     library/LibraryDelegate.h library/LibraryDelegate.cpp
     library/EditDocumentDialog.h library/EditDocumentDialog.cpp
     library/DocumentDetailPanel.h library/DocumentDetailPanel.cpp
-    library/LibraryPage.h library/LibraryPage.cpp)
+    library/LibraryPage.h library/LibraryPage.cpp
+    reader/PdfView.h reader/PdfView.cpp
+    reader/ThumbnailModel.h reader/ThumbnailModel.cpp
+    reader/PdfReaderTab.h reader/PdfReaderTab.cpp
+    reader/ReaderPage.h reader/ReaderPage.cpp)
 target_link_libraries(studylab_ui PUBLIC studylab_library studylab_settings studylab_data studylab_core Qt6::Widgets Qt6::Svg)
 studylab_set_warnings(studylab_ui)
 

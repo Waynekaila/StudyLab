@@ -11,3 +11,7 @@ Toute décision qui s'écarte des documents 01 à 08 est consignée ici, avec sa
 | 2 | L'année d'un PDF n'est pas déduite de `CreationDate` | C'est la date de production du fichier, pas de publication : l'utilisateur saisit l'année dans le panneau de détail | — |
 | 2 | Un PDF protégé par mot de passe est importé (titre tiré du nom du fichier, sans couverture) ; le mot de passe sera demandé à l'ouverture (itération 3) | Pas de boîte de dialogue bloquante au milieu d'un import de 500 fichiers | — |
 | 2 | Mode d'import par défaut : **copie** dans la bibliothèque (réglable : *Paramètres › Bibliothèque et import*) | Point ouvert n° 3 de `08-risques.md`, tranché selon la recommandation | Oui (réglage) |
+| 3 | Rendu PDF par **Qt PDF** (`QPdfDocument`) dans une vue maison (`PdfView`, tuiles de 512 px, cache LRU de 160 Mo) plutôt que `QPdfView` | `QPdfView` ne permet ni la rotation, ni la double page avec couverture, ni le dessin des annotations à venir | Oui |
+| 3 | Les liens internes des PDF ne sont actifs qu'avec Qt ≥ 6.6 (`QPdfLinkModel`) | Debian 13 et la CI Windows fournissent Qt ≥ 6.8 ; Qt 6.4 (Ubuntu 24.04) compile sans les liens | — |
+| 3 | La position de lecture est enregistrée comme (page, décalage en points) ; la progression affichée est (page courante + 1) / nombre de pages | Position stable quel que soit le zoom ou la taille de la fenêtre | — |
+| 3 | Les signets de lecture sont reportés à l'itération 4, avec les annotations | Ils partagent la table `annotations` (type `bookmark`) et le volet Annotations | — |

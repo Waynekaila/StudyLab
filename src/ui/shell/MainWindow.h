@@ -18,6 +18,7 @@ public:
     void navigateTo(const QString& pageId);
     QString currentPage() const;
     QWidget* page(const QString& pageId) const { return m_pages.value(pageId); }
+    void toggleFullScreen();
 
 protected:
     void closeEvent(QCloseEvent* event) override;

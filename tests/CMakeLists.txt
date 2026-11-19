@@ -23,3 +23,5 @@ target_link_libraries(studylab_test_support PUBLIC Qt6::Gui PRIVATE Qt6::GuiPriv
 studylab_add_test(tst_import SOURCES integration/tst_import.cpp LIBS studylab_library studylab_test_support)
 studylab_add_test(tst_library_ui SOURCES ui/tst_library_ui.cpp ../src/app/Bootstrap.cpp LIBS studylab_ui studylab_test_support)
 target_include_directories(tst_library_ui PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
+studylab_add_test(tst_pdf_reader SOURCES ui/tst_pdf_reader.cpp ../src/app/Bootstrap.cpp LIBS studylab_ui studylab_test_support)
+target_include_directories(tst_pdf_reader PRIVATE ${CMAKE_SOURCE_DIR}/src/app)

@@ -11,13 +11,20 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | Phase | Contenu | État |
 |---|---|---|
 | 1 · Conception | Vision, architecture, choix des bibliothèques, schéma SQLite, maquettes, plan | ✅ Terminée — voir [`docs/design/`](docs/design/README.md) |
-| 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | 🚧 En cours — itération 2/7 (bibliothèque) |
+| 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | 🚧 En cours — itération 3/7 (lecteur PDF) |
 | 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | — |
 | 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | — |
 | 5 · Finalisation | Optimisation, packaging, documentation | — |
 
-### Ce qui fonctionne aujourd'hui (itération 2)
+### Ce qui fonctionne aujourd'hui (itération 3)
 
+- **Lecteur PDF** : rendu par tuiles en arrière-plan (l'interface ne se bloque jamais, un PDF de 1 500 pages s'ouvre
+  en moins d'une seconde), défilement continu, zoom (ajuster à la largeur, page entière, 10 à 800 %, Ctrl + molette),
+  rotation, double page, sélection et copie du texte, liens internes (Qt ≥ 6.6), miniatures, sommaire,
+  historique précédent/suivant, aller à la page, recherche dans le document avec surlignage.
+- **Onglets** : plusieurs documents ouverts, rouverts au lancement suivant ; chaque document reprend à la page,
+  au zoom et à la rotation où on l'a laissé. Plein écran (F11) et mode sans distraction. PDF protégés : mot de passe
+  demandé à l'ouverture. « Lire » depuis la bibliothèque (double-clic ou bouton du panneau de détail).
 - **Bibliothèque** : grille de couvertures ou liste, recherche instantanée (titre, auteur, éditeur, tags, ISBN, DOI ;
   accents ignorés), filtres par statut, format, tag et favoris, tri (récents, ouverts récemment, titre, auteur).
 - **Import** de PDF et EPUB : fichiers, dossiers (récursif) ou glisser-déposer n'importe où dans la fenêtre ;
@@ -33,8 +40,9 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | | |
 |---|---|
 | ![Bibliothèque](docs/screenshots/iteration2-bibliotheque-grille.png) | ![Bibliothèque sombre](docs/screenshots/iteration2-bibliotheque-sombre.png) |
+| ![Lecteur PDF](docs/screenshots/iteration3-lecteur-pdf.png) | ![Lecteur PDF sombre, recherche](docs/screenshots/iteration3-lecteur-pdf-sombre.png) |
 
-Les lecteurs PDF/EPUB et les annotations arrivent dans les itérations suivantes
+Le lecteur EPUB, les annotations et les commentaires arrivent dans les itérations suivantes
 (plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md)).
 
 ## Compiler

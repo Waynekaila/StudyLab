@@ -11,7 +11,7 @@
 namespace studylab {
 
 LibraryService::LibraryService(db::Database& db, AppPaths paths, QObject* parent)
-    : QObject(parent), m_db(db), m_repo(db), m_paths(std::move(paths))
+    : QObject(parent), m_db(db), m_repo(db), m_reading(db), m_paths(std::move(paths))
 {
     // Pendant un gros import, la liste n'est rafraîchie qu'au plus deux fois par seconde.
     m_changeThrottle.setSingleShot(true);
@@ -95,6 +95,35 @@ Result<void> LibraryService::remove(qint64 id)
     auto r = m_repo.remove(id);
     if (r)
         emit documentsChanged();
+    return r;
+}
+
+Result<void> LibraryService::markOpened(qint64 id)
+{
+    auto doc = m_repo.findById(id);
+    if (!doc)
+        return doc.error();
+    if (auto r = m_repo.markOpened(id); !r)
+        return r;
+    if (doc.value().status == ReadingStatus::ToRead)
+        if (auto r = m_repo.setStatus(id, ReadingStatus::Reading); !r)
+            return r;
+    emit documentChanged(id);
+    emit documentsChanged();
+    return {};
+}
+
+std::optional<db::ReadingPosition> LibraryService::readingPosition(qint64 id)
+{
+    auto p = m_reading.position(id);
+    return p ? p.value() : std::nullopt;
+}
+
+Result<void> LibraryService::saveReadingPosition(qint64 id, const db::ReadingPosition& position)
+{
+    auto r = m_reading.savePosition(id, position);
+    if (r && !m_changeThrottle.isActive())
+        m_changeThrottle.start();  // la progression affichée dans la bibliothèque suivra
     return r;
 }
 
