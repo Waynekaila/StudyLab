@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QFrame>
+#include <QIcon>
 #include <QStringList>
 
 class QButtonGroup;
@@ -15,6 +16,8 @@ public:
 
     int currentIndex() const;
     void setCurrentIndex(int index);  ///< N'émet pas currentIndexChanged.
+    /// Remplace le libellé d'un segment par une icône (le libellé devient l'infobulle et le nom accessible).
+    void setSegmentIcon(int index, const QIcon& icon);
 
 signals:
     void currentIndexChanged(int index);

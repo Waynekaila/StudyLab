@@ -4,7 +4,8 @@ StudyLab est distribué sous GPL-3.0-or-later. Les composants ci-dessous gardent
 
 | Composant | Version | Licence | Utilisation | Emplacement |
 |---|---|---|---|---|
-| Qt | 6.4 → 6.8 | LGPL-3.0 (liaison dynamique) | Socle de l'application | Installé sur le système |
+| Qt (Core, Gui, Widgets, Svg, Concurrent) | 6.4 → 6.8 | LGPL-3.0 (liaison dynamique) | Socle de l'application | Installé sur le système |
+| Qt PDF (moteur PDFium) | 6.4 → 6.8 | LGPL-3.0 (Qt) ; PDFium : BSD-3-Clause | Métadonnées et rendu PDF | Installé sur le système |
 | SQLite | 3.50.4 | Domaine public | Base de données, recherche FTS5 | `third_party/sqlite/` |
 | Inter | 4.0 | SIL OFL 1.1 | Police de l'interface | `src/ui/resources/fonts/` (`OFL.txt`) |
 

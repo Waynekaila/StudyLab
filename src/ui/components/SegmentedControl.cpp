@@ -35,4 +35,17 @@ void SegmentedControl::setCurrentIndex(int index)
         b->setChecked(true);
 }
 
+void SegmentedControl::setSegmentIcon(int index, const QIcon& icon)
+{
+    auto* b = qobject_cast<QPushButton*>(m_group->button(index));
+    if (!b)
+        return;
+    if (!b->text().isEmpty()) {
+        b->setToolTip(b->text());
+        b->setAccessibleName(b->text());
+        b->setText(QString());
+    }
+    b->setIcon(icon);
+}
+
 }  // namespace studylab::ui

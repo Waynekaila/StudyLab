@@ -53,6 +53,9 @@ namespace SettingKeys {
 inline const QString Theme = QStringLiteral("appearance/theme");
 inline const QString UiScale = QStringLiteral("appearance/uiScale");
 inline const QString Animations = QStringLiteral("appearance/animations");
+inline const QString ImportMode = QStringLiteral("library/importMode");  ///< "copy" (défaut) ou "link"
+inline const QString LibraryView = QStringLiteral("library/view");       ///< "grid" ou "list"
+inline const QString LibrarySort = QStringLiteral("library/sort");       ///< index de DocumentQuery::Sort
 }  // namespace SettingKeys
 
 }  // namespace studylab

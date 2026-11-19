@@ -2,12 +2,16 @@
 
 #include "services/settings/SettingsService.h"
 #include "ui/components/FadeStackedWidget.h"
+#include "ui/library/LibraryPage.h"
 #include "ui/pages/HomePage.h"
 #include "ui/pages/SettingsPage.h"
 #include "ui/shell/Sidebar.h"
 #include "ui/theme/ThemeManager.h"
 
 #include <QCloseEvent>
+#include <QDragEnterEvent>
+#include <QDropEvent>
+#include <QMimeData>
 #include <QHBoxLayout>
 #include <QSettings>
 
@@ -32,6 +36,7 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
     m_sidebar = new Sidebar(ctx.theme,
                             {
                                 {QStringLiteral("home"), QStringLiteral("home"), tr("Accueil")},
+                                {QStringLiteral("library"), QStringLiteral("library"), tr("Bibliothèque")},
                                 {QStringLiteral("settings"), QStringLiteral("settings"), tr("Paramètres")},
                             },
                             root);
@@ -44,7 +49,10 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
     root->setFocusPolicy(Qt::ClickFocus);
     root->setFocus();
 
-    addPage(QStringLiteral("home"), new HomePage(ctx, m_stack));
+    auto* home = new HomePage(ctx, m_stack);
+    addPage(QStringLiteral("home"), home);
+    connect(home, &HomePage::navigateRequested, this, &MainWindow::navigateTo);
+    addPage(QStringLiteral("library"), new LibraryPage(ctx, m_stack));
     addPage(QStringLiteral("settings"), new SettingsPage(ctx, m_stack));
 
     connect(m_sidebar, &Sidebar::navigated, this, &MainWindow::navigateTo);
@@ -52,6 +60,9 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
         if (key == SettingKeys::Animations)
             m_stack->setAnimationsEnabled(m_ctx.settings.animationsEnabled());
     });
+
+    // Glisser-déposer de fichiers ou de dossiers n'importe où dans la fenêtre → import.
+    setAcceptDrops(true);
 
     QSettings qs;
     if (!restoreGeometry(qs.value(QStringLiteral("ui/geometry")).toByteArray()))
@@ -78,6 +89,36 @@ void MainWindow::navigateTo(const QString& pageId)
 }
 
 QString MainWindow::currentPage() const { return m_pages.key(m_stack->currentWidget()); }
+
+namespace {
+QStringList localPaths(const QMimeData* mime)
+{
+    QStringList out;
+    if (!mime || !mime->hasUrls())
+        return out;
+    for (const QUrl& url : mime->urls())
+        if (url.isLocalFile())
+            out << url.toLocalFile();
+    return out;
+}
+}  // namespace
+
+void MainWindow::dragEnterEvent(QDragEnterEvent* event)
+{
+    if (!localPaths(event->mimeData()).isEmpty())
+        event->acceptProposedAction();
+}
+
+void MainWindow::dropEvent(QDropEvent* event)
+{
+    const QStringList paths = localPaths(event->mimeData());
+    if (paths.isEmpty())
+        return;
+    event->acceptProposedAction();
+    navigateTo(QStringLiteral("library"));
+    if (auto* library = qobject_cast<LibraryPage*>(m_pages.value(QStringLiteral("library"))))
+        library->importPaths(paths);
+}
 
 void MainWindow::closeEvent(QCloseEvent* event)
 {

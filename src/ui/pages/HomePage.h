@@ -20,6 +20,9 @@ public:
     // Pour les tests
     QLabel* documentCountLabel() const { return m_docCount; }
 
+signals:
+    void navigateRequested(const QString& pageId);
+
 protected:
     void showEvent(QShowEvent* event) override;
 

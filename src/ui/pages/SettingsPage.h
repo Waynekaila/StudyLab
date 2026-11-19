@@ -24,10 +24,12 @@ public:
     SegmentedControl* themeControl() const { return m_theme; }
     QComboBox* scaleCombo() const { return m_scale; }
     ToggleSwitch* animationsSwitch() const { return m_animations; }
+    SegmentedControl* importModeControl() const { return m_importMode; }
     QListWidget* categories() const { return m_categories; }
 
 private:
     QWidget* buildAppearance();
+    QWidget* buildLibrary();
     QWidget* buildData();
     QWidget* buildAbout();
     void syncFromSettings();
@@ -39,6 +41,7 @@ private:
     SegmentedControl* m_theme = nullptr;
     QComboBox* m_scale = nullptr;
     ToggleSwitch* m_animations = nullptr;
+    SegmentedControl* m_importMode = nullptr;
     QLabel* m_backupStatus = nullptr;
 };
 

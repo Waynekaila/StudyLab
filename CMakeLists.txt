@@ -14,7 +14,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(STUDYLAB_BUILD_TESTS "Compiler les tests automatisés" ON)
 
 # Qt 6.8 LTS est la cible (Debian 13, Windows). 6.4 est le minimum accepté pour compiler.
-find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Widgets Svg Concurrent)
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Widgets Svg Concurrent Pdf)
+if(Qt6_VERSION VERSION_GREATER_EQUAL 6.9)
+    find_package(Qt6 REQUIRED COMPONENTS CorePrivate GuiPrivate)  # QZipReader (lecture EPUB)
+endif()
 qt_standard_project_setup()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")

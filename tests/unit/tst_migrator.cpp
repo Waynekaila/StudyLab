@@ -73,6 +73,18 @@ private slots:
         QCOMPARE(db.queryInt(QStringLiteral("SELECT count(*) FROM fts_notes WHERE fts_notes MATCH 'carnot'")).value(), 0);
     }
 
+    void ftsDocumentsSupportsDeleteAfterMigration2()
+    {
+        auto opened = Database::openInMemory();
+        Database& db = *opened.value();
+        QVERIFY(Migrator(Migrator::loadFrom().value()).migrate(db).ok());
+        QVERIFY(Migrator::currentVersion(db).value() >= 2);
+        QVERIFY(db.exec(QStringLiteral("INSERT INTO fts_documents(rowid, title, authors) VALUES (7, 'Thermodynamique', 'Çengel')")).ok());
+        QCOMPARE(db.queryInt(QStringLiteral("SELECT rowid FROM fts_documents WHERE fts_documents MATCH 'cengel'")).value(), 7);
+        QVERIFY(db.exec(QStringLiteral("DELETE FROM fts_documents WHERE rowid = 7")).ok());
+        QCOMPARE(db.queryInt(QStringLiteral("SELECT count(*) FROM fts_documents WHERE fts_documents MATCH 'thermo*'")).value(), 0);
+    }
+
     void duplicateDocumentHashRejected()
     {
         auto opened = Database::openInMemory();

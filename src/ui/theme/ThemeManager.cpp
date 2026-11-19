@@ -201,10 +201,44 @@ QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
 QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
 
 QToolTip { background: %{surface}; color: %{text}; border: 1px solid %{border}; border-radius: 6px; padding: 4px 8px; }
+
+QPlainTextEdit, QSpinBox {
+    background: %{surface}; border: 1px solid %{border}; border-radius: 8px; padding: %{p5} %{p8};
+    selection-background-color: %{primary}; selection-color: %{onPrimary};
+}
+QPlainTextEdit:focus, QSpinBox:focus { border: 1px solid %{primary}; }
+QDialog { background: %{bg}; }
+QMenu { background: %{surface}; border: 1px solid %{border}; border-radius: 8px; padding: 4px; }
+QMenu::item { padding: %{p6} %{p12}; border-radius: 6px; }
+QMenu::item:selected { background: %{primarySoft}; color: %{primaryStrong}; }
+QPushButton::menu-indicator { image: none; width: 0; }
+
+QListView#LibraryView { background: %{bg}; border: none; outline: none; }
+QFrame#DetailPanel { background: %{surface}; border: none; border-left: 1px solid %{borderSoft}; }
+QWidget#DetailContent { background: %{surface}; }
+QLabel[chip="true"] {
+    background: %{sunken}; color: %{text2}; border-radius: 6px; padding: %{p4} %{p8}; font-size: %{fs12};
+}
+QPushButton[chipButton="true"] { border-radius: 8px; }
+QPushButton[chipButton="true"]:checked { background: %{primarySoft}; color: %{primaryStrong}; border-color: %{primarySoft}; }
+QToolButton#FavoriteButton {
+    background: %{surface}; border: 1px solid %{border}; border-radius: 8px; color: %{amberText};
+    font-size: %{fs15}; min-width: %{h30}; min-height: %{h30};
+}
+QToolButton#FavoriteButton:hover { background: %{sunken}; }
+QFrame#ImportBanner { background: %{primarySoft}; border: 1px solid %{primarySoft}; border-radius: 10px; }
+QFrame#ImportBanner[state="done"] { background: %{sageSoft}; border-color: %{sageSoft}; }
+QFrame#ImportBanner[state="warning"] { background: %{amberSoft}; border-color: %{amberSoft}; }
+QProgressBar { background: %{sunken}; border: none; border-radius: 3px; }
+QProgressBar::chunk { background: %{primary}; border-radius: 3px; }
 QMessageBox { background: %{surface}; }
 )QSS");
 
     const QColor sageText = p.dark ? p.sage : p.sage.darker(140);
+    const double t = p.dark ? 0.22 : 0.18;  // ambre très atténué sur la surface
+    const QColor amberSoft = QColor::fromRgbF(float(p.surface.redF() * (1 - t) + p.amber.redF() * t),
+                                              float(p.surface.greenF() * (1 - t) + p.amber.greenF() * t),
+                                              float(p.surface.blueF() * (1 - t) + p.amber.blueF() * t));
     const QList<QPair<QString, QString>> tokens = {
         {QStringLiteral("font"), fontFamily},
         {QStringLiteral("chevron"), p.dark ? QStringLiteral(":/theme/chevron-down-dark.svg") : QStringLiteral(":/theme/chevron-down-light.svg")},
@@ -222,13 +256,16 @@ QMessageBox { background: %{surface}; }
         {QStringLiteral("primary"), p.primary.name()},
         {QStringLiteral("onPrimary"), p.onPrimary.name()},
         {QStringLiteral("sageText"), sageText.name()},
+        {QStringLiteral("sageSoft"), p.sageSoft.name()},
+        {QStringLiteral("amberSoft"), amberSoft.name()},
+        {QStringLiteral("amberText"), (p.dark ? p.amber : p.amber.darker(130)).name()},
         {QStringLiteral("danger"), p.danger.name()},
     };
     for (const auto& [key, value] : tokens)
         qss.replace(QStringLiteral("%{") + key + QLatin1Char('}'), value);
-    for (int v : {4, 5, 6, 7, 10, 12, 24})
+    for (int v : {4, 5, 6, 7, 8, 10, 12, 24})
         qss.replace(QStringLiteral("%{p%1}").arg(v), s(v));
-    for (int v : {18, 20})
+    for (int v : {18, 20, 30})
         qss.replace(QStringLiteral("%{h%1}").arg(v), s(v));
     for (int v : {11, 12, 13, 15, 22, 30})
         qss.replace(QStringLiteral("%{fs%1}").arg(v), s(v));

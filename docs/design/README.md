@@ -10,6 +10,7 @@ Livrables, dans l'ordre demandé :
 6. [Arborescence du projet et structure d'export](06-arborescence.md)
 7. [Découpage MVP, V1, V2 et plan d'itérations](07-versions-mvp-v1-v2.md)
 8. [Risques techniques et solutions](08-risques.md)
+9. [Écarts entre la conception et l'implémentation](09-ecarts-implementation.md) (tenu à jour à chaque itération)
 
 ## Décisions clés en une ligne chacune
 

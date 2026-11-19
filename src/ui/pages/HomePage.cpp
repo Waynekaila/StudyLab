@@ -2,6 +2,7 @@
 
 #include "data/migrations/Migrator.h"
 #include "data/sqlite/Database.h"
+#include "services/library/LibraryService.h"
 #include "ui/components/Widgets.h"
 #include "ui/pages/PageScaffold.h"
 #include "ui/theme/Icons.h"
@@ -54,6 +55,15 @@ HomePage::HomePage(AppContext& ctx, QWidget* parent) : QWidget(parent), m_ctx(ct
     m_docHint->setWordWrap(true);
     libLayout->addWidget(m_docHint);
     libLayout->addStretch(1);
+    auto* openLib = new QPushButton(tr("Ouvrir la bibliothèque"), libCard);
+    openLib->setProperty("variant", QStringLiteral("primary"));
+    openLib->setCursor(Qt::PointingHandCursor);
+    connect(openLib, &QPushButton::clicked, this, [this] { emit navigateRequested(QStringLiteral("library")); });
+    auto* libBtnRow = new QHBoxLayout;
+    libBtnRow->addWidget(openLib);
+    libBtnRow->addStretch(1);
+    libLayout->addSpacing(4);
+    libLayout->addLayout(libBtnRow);
     grid->addWidget(libCard, 0, 0);
 
     // Carte données locales
@@ -102,11 +112,10 @@ void HomePage::refresh()
         date[0] = date[0].toUpper();
     m_date->setText(date);
 
-    const auto count = m_ctx.db.queryInt(QStringLiteral("SELECT count(*) FROM documents WHERE deleted_at IS NULL"));
-    const qint64 n = count ? count.value() : 0;
+    const qint64 n = m_ctx.library.count();
     m_docCount->setText(fr.toString(n));
-    m_docHint->setText(n == 0 ? tr("Aucun document pour l'instant. L'import de PDF et d'EPUB sera ajouté "
-                                   "à l'itération suivante du MVP.")
+    m_docHint->setText(n == 0 ? tr("Aucun document pour l'instant. Importez vos PDF et EPUB depuis la bibliothèque, "
+                                   "ou glissez-déposez-les dans la fenêtre.")
                               : tr("Documents enregistrés dans votre bibliothèque locale."));
 
     m_dataDir->setText(QDir::toNativeSeparators(m_ctx.paths.dataDir()));

@@ -4,7 +4,7 @@
 set -eu
 
 PACKAGES="build-essential cmake ninja-build pkg-config git \
-qt6-base-dev qt6-base-dev-tools qt6-svg-dev libgl-dev"
+qt6-base-dev qt6-base-dev-tools qt6-base-private-dev qt6-svg-dev qt6-pdf-dev libgl-dev"
 
 YES=""
 [ "${1:-}" = "--yes" ] && YES="-y"
