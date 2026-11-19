@@ -29,6 +29,10 @@ public:
     void setCards(const QJsonArray& cards, const QString& emptyText);
     void setActive(qint64 id, bool scroll);
     void setMarkdown(const QString& text, const QString& emptyText);
+    /// Aperçu d'une note : {title, body (sans front matter), lineOffset, chips, unresolved, images, unresolvedLabel}.
+    void setNote(const QJsonObject& note, const QString& emptyText);
+    /// Fait défiler l'aperçu de note jusqu'au titre qui précède la ligne (0) du texte complet.
+    void scrollToLine(int line);
 
     /// Évalue une expression JavaScript (résultat sérialisé en JSON) — tests et diagnostic.
     void evaluate(const QString& expression, std::function<void(const QVariant&)> callback);
@@ -40,6 +44,8 @@ signals:
     void cardDeleteRequested(qint64 id);
     void cardMenuRequested(qint64 id, QPoint globalPos);
     void linkActivated(const QUrl& url);
+    /// Clic sur un [[lien]] dans l'aperçu d'une note (cible sans « |alias »).
+    void wikiLinkActivated(const QString& target);
 
 private:
     friend class MarkdownBridge;

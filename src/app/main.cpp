@@ -7,6 +7,7 @@
 #include "services/annotations/AnnotationService.h"
 #include "services/backup/BackupService.h"
 #include "services/comments/CommentService.h"
+#include "services/notes/NoteService.h"
 #include "services/search/SearchService.h"
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
@@ -115,7 +116,8 @@ int main(int argc, char* argv[])
         CommentService comments(database);
         SearchService search(database);
         BackupService backups(paths, database);
-        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups};
+        NoteService notes(database, paths.attachmentsDir());
+        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups, notes};
         ui::MainWindow window(ctx);
         window.show();
         QObject::connect(&channel, &ui::InstanceChannel::messageReceived, &window, &ui::MainWindow::handleInstanceMessage);

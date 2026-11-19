@@ -9,7 +9,7 @@ namespace studylab::ui {
 class ThemeManager;
 
 /// Coloration légère du Markdown dans l'éditeur : titres, gras, italique, code, formules, liens [[…]],
-/// listes et citations. Les couleurs suivent le thème.
+/// listes, citations et front matter YAML. Les couleurs suivent le thème.
 class MarkdownHighlighter : public QSyntaxHighlighter {
     Q_OBJECT
 public:
@@ -30,6 +30,7 @@ private:
     QList<Rule> m_rules;
     QTextCharFormat m_heading;
     QTextCharFormat m_math;
+    QTextCharFormat m_frontMatter;
 };
 
 }  // namespace studylab::ui

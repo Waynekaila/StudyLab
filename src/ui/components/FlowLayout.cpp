@@ -48,7 +48,9 @@ int FlowLayout::doLayout(const QRect& rect, bool testOnly) const
     int y = area.y();
     int lineHeight = 0;
     for (QLayoutItem* item : m_items) {
-        if (item->widget() && !item->widget()->isVisible() && !testOnly)
+        // isEmpty() : élément masqué explicitement. (isVisible() serait faux tant que la fenêtre n'est pas
+        // affichée : les éléments n'auraient alors jamais reçu de position.)
+        if (item->isEmpty())
             continue;
         const QSize hint = item->sizeHint();
         if (x + hint.width() > area.right() + 1 && lineHeight > 0) {

@@ -34,8 +34,10 @@ add_library(studylab_ui STATIC
     reader/EpubView.h reader/EpubView.cpp
     reader/EpubReaderTab.h reader/EpubReaderTab.cpp
     reader/MarkdownView.h reader/MarkdownView.cpp
-    reader/CommentsPane.h reader/CommentsPane.cpp)
-target_link_libraries(studylab_ui PUBLIC studylab_library studylab_annotations studylab_comments studylab_search studylab_backup studylab_export studylab_settings studylab_epub studylab_data studylab_core Qt6::Widgets Qt6::Svg Qt6::WebEngineWidgets Qt6::WebChannel Qt6::Network)
+    reader/CommentsPane.h reader/CommentsPane.cpp
+    notes/NoteEditor.h notes/NoteEditor.cpp
+    notes/NotesPage.h notes/NotesPage.cpp)
+target_link_libraries(studylab_ui PUBLIC studylab_library studylab_annotations studylab_comments studylab_notes studylab_search studylab_backup studylab_export studylab_settings studylab_epub studylab_data studylab_core Qt6::Widgets Qt6::Svg Qt6::WebEngineWidgets Qt6::WebChannel Qt6::Network)
 studylab_set_warnings(studylab_ui)
 
 file(GLOB STUDYLAB_ICONS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS resources/icons/*.svg)

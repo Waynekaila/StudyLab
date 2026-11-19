@@ -6,6 +6,7 @@
 #include "services/annotations/AnnotationService.h"
 #include "services/backup/BackupService.h"
 #include "services/comments/CommentService.h"
+#include "services/notes/NoteService.h"
 #include "services/search/SearchService.h"
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
@@ -63,6 +64,7 @@ class TstLibraryUi : public QObject {
         std::unique_ptr<CommentService> comments;
         std::unique_ptr<SearchService> search;
         std::unique_ptr<BackupService> backups;
+        std::unique_ptr<NoteService> notes;
         std::unique_ptr<AppContext> ctx;
 
         Env()
@@ -78,7 +80,8 @@ class TstLibraryUi : public QObject {
             comments = std::make_unique<CommentService>(*db);
             search = std::make_unique<SearchService>(*db);
             backups = std::make_unique<BackupService>(paths, *db);
-            ctx = std::make_unique<AppContext>(AppContext{paths, *db, *settings, *theme, *library, *annotations, *comments, *search, *backups});
+            notes = std::make_unique<NoteService>(*db, paths.attachmentsDir());
+            ctx = std::make_unique<AppContext>(AppContext{paths, *db, *settings, *theme, *library, *annotations, *comments, *search, *backups, *notes});
         }
     };
 

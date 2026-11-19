@@ -49,3 +49,22 @@ body.preview { padding: 2px 4px; }
 .md .wikilink { color: var(--wiki); text-decoration: underline dashed; text-underline-offset: 3px; }
 .md .katex-display { margin: .4em 0; overflow-x: auto; overflow-y: hidden; }
 .md .math-error { color: #c0392b; font-family: monospace; }
+
+/* Espace de notes : aperçu pleine page. */
+body.note { padding: 18px 28px 40px; }
+.md.note { max-width: 760px; margin: 0 auto; font-size: 1.08em; line-height: 1.65; }
+.md.note p, .md.note li, .md.note blockquote { font-family: var(--note-font, Georgia, "Literata", serif); }
+.md.note .note-title { font-size: 1.75em; margin: .2em 0 .6em; }
+.md.note h1 { font-size: 1.45em; } .md.note h2 { font-size: 1.22em; } .md.note h3 { font-size: 1.08em; }
+.md.note blockquote { background: var(--card); border-left: 3px solid var(--quote-bar, #e2b93b); border-radius: 0 8px 8px 0;
+                      padding: 8px 14px; font-style: italic; }
+.md.note table { margin: .6em 0 1em; }
+.md.note th, .md.note td { padding: 6px 12px; }
+.md.note img { max-width: 100%; border-radius: 6px; }
+.md a.wikilink { cursor: pointer; text-decoration: underline dashed; }
+.md a.wikilink.unresolved { color: var(--muted); text-decoration: underline dotted; }
+.md .missing-image { color: var(--muted); font-style: italic; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.chip { background: var(--code-bg); color: var(--muted); border-radius: 6px; padding: 2px 9px; font-size: .86em;
+        font-family: var(--font); font-style: normal; }
+.empty-note { color: var(--muted); }

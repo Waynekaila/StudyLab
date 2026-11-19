@@ -36,6 +36,8 @@ void MarkdownHighlighter::updateFormats()
     marker.setForeground(p.text3);
     m_math = QTextCharFormat();
     m_math.setForeground(p.sage.darker(p.dark ? 80 : 130));
+    m_frontMatter = QTextCharFormat();
+    m_frontMatter.setForeground(p.text3);
     m_heading = QTextCharFormat();
     m_heading.setFontWeight(QFont::Bold);
     m_heading.setForeground(p.text);
@@ -52,6 +54,14 @@ void MarkdownHighlighter::updateFormats()
 
 void MarkdownHighlighter::highlightBlock(const QString& text)
 {
+    // Front matter YAML (« --- » en première ligne jusqu'au « --- » suivant) : état 2, en retrait.
+    const bool firstBlock = currentBlock().blockNumber() == 0;
+    if ((firstBlock && text.trimmed() == QLatin1String("---")) || previousBlockState() == 2) {
+        setFormat(0, int(text.size()), m_frontMatter);
+        const bool closes = !firstBlock && (text.trimmed() == QLatin1String("---") || text.trimmed() == QLatin1String("..."));
+        setCurrentBlockState(closes ? 0 : 2);
+        return;
+    }
     // Bloc de formule $$ … $$ sur plusieurs lignes : état 1 à l'intérieur.
     const bool inMath = previousBlockState() == 1;
     const int fences = int(text.count(QStringLiteral("$$")));
