@@ -2,6 +2,7 @@
 
 #include "data/sqlite/Database.h"
 #include "engines/pdf/PdfRenderQueue.h"
+#include "services/annotations/AnnotationService.h"
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
 #include "support/Fixtures.h"
@@ -44,6 +45,7 @@ class TstPdfReader : public QObject {
         std::unique_ptr<SettingsService> settings;
         std::unique_ptr<ui::ThemeManager> theme;
         std::unique_ptr<LibraryService> library;
+        std::unique_ptr<AnnotationService> annotations;
         std::unique_ptr<AppContext> ctx;
         Env()
         {
@@ -54,7 +56,8 @@ class TstPdfReader : public QObject {
             theme = std::make_unique<ui::ThemeManager>(*settings);
             theme->apply();
             library = std::make_unique<LibraryService>(*db, paths);
-            ctx = std::make_unique<AppContext>(AppContext{paths, *db, *settings, *theme, *library});
+            annotations = std::make_unique<AnnotationService>(*db);
+            ctx = std::make_unique<AppContext>(AppContext{paths, *db, *settings, *theme, *library, *annotations});
         }
         qint64 import(const QString& file)
         {
@@ -286,7 +289,7 @@ private slots:
         QVERIFY(finished.wait(30000));
         const qint64 id = finished.first().at(0).value<ImportReport>().importedIds.first();
         QVERIFY(QFile::remove(copy));
-        ui::PdfReaderTab tab(*env.library, *env.theme, id);
+        ui::PdfReaderTab tab(*env.ctx, id);
         const auto r = tab.ensureLoaded();
         QVERIFY(!r.ok());
         QVERIFY(r.error().message.contains(QStringLiteral("introuvable")));
@@ -301,7 +304,7 @@ private slots:
         Env env;
         const qint64 id = env.import(big);
         QVERIFY(id > 0);
-        ui::PdfReaderTab tab(*env.library, *env.theme, id);
+        ui::PdfReaderTab tab(*env.ctx, id);
         tab.resize(1200, 800);
         QElapsedTimer t;
         t.start();

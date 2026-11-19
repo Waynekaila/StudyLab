@@ -3,6 +3,7 @@
 #include "core/AppPaths.h"
 
 namespace studylab {
+class AnnotationService;
 class LibraryService;
 class SettingsService;
 namespace db {
@@ -19,6 +20,7 @@ struct AppContext {
     SettingsService& settings;
     ui::ThemeManager& theme;
     LibraryService& library;
+    AnnotationService& annotations;
 };
 
 }  // namespace studylab

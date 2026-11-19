@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 #if __has_include(<QtPdf/qpdflinkmodel.h>)
 #include <QPdfLinkModel>
@@ -45,6 +46,14 @@ PdfView::PdfView(ThemeManager& theme, QWidget* parent) : QAbstractScrollArea(par
     horizontalScrollBar()->setSingleStep(40);
     setAccessibleName(tr("Page du document"));
     connect(&theme, &ThemeManager::themeChanged, viewport(), qOverload<>(&QWidget::update));
+    m_flashTimer.setInterval(300);
+    connect(&m_flashTimer, &QTimer::timeout, this, [this] {
+        if (++m_flashStep >= 4) {
+            m_flashTimer.stop();
+            m_flashId = 0;
+        }
+        viewport()->update();
+    });
 }
 
 PdfView::~PdfView() = default;
@@ -60,6 +69,9 @@ void PdfView::setDocument(QPdfDocument* document, PdfRenderQueue* queue)
     m_back.clear();
     m_forward.clear();
     m_selection.clear();
+    m_marks.clear();
+    m_marksByPage.clear();
+    m_pageText.clear();
     m_currentPage = 0;
     if (m_doc) {
         for (int i = 0; i < m_doc->pageCount(); ++i)
@@ -469,21 +481,37 @@ QPdfSelection PdfView::selectOnPage(int page, QPointF start, QPointF end) const
     if (sel.isValid() && !sel.text().isEmpty())
         return sel;
     // Qt PDF n'accepte que des extrémités posées sur un caractère : hors du texte (marge, interligne),
-    // on ramène chaque extrémité dans le rectangle englobant le texte de la page.
+    // chaque extrémité est ramenée au caractère le plus proche.
     const QPdfSelection all = m_doc->getAllText(page);
     if (!all.isValid() || all.text().isEmpty())
         return sel;
     QRectF box;
-    for (const QPolygonF& b : all.bounds())
-        box |= b.boundingRect();
+    QList<QRectF> chars;
+    for (const QPolygonF& b : all.bounds()) {
+        const QRectF r = b.boundingRect();
+        box |= r;
+        if (r.width() > 0.5 && r.height() > 2)
+            chars << r;
+    }
     const QRectF wanted = QRectF(start, end).normalized();
     if (wanted.contains(box))
         return all;
-    const auto clampTo = [&box](QPointF pt) {
-        return QPointF(std::clamp(pt.x(), box.left() + 0.5, box.right() - 0.5),
-                       std::clamp(pt.y(), box.top() + 0.5, box.bottom() - 0.5));
+    const auto nearest = [&chars](QPointF pt) {
+        QPointF best = pt;
+        qreal bestD = std::numeric_limits<qreal>::max();
+        for (const QRectF& r : chars) {
+            // Distance verticale prépondérante : on reste sur la ligne visée.
+            const qreal dx = pt.x() < r.left() ? r.left() - pt.x() : pt.x() > r.right() ? pt.x() - r.right() : 0;
+            const qreal dy = pt.y() < r.top() ? r.top() - pt.y() : pt.y() > r.bottom() ? pt.y() - r.bottom() : 0;
+            const qreal d = dy * 4 + dx;
+            if (d < bestD) {
+                bestD = d;
+                best = r.center();
+            }
+        }
+        return best;
     };
-    return m_doc->getSelection(page, clampTo(start), clampTo(end));
+    return m_doc->getSelection(page, nearest(start), nearest(end));
 }
 
 void PdfView::selectText(int startPage, QPointF start, int endPage, QPointF end)
@@ -669,6 +697,8 @@ void PdfView::paintPage(QPainter& p, int page, const QRectF& clipDoc)
             p.drawImage(rect, img);
     }
 
+    paintMarks(p, page);
+
     // Résultats de recherche
     if (m_search && !m_search->searchString().isEmpty()) {
         const QPdfLink current = m_currentResult >= 0 ? m_search->resultAtIndex(m_currentResult) : QPdfLink();
@@ -693,7 +723,125 @@ void PdfView::paintPage(QPainter& p, int page, const QRectF& clipDoc)
             path.addPolygon(poly);
         p.fillPath(path, selColor);
     }
+    // Zone en cours de tracé
+    if (m_drawingArea && m_areaPage == page) {
+        const QRectF area = QRectF(m_areaStart, m_areaEnd).normalized();
+        QColor fill = pal.primary;
+        fill.setAlpha(40);
+        p.fillRect(area, fill);
+        QPen pen(pal.primary, 1.5 / scale(), Qt::DashLine);
+        p.setPen(pen);
+        p.setBrush(Qt::NoBrush);
+        p.drawRect(area);
+    }
     p.restore();
+    paintMarkDecorations(p, page, toView);
+}
+
+void PdfView::paintMarks(QPainter& p, int page)
+{
+    const auto it = m_marksByPage.constFind(page);
+    if (it == m_marksByPage.constEnd())
+        return;
+    const QSizeF size = m_pages[page].points;
+    const bool flashOn = m_flashId != 0 && m_flashStep % 2 == 0;
+    for (int idx : *it) {
+        const PdfAnnotationMark& m = m_marks[idx];
+        const bool flashing = flashOn && m.id == m_flashId;
+        for (const QRectF& n : m.rects) {
+            const QRectF r(n.x() * size.width(), n.y() * size.height(), n.width() * size.width(),
+                           n.height() * size.height());
+            switch (m.type) {
+            case AnnotationType::Highlight: {
+                p.save();
+                p.setCompositionMode(QPainter::CompositionMode_Multiply);
+                p.fillRect(r.adjusted(-0.5, -0.5, 0.5, 0.5), flashing ? m.stroke : m.fill);
+                p.restore();
+                break;
+            }
+            case AnnotationType::Underline:
+            case AnnotationType::Strikeout: {
+                const qreal w = std::max(1.0, r.height() * 0.09);
+                const qreal y = m.type == AnnotationType::Underline ? r.bottom() - w / 2 : r.center().y();
+                if (flashing) {
+                    QColor f = m.fill;
+                    p.fillRect(r, f);
+                }
+                p.fillRect(QRectF(r.left(), y - w / 2, r.width(), w), m.stroke);
+                break;
+            }
+            case AnnotationType::Marker: {
+                QColor f = m.fill;
+                f.setAlpha(flashing ? 140 : 70);
+                p.fillRect(r, f);
+                p.setPen(QPen(m.stroke, 1.6 / scale()));
+                p.setBrush(Qt::NoBrush);
+                p.drawRoundedRect(r, 2, 2);
+                break;
+            }
+            default:
+                break;
+            }
+        }
+    }
+}
+
+void PdfView::paintMarkDecorations(QPainter& p, int page, const QTransform& toView)
+{
+    Q_UNUSED(toView)
+    const auto it = m_marksByPage.constFind(page);
+    if (it == m_marksByPage.constEnd())
+        return;
+    const bool flashOn = m_flashId != 0 && m_flashStep % 2 == 0;
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing);
+    for (int idx : *it) {
+        const PdfAnnotationMark& m = m_marks[idx];
+        const bool flashing = flashOn && m.id == m_flashId;
+        if (m.type == AnnotationType::Note) {
+            // Icône de note à taille constante, quel que soit le zoom.
+            const QRectF r = noteIconRect(m);
+            p.setPen(QPen(m.stroke, 1.5));
+            p.setBrush(flashing ? m.stroke : m.fill);
+            QPainterPath bubble;
+            bubble.addRoundedRect(r.adjusted(0, 0, 0, -4), 4, 4);
+            QPolygonF tail;
+            tail << QPointF(r.left() + 5, r.bottom() - 4.5) << QPointF(r.left() + 5, r.bottom())
+                 << QPointF(r.left() + 10, r.bottom() - 4.5);
+            bubble.addPolygon(tail);
+            p.drawPath(bubble.simplified());
+            p.setPen(QPen(flashing ? m.fill : m.stroke, 1.4, Qt::SolidLine, Qt::RoundCap));
+            const qreal x0 = r.left() + 5, x1 = r.right() - 5;
+            p.drawLine(QPointF(x0, r.top() + 6), QPointF(x1, r.top() + 6));
+            p.drawLine(QPointF(x0, r.top() + 10), QPointF(x1 - 3, r.top() + 10));
+        } else if (m.type == AnnotationType::Bookmark) {
+            const QRectF r = bookmarkRibbonRect(page);
+            QPolygonF ribbon;
+            ribbon << r.topLeft() << r.topRight() << r.bottomRight() << QPointF(r.center().x(), r.bottom() - 6)
+                   << r.bottomLeft();
+            p.setPen(Qt::NoPen);
+            p.setBrush(flashing ? m.fill : m.stroke);
+            p.drawPolygon(ribbon);
+        }
+    }
+    p.restore();
+}
+
+QRectF PdfView::noteIconRect(const PdfAnnotationMark& m) const
+{
+    if (m.rects.isEmpty() || m.page < 0 || m.page >= m_pages.size())
+        return {};
+    const QSizeF size = m_pages[m.page].points;
+    const QPointF anchor(m.rects.first().center().x() * size.width(), m.rects.first().center().y() * size.height());
+    const QPointF doc = pageTransform(m.page).map(anchor);
+    const QPointF v = doc - QPointF(horizontalScrollBar()->value(), verticalScrollBar()->value());
+    return QRectF(v.x() - 11, v.y() - 11, 22, 22);
+}
+
+QRectF PdfView::bookmarkRibbonRect(int page) const
+{
+    const QRectF r = m_pages[page].rect.translated(-horizontalScrollBar()->value(), -verticalScrollBar()->value());
+    return QRectF(r.right() - 34, r.top() - 2, 14, 24);
 }
 
 void PdfView::paintEvent(QPaintEvent* event)
@@ -713,6 +861,184 @@ void PdfView::paintEvent(QPaintEvent* event)
             continue;
         paintPage(p, i, clipDoc);
     }
+}
+
+// ───────────────────────── Annotations ─────────────────────────
+
+void PdfView::setTool(Tool tool)
+{
+    if (tool == m_tool)
+        return;
+    m_tool = tool;
+    m_drawingArea = false;
+    viewport()->setCursor(tool == Tool::Marker || tool == Tool::Note ? Qt::CrossCursor : Qt::IBeamCursor);
+    viewport()->update();
+    emit toolChanged(tool);
+}
+
+void PdfView::setAnnotations(const QList<PdfAnnotationMark>& marks)
+{
+    m_marks = marks;
+    m_marksByPage.clear();
+    for (int i = 0; i < m_marks.size(); ++i)
+        m_marksByPage[m_marks[i].page].append(i);
+    viewport()->update();
+}
+
+void PdfView::flashAnnotation(qint64 id)
+{
+    m_flashId = id;
+    m_flashStep = 0;
+    m_flashTimer.start();
+    viewport()->update();
+}
+
+QRectF PdfView::normalizedToDoc(int page, const QRectF& norm) const
+{
+    if (page < 0 || page >= m_pages.size())
+        return {};
+    const QSizeF size = m_pages[page].points;
+    const QRectF pts(norm.x() * size.width(), norm.y() * size.height(), norm.width() * size.width(),
+                     norm.height() * size.height());
+    return pageTransform(page).mapRect(pts);
+}
+
+void PdfView::revealNormalizedRect(int page, const QRectF& rect, bool recordHistory)
+{
+    if (page < 0 || page >= m_pages.size())
+        return;
+    if (rect.isNull()) {
+        goToPage(page, -1, recordHistory);
+        return;
+    }
+    if (recordHistory)
+        pushHistory();
+    // Le passage est placé au tiers supérieur de la fenêtre, s'il n'est pas déjà visible.
+    const QRectF doc = normalizedToDoc(page, rect);
+    const QRectF vis = visibleDocRect();
+    if (!vis.adjusted(0, 40, 0, -40).contains(doc)) {
+        verticalScrollBar()->setValue(qRound(doc.top() - vis.height() / 3));
+        if (doc.left() < vis.left() || doc.right() > vis.right())
+            horizontalScrollBar()->setValue(qRound(doc.center().x() - vis.width() / 2));
+    }
+    updateCurrentPage();
+}
+
+qint64 PdfView::annotationAt(QPoint viewportPos) const
+{
+    const int page = pageAt(viewportPos);
+    // Icônes (notes, signets) d'abord : elles sont dessinées au-dessus.
+    for (int i = int(m_marks.size()) - 1; i >= 0; --i) {
+        const PdfAnnotationMark& m = m_marks[i];
+        if (m.type == AnnotationType::Note && noteIconRect(m).adjusted(-2, -2, 2, 2).contains(viewportPos))
+            return m.id;
+        if (m.type == AnnotationType::Bookmark && m.page >= 0 && m.page < m_pages.size()
+            && bookmarkRibbonRect(m.page).contains(viewportPos))
+            return m.id;
+    }
+    if (page < 0)
+        return 0;
+    const QPointF pt = mapToPage(page, viewportPos);
+    const QSizeF size = m_pages[page].points;
+    const QPointF n(pt.x() / size.width(), pt.y() / size.height());
+    const qreal tol = 2.0 / size.height();
+    const auto it = m_marksByPage.constFind(page);
+    if (it == m_marksByPage.constEnd())
+        return 0;
+    for (auto idx = it->crbegin(); idx != it->crend(); ++idx) {
+        const PdfAnnotationMark& m = m_marks[*idx];
+        if (m.type == AnnotationType::Note || m.type == AnnotationType::Bookmark)
+            continue;
+        for (const QRectF& r : m.rects)
+            if (r.adjusted(-tol, -tol, tol, tol).contains(n))
+                return m.id;
+    }
+    return 0;
+}
+
+QString PdfView::pageText(int page) const
+{
+    auto it = m_pageText.find(page);
+    if (it == m_pageText.end())
+        it = m_pageText.insert(page, m_doc ? m_doc->getAllText(page).text() : QString());
+    return *it;
+}
+
+QList<PdfSelectionAnchor> PdfView::selectionAnchors() const
+{
+    QList<PdfSelectionAnchor> out;
+    for (const auto& s : m_selection) {
+        const QSizeF size = m_pages[s.page].points;
+        PdfSelectionAnchor a;
+        a.page = s.page;
+        a.text = s.selection.text();
+        // Qt PDF renvoie souvent un rectangle par caractère : on les fusionne en une zone par ligne,
+        // pour un surlignage continu et une ancre compacte.
+        QList<QRectF> lines;
+        for (const QPolygonF& poly : s.selection.bounds()) {
+            const QRectF r = poly.boundingRect();
+            if (r.isEmpty())
+                continue;
+            bool merged = false;
+            for (QRectF& l : lines) {
+                const qreal overlap = std::min(l.bottom(), r.bottom()) - std::max(l.top(), r.top());
+                if (overlap > 0.5 * std::min(l.height(), r.height())) {
+                    l = l.united(r);
+                    merged = true;
+                    break;
+                }
+            }
+            if (!merged)
+                lines << r;
+        }
+        std::sort(lines.begin(), lines.end(), [](const QRectF& x, const QRectF& y) { return x.top() < y.top(); });
+        for (const QRectF& r : lines)
+            a.rects << QRectF(r.x() / size.width(), r.y() / size.height(), r.width() / size.width(),
+                              r.height() / size.height());
+        a.start = s.selection.startIndex();
+        a.end = s.selection.endIndex();
+        const QString text = pageText(s.page);
+        if (a.start >= 0 && a.start <= text.size()) {
+            const int from = std::max(0, a.start - 32);
+            a.prefix = text.mid(from, a.start - from).simplified();
+            const int end = std::max(a.start, a.end);
+            a.suffix = text.mid(end, 32).simplified();
+        }
+        if (!a.rects.isEmpty())
+            out << a;
+    }
+    return out;
+}
+
+QRect PdfView::selectionViewportRect() const
+{
+    QRectF box;
+    for (const auto& s : m_selection) {
+        const QRectF doc = pageTransform(s.page).mapRect(s.selection.boundingRectangle());
+        box = box.isNull() ? doc : box.united(doc);
+    }
+    if (box.isNull())
+        return {};
+    return box.translated(-horizontalScrollBar()->value(), -verticalScrollBar()->value()).toAlignedRect();
+}
+
+QRect PdfView::annotationViewportRect(qint64 id) const
+{
+    for (const auto& m : m_marks) {
+        if (m.id != id)
+            continue;
+        if (m.type == AnnotationType::Note)
+            return noteIconRect(m).toAlignedRect();
+        if (m.type == AnnotationType::Bookmark)
+            return bookmarkRibbonRect(m.page).toAlignedRect();
+        QRectF box;
+        for (const QRectF& r : m.rects) {
+            const QRectF d = normalizedToDoc(m.page, r);
+            box = box.isNull() ? d : box.united(d);
+        }
+        return box.translated(-horizontalScrollBar()->value(), -verticalScrollBar()->value()).toAlignedRect();
+    }
+    return {};
 }
 
 // ───────────────────────── Événements ─────────────────────────
@@ -754,6 +1080,14 @@ void PdfView::mousePressEvent(QMouseEvent* event)
     m_pressPos = event->position().toPoint();
     m_pressLink = linkAt(m_pressPos);
     const int page = pageAt(m_pressPos);
+    if (m_tool == Tool::Marker || m_tool == Tool::Note) {
+        m_selecting = false;
+        m_drawingArea = m_tool == Tool::Marker && page >= 0;
+        m_areaPage = page;
+        if (page >= 0)
+            m_areaStart = m_areaEnd = mapToPage(page, m_pressPos);
+        return;
+    }
     m_selecting = page >= 0;
     m_selStartPage = page;
     if (page >= 0)
@@ -763,6 +1097,14 @@ void PdfView::mousePressEvent(QMouseEvent* event)
 void PdfView::mouseMoveEvent(QMouseEvent* event)
 {
     const QPoint pos = event->position().toPoint();
+    if (m_drawingArea && (event->buttons() & Qt::LeftButton)) {
+        QPointF pt = mapToPage(m_areaPage, pos);
+        pt.setX(std::clamp(pt.x(), 0.0, m_pages[m_areaPage].points.width()));
+        pt.setY(std::clamp(pt.y(), 0.0, m_pages[m_areaPage].points.height()));
+        m_areaEnd = pt;
+        viewport()->update();
+        return;
+    }
     if (m_selecting && (event->buttons() & Qt::LeftButton)) {
         if ((pos - m_pressPos).manhattanLength() < QApplication::startDragDistance())
             return;
@@ -786,6 +1128,15 @@ void PdfView::mouseMoveEvent(QMouseEvent* event)
             verticalScrollBar()->setValue(verticalScrollBar()->value() + 20);
         return;
     }
+    if (m_tool == Tool::Marker || m_tool == Tool::Note) {
+        viewport()->setCursor(pageAt(pos) >= 0 ? Qt::CrossCursor : Qt::ArrowCursor);
+        return;
+    }
+    if (annotationAt(pos) != 0) {
+        viewport()->setCursor(Qt::PointingHandCursor);
+        viewport()->setToolTip(QString());
+        return;
+    }
     const LinkHit hit = linkAt(pos);
     if (hit.valid) {
         viewport()->setCursor(Qt::PointingHandCursor);
@@ -802,10 +1153,42 @@ void PdfView::mouseReleaseEvent(QMouseEvent* event)
         QAbstractScrollArea::mouseReleaseEvent(event);
         return;
     }
-    const bool dragged = (event->position().toPoint() - m_pressPos).manhattanLength() >= QApplication::startDragDistance();
+    const QPoint pos = event->position().toPoint();
+    const bool dragged = (pos - m_pressPos).manhattanLength() >= QApplication::startDragDistance();
+    if (m_tool == Tool::Marker) {
+        const bool wasDrawing = m_drawingArea;
+        m_drawingArea = false;
+        viewport()->update();
+        const QRectF area = QRectF(m_areaStart, m_areaEnd).normalized();
+        if (wasDrawing && m_areaPage >= 0 && area.width() * scale() >= 6 && area.height() * scale() >= 6) {
+            const QSizeF size = m_pages[m_areaPage].points;
+            emit areaDrawn(m_areaPage, QRectF(area.x() / size.width(), area.y() / size.height(),
+                                              area.width() / size.width(), area.height() / size.height()));
+        }
+        return;
+    }
+    if (m_tool == Tool::Note) {
+        const int page = pageAt(pos);
+        if (!dragged && page >= 0) {
+            const QPointF pt = mapToPage(page, pos);
+            const QSizeF size = m_pages[page].points;
+            emit pointClicked(page, QPointF(pt.x() / size.width(), pt.y() / size.height()));
+        }
+        return;
+    }
     m_selecting = false;
+    if (dragged && hasSelection()) {
+        emit selectionFinished();
+        m_pressLink = {};
+        return;
+    }
     if (!dragged) {
         clearSelection();
+        if (const qint64 id = annotationAt(pos)) {
+            m_pressLink = {};
+            emit annotationClicked(id);
+            return;
+        }
         if (m_pressLink.valid) {
             if (m_pressLink.url.isValid())
                 QDesktopServices::openUrl(m_pressLink.url);
@@ -867,6 +1250,8 @@ void PdfView::keyPressEvent(QKeyEvent* event)
         break;
     case Qt::Key_Escape:
         clearSelection();
+        if (m_tool != Tool::Select)
+            setTool(Tool::Select);
         break;
     default:
         break;
@@ -876,6 +1261,10 @@ void PdfView::keyPressEvent(QKeyEvent* event)
 
 void PdfView::contextMenuEvent(QContextMenuEvent* event)
 {
+    if (const qint64 id = annotationAt(event->pos())) {
+        emit annotationContextMenuRequested(id, event->globalPos());
+        return;
+    }
     QMenu menu(this);
     QAction* copy = menu.addAction(tr("Copier"), this, &PdfView::copySelection);
     copy->setShortcut(QKeySequence::Copy);

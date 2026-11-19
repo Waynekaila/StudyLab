@@ -251,6 +251,22 @@ QTabBar::tab:selected { background: %{surface}; color: %{text}; }
 QTabBar::tab:hover:!selected { background: %{sunken}; }
 QToolButton#TabClose { border: none; border-radius: 4px; padding: 2px; background: transparent; }
 QToolButton#TabClose:hover { background: %{sunken}; }
+QFrame#ToolGroup { background: %{surface2}; border: 1px solid %{borderSoft}; border-radius: 8px; }
+QToolButton[swatch="true"] { padding: %{p2}; }
+QToolButton[swatch="true"]:checked { background: transparent; }
+QFrame#AnnotationPopup { background: %{surface}; border: 1px solid %{border}; border-radius: 10px; }
+QFrame#AnnotationsPane { background: %{surface2}; border: none; border-left: 1px solid %{borderSoft}; }
+QListView#AnnotationList { background: transparent; border: none; outline: none; }
+QLabel#CountBadge { background: %{sunken}; color: %{text2}; border-radius: 9px; padding: 1px %{p7}; font-size: %{fs11}; }
+QToolButton#FilterChip {
+    background: %{surface}; color: %{text2}; border: 1px solid %{borderSoft}; border-radius: 12px;
+    padding: %{p2} %{p7}; font-size: %{fs11};
+}
+QToolButton#FilterChip:hover { background: %{sunken}; }
+QToolButton#FilterChip:checked { background: %{primarySoft}; color: %{primaryStrong}; border-color: %{primarySoft}; }
+QFrame#UndoBar { background: %{text}; border-radius: 8px; }
+QFrame#UndoBar QLabel { color: %{surface}; }
+QFrame#UndoBar QPushButton { color: %{lavender}; font-weight: 600; }
 QProgressBar { background: %{sunken}; border: none; border-radius: 3px; }
 QProgressBar::chunk { background: %{primary}; border-radius: 3px; }
 QMessageBox { background: %{surface}; }
@@ -282,10 +298,11 @@ QMessageBox { background: %{surface}; }
         {QStringLiteral("amberSoft"), amberSoft.name()},
         {QStringLiteral("amberText"), (p.dark ? p.amber : p.amber.darker(130)).name()},
         {QStringLiteral("danger"), p.danger.name()},
+        {QStringLiteral("lavender"), p.lavender.name()},
     };
     for (const auto& [key, value] : tokens)
         qss.replace(QStringLiteral("%{") + key + QLatin1Char('}'), value);
-    for (int v : {4, 5, 6, 7, 8, 10, 12, 24})
+    for (int v : {2, 4, 5, 6, 7, 8, 10, 12, 24})
         qss.replace(QStringLiteral("%{p%1}").arg(v), s(v));
     for (int v : {18, 20, 30})
         qss.replace(QStringLiteral("%{h%1}").arg(v), s(v));

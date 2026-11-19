@@ -133,7 +133,7 @@ void ReaderPage::openDocument(qint64 documentId)
     auto doc = m_ctx.library.document(documentId);
     if (!doc || doc.value().format != DocumentFormat::Pdf)
         return;
-    auto* tab = new PdfReaderTab(m_ctx.library, m_ctx.theme, documentId, m_tabs);
+    auto* tab = new PdfReaderTab(m_ctx, documentId, m_tabs);
     const QString title = doc.value().title;
     const int idx = m_tabs->addTab(tab, QFontMetrics(font()).elidedText(title, Qt::ElideRight, 180));
     m_tabs->setTabToolTip(idx, title);

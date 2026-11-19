@@ -45,7 +45,18 @@ bool writePdf(const QString& path, const PdfSpec& spec)
         if (i > 0)
             w.newPage();
         p.drawText(QPointF(40, 60), QStringLiteral("%1 — page %2").arg(spec.title).arg(i + 1));
-        p.drawText(QPointF(40, 90), spec.bodyText);
+        if (!spec.bodyText.contains(QLatin1Char('\n'))) {
+            p.drawText(QPointF(40, 90), spec.bodyText);
+            continue;
+        }
+        // Texte long : paragraphes séparés par une ligne vide, repliés dans la largeur de la page.
+        const qreal width = w.width() - 80;
+        qreal y = 78;
+        for (const QString& para : spec.bodyText.split(QStringLiteral("\n\n"))) {
+            const QRectF box = p.boundingRect(QRectF(40, y, width, 10000), Qt::TextWordWrap, para);
+            p.drawText(QRectF(40, y, width, box.height()), Qt::TextWordWrap, para);
+            y += box.height() + 10;
+        }
     }
     return p.end();
 }

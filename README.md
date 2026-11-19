@@ -11,13 +11,21 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | Phase | Contenu | État |
 |---|---|---|
 | 1 · Conception | Vision, architecture, choix des bibliothèques, schéma SQLite, maquettes, plan | ✅ Terminée — voir [`docs/design/`](docs/design/README.md) |
-| 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | 🚧 En cours — itération 3/7 (lecteur PDF) |
+| 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | 🚧 En cours — itération 4/7 (annotations PDF) |
 | 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | — |
 | 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | — |
 | 5 · Finalisation | Optimisation, packaging, documentation | — |
 
-### Ce qui fonctionne aujourd'hui (itération 3)
+### Ce qui fonctionne aujourd'hui (itération 4)
 
+- **Annotations PDF** : surlignage, soulignement, barré, zone rectangulaire, note ponctuelle et signet (Ctrl + D),
+  en 5 couleurs. Une sélection fait apparaître une barre flottante (couleur, type, note, copier) ; un outil actif
+  annote directement. Les annotations restent ancrées au texte quel que soit le zoom, la rotation ou le redémarrage
+  (zones normalisées + citation exacte avec contexte). Modification, note, suppression avec « Annuler » (Ctrl + Z).
+- **Volet Annotations** : liste groupée par chapitre, recherche (accents ignorés), portée document / page courante,
+  filtres par couleur (avec compteurs) et par type ; un clic amène au passage et le fait clignoter.
+- **Export Markdown / Obsidian** d'un document : fiche avec en-tête YAML, `Annotations.md` (callouts, identifiants
+  de bloc `^ann-…`, groupes par chapitre, signets) et `metadata.json`.
 - **Lecteur PDF** : rendu par tuiles en arrière-plan (l'interface ne se bloque jamais, un PDF de 1 500 pages s'ouvre
   en moins d'une seconde), défilement continu, zoom (ajuster à la largeur, page entière, 10 à 800 %, Ctrl + molette),
   rotation, double page, sélection et copie du texte, liens internes (Qt ≥ 6.6), miniatures, sommaire,
@@ -41,8 +49,9 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 |---|---|
 | ![Bibliothèque](docs/screenshots/iteration2-bibliotheque-grille.png) | ![Bibliothèque sombre](docs/screenshots/iteration2-bibliotheque-sombre.png) |
 | ![Lecteur PDF](docs/screenshots/iteration3-lecteur-pdf.png) | ![Lecteur PDF sombre, recherche](docs/screenshots/iteration3-lecteur-pdf-sombre.png) |
+| ![Annotations](docs/screenshots/iteration4-annotations.png) | ![Annotations sombre](docs/screenshots/iteration4-annotations-sombre.png) |
 
-Le lecteur EPUB, les annotations et les commentaires arrivent dans les itérations suivantes
+Le lecteur EPUB, les commentaires et la sauvegarde complète arrivent dans les itérations suivantes
 (plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md)).
 
 ## Compiler

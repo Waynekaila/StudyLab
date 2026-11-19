@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/domain/Annotation.h"
 #include "engines/pdf/PdfRenderQueue.h"
 
 #include <QAbstractScrollArea>
@@ -8,8 +9,9 @@
 #include <QPointer>
 #include <QRectF>
 #include <QTransform>
-#include <QUrl>
 #include <QHash>
+#include <QTimer>
+#include <QUrl>
 
 class QPdfDocument;
 class QPdfSearchModel;
@@ -26,12 +28,36 @@ struct PdfPosition {
     bool operator==(const PdfPosition& o) const { return page == o.page && qAbs(offset - o.offset) < 0.5; }
 };
 
+/// Annotation telle que la vue la dessine (zones normalisées 0..1 dans la page non tournée).
+struct PdfAnnotationMark {
+    qint64 id = 0;
+    int page = 0;
+    AnnotationType type = AnnotationType::Highlight;
+    QColor fill;    ///< teinte de surlignage
+    QColor stroke;  ///< trait (soulignement, barré, zone, icône)
+    QList<QRectF> rects;
+    bool hasNote = false;
+};
+
+/// Ancre d'une sélection de texte sur une page (base d'une nouvelle annotation).
+struct PdfSelectionAnchor {
+    int page = 0;
+    QList<QRectF> rects;  ///< normalisés, page non tournée
+    QString text;
+    QString prefix;
+    QString suffix;
+    int start = -1;
+    int end = -1;
+};
+
 /// Vue de lecture PDF : défilement continu, zoom, rotation, double page, sélection de texte, liens,
 /// surlignage des résultats de recherche, historique de navigation. Rendu par tuiles en tâche de fond.
 class PdfView : public QAbstractScrollArea {
     Q_OBJECT
 public:
     enum class ZoomMode { Custom, FitWidth, FitPage };
+    /// Outil actif : la sélection de texte, un outil de marquage du texte, la zone ou la note.
+    enum class Tool { Select, Highlight, Underline, Strikeout, Marker, Note };
     static constexpr qreal kMinZoom = 0.1;
     static constexpr qreal kMaxZoom = 8.0;
 
@@ -84,6 +110,23 @@ public:
     /// Sélectionne le texte entre deux points (coordonnées de page en points), éventuellement sur plusieurs pages.
     void selectText(int startPage, QPointF start, int endPage, QPointF end);
 
+    // Annotations
+    void setTool(Tool tool);
+    Tool tool() const { return m_tool; }
+    void setAnnotations(const QList<PdfAnnotationMark>& marks);
+    const QList<PdfAnnotationMark>& annotations() const { return m_marks; }
+    /// Fait clignoter une annotation (2 × 300 ms) ; la vue doit déjà l'afficher.
+    void flashAnnotation(qint64 id);
+    /// Fait défiler jusqu'à une zone normalisée d'une page.
+    void revealNormalizedRect(int page, const QRectF& rect, bool recordHistory = true);
+    qint64 annotationAt(QPoint viewportPos) const;
+    /// Ancres de la sélection courante, une par page.
+    QList<PdfSelectionAnchor> selectionAnchors() const;
+    /// Rectangle (coordonnées de la fenêtre de vue) englobant la sélection, vide sans sélection.
+    QRect selectionViewportRect() const;
+    QRect annotationViewportRect(qint64 id) const;
+    QRectF normalizedToDoc(int page, const QRectF& norm) const;
+
     // Correspondances de coordonnées (aussi utilisées par les tests et, plus tard, les annotations)
     QRectF pageRect(int page) const;  ///< rectangle de la page dans le document (pixels logiques)
     int pageAt(QPoint viewportPos) const;
@@ -97,6 +140,15 @@ signals:
     void historyChanged();
     void selectionChanged();
     void layoutChanged();
+    /// Sélection terminée à la souris (bouton relâché avec du texte sélectionné).
+    void selectionFinished();
+    void toolChanged(studylab::ui::PdfView::Tool tool);
+    void annotationClicked(qint64 id);
+    void annotationContextMenuRequested(qint64 id, QPoint globalPos);
+    /// Zone tracée avec l'outil Zone (rectangle normalisé).
+    void areaDrawn(int page, const QRectF& rect);
+    /// Clic avec l'outil Note (point normalisé).
+    void pointClicked(int page, const QPointF& point);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -141,6 +193,11 @@ private:
     void scrollToDoc(QPointF docPoint);
     LinkHit linkAt(QPoint viewportPos) const;
     void setZoomAround(qreal zoom, QPoint viewportAnchor);
+    void paintMarks(QPainter& p, int page);
+    void paintMarkDecorations(QPainter& p, int page, const QTransform& toView);
+    QRectF noteIconRect(const PdfAnnotationMark& m) const;    ///< coordonnées de la vue
+    QRectF bookmarkRibbonRect(int page) const;                ///< coordonnées de la vue
+    QString pageText(int page) const;
 
     ThemeManager& m_theme;
     QPdfDocument* m_doc = nullptr;
@@ -166,6 +223,19 @@ private:
     LinkHit m_pressLink;
     mutable QHash<int, QList<QPair<QRectF, LinkHit>>> m_links;  ///< liens par page (points), lus à la demande
     bool m_inRelayout = false;
+
+    // Annotations
+    Tool m_tool = Tool::Select;
+    QList<PdfAnnotationMark> m_marks;
+    QHash<int, QList<int>> m_marksByPage;  ///< indices dans m_marks
+    qint64 m_flashId = 0;
+    int m_flashStep = 0;
+    QTimer m_flashTimer;
+    bool m_drawingArea = false;
+    int m_areaPage = -1;
+    QPointF m_areaStart;   ///< points de la page
+    QPointF m_areaEnd;
+    mutable QHash<int, QString> m_pageText;
 };
 
 }  // namespace studylab::ui

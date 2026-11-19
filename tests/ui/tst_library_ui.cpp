@@ -2,6 +2,7 @@
 
 #include "data/repositories/DocumentRepository.h"
 #include "data/sqlite/Database.h"
+#include "services/annotations/AnnotationService.h"
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
 #include "support/Fixtures.h"
@@ -54,6 +55,7 @@ class TstLibraryUi : public QObject {
         std::unique_ptr<SettingsService> settings;
         std::unique_ptr<ui::ThemeManager> theme;
         std::unique_ptr<LibraryService> library;
+        std::unique_ptr<AnnotationService> annotations;
         std::unique_ptr<AppContext> ctx;
 
         Env()
@@ -65,7 +67,8 @@ class TstLibraryUi : public QObject {
             theme = std::make_unique<ui::ThemeManager>(*settings);
             theme->apply();
             library = std::make_unique<LibraryService>(*db, paths);
-            ctx = std::make_unique<AppContext>(AppContext{paths, *db, *settings, *theme, *library});
+            annotations = std::make_unique<AnnotationService>(*db);
+            ctx = std::make_unique<AppContext>(AppContext{paths, *db, *settings, *theme, *library, *annotations});
         }
     };
 

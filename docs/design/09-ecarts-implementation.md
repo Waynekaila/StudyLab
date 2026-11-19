@@ -15,3 +15,8 @@ Toute décision qui s'écarte des documents 01 à 08 est consignée ici, avec sa
 | 3 | Les liens internes des PDF ne sont actifs qu'avec Qt ≥ 6.6 (`QPdfLinkModel`) | Debian 13 et la CI Windows fournissent Qt ≥ 6.8 ; Qt 6.4 (Ubuntu 24.04) compile sans les liens | — |
 | 3 | La position de lecture est enregistrée comme (page, décalage en points) ; la progression affichée est (page courante + 1) / nombre de pages | Position stable quel que soit le zoom ou la taille de la fenêtre | — |
 | 3 | Les signets de lecture sont reportés à l'itération 4, avec les annotations | Ils partagent la table `annotations` (type `bookmark`) et le volet Annotations | — |
+| 4 | La note d'une annotation est un commentaire lié (`comments.anchor_kind = 'annotation'`, type « réflexion ») | Une seule source pour le texte libre : le volet Commentaires (itération 6) l'affichera sans migration | — |
+| 4 | Le type « marker » du schéma est exposé comme **zone rectangulaire** (figures, équations, texte non sélectionnable) | Le surligneur libre à main levée n'apporte rien de plus pour l'étude et ne s'ancre pas au texte | Oui |
+| 4 | Sur une page en thème sombre, les couleurs d'annotation restent celles du thème clair | La page PDF reste blanche : les teintes sombres y seraient illisibles | Oui |
+| 4 | L'export Markdown n'inclut pas encore de liens `studylab://` | Aucun gestionnaire d'URL n'est installé avant les installeurs (itération 7) ; un lien mort n'a pas sa place dans une note | Oui |
+| 4 | `Commentaires.md` est reporté à l'itération 6 | Il dépend du volet Commentaires | — |

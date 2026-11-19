@@ -1,6 +1,7 @@
 #include "Bootstrap.h"
 
 #include "data/sqlite/Database.h"
+#include "services/annotations/AnnotationService.h"
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
 #include "ui/components/SegmentedControl.h"
@@ -87,7 +88,8 @@ private slots:
         QVERIFY(!theme.isDark());
 
         LibraryService library(database, paths);
-        AppContext ctx{paths, database, settings, theme, library};
+        AnnotationService annotations(database);
+        AppContext ctx{paths, database, settings, theme, library, annotations};
         ui::MainWindow window(ctx);
         window.resize(1280, 820);
         window.show();
@@ -147,7 +149,8 @@ private slots:
         ui::ThemeManager theme(settings);
         theme.apply();
         LibraryService library(database, paths);
-        AppContext ctx{paths, database, settings, theme, library};
+        AnnotationService annotations(database);
+        AppContext ctx{paths, database, settings, theme, library, annotations};
         ui::MainWindow window(ctx);
         QCOMPARE(window.currentPage(), QStringLiteral("settings"));
     }
@@ -162,7 +165,8 @@ private slots:
         ui::ThemeManager theme(settings);
         theme.apply();
         LibraryService library(database, paths);
-        AppContext ctx{paths, database, settings, theme, library};
+        AnnotationService annotations(database);
+        AppContext ctx{paths, database, settings, theme, library, annotations};
         ui::SettingsPage page(ctx);
         QPushButton* backup = nullptr;
         for (auto* b : page.findChildren<QPushButton*>()) {

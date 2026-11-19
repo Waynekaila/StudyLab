@@ -3,6 +3,7 @@
 #include "core/AppPaths.h"
 #include "core/Log.h"
 #include "data/sqlite/Database.h"
+#include "services/annotations/AnnotationService.h"
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
 #include "ui/shell/AppContext.h"
@@ -47,7 +48,8 @@ int main(int argc, char* argv[])
 
     markRunning(paths);
     LibraryService library(database, paths);
-    AppContext ctx{paths, database, settings, theme, library};
+    AnnotationService annotations(database);
+    AppContext ctx{paths, database, settings, theme, library, annotations};
     ui::MainWindow window(ctx);
     window.show();
     const int code = app.exec();
