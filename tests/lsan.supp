@@ -1,0 +1,3 @@
+# Fuites internes à des bibliothèques système (hors de StudyLab), ignorées par LeakSanitizer.
+# Qt PDF 6.4 ne libère pas son chargeur asynchrone quand un fichier n'est pas un PDF valide.
+leak:libQt6Pdf.so

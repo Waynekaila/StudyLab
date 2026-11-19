@@ -11,20 +11,30 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | Phase | Contenu | État |
 |---|---|---|
 | 1 · Conception | Vision, architecture, choix des bibliothèques, schéma SQLite, maquettes, plan | ✅ Terminée — voir [`docs/design/`](docs/design/README.md) |
-| 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | 🚧 En cours — itération 1/7 (socle) |
+| 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | 🚧 En cours — itération 2/7 (bibliothèque) |
 | 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | — |
 | 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | — |
 | 5 · Finalisation | Optimisation, packaging, documentation | — |
 
-### Ce qui fonctionne aujourd'hui (itération 1)
+### Ce qui fonctionne aujourd'hui (itération 2)
 
-- Fenêtre principale avec navigation latérale, écrans **Accueil** et **Paramètres**.
-- Thème **clair / sombre / système**, taille d'interface réglable, animations désactivables, police Inter embarquée.
-- Base **SQLite** locale avec migrations versionnées, recherche plein texte FTS5, vérification d'intégrité après
-  une fermeture anormale, sauvegarde automatique avant migration et sauvegarde manuelle.
-- Tests automatisés (base, migrations, préférences, thème, interface) et intégration continue Windows + Debian 13.
+- **Bibliothèque** : grille de couvertures ou liste, recherche instantanée (titre, auteur, éditeur, tags, ISBN, DOI ;
+  accents ignorés), filtres par statut, format, tag et favoris, tri (récents, ouverts récemment, titre, auteur).
+- **Import** de PDF et EPUB : fichiers, dossiers (récursif) ou glisser-déposer n'importe où dans la fenêtre ;
+  en arrière-plan avec progression et annulation, détection des doublons par empreinte SHA-256, vérification du
+  contenu (faux PDF, EPUB invalide ou protégé par DRM), rapport détaillé. Mode **copie** (par défaut) ou **lien**.
+- **Métadonnées** lues dans les fichiers (dictionnaire PDF, OPF EPUB 2/3 : titre, auteurs, éditeur, date, langue,
+  ISBN, DOI, sujets) et **couvertures** (première page du PDF, image de couverture de l'EPUB) ; couverture générée
+  pour les documents qui n'en ont pas.
+- **Panneau de détail** : statut de lecture, favori, modification des métadonnées et des tags, retrait.
+- Socle (itération 1) : thème clair / sombre / système, taille d'interface, SQLite avec migrations, contrôle
+  d'intégrité, sauvegardes, tests automatisés et intégration continue Windows + Debian 13.
 
-La bibliothèque, les lecteurs PDF/EPUB et les annotations arrivent dans les itérations suivantes
+| | |
+|---|---|
+| ![Bibliothèque](docs/screenshots/iteration2-bibliotheque-grille.png) | ![Bibliothèque sombre](docs/screenshots/iteration2-bibliotheque-sombre.png) |
+
+Les lecteurs PDF/EPUB et les annotations arrivent dans les itérations suivantes
 (plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md)).
 
 ## Compiler

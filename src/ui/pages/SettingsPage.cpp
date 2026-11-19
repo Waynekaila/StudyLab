@@ -56,11 +56,12 @@ SettingsPage::SettingsPage(AppContext& ctx, QWidget* parent) : QWidget(parent), 
     sideLayout->setContentsMargins(12, 22, 12, 12);
     m_categories = new QListWidget(side);
     m_categories->setObjectName(QStringLiteral("Categories"));
-    m_categories->addItems({tr("Apparence"), tr("Données"), tr("À propos")});
+    m_categories->addItems({tr("Apparence"), tr("Bibliothèque et import"), tr("Données"), tr("À propos")});
     sideLayout->addWidget(m_categories);
 
     m_stack = new QStackedWidget(this);
     m_stack->addWidget(buildAppearance());
+    m_stack->addWidget(buildLibrary());
     m_stack->addWidget(buildData());
     m_stack->addWidget(buildAbout());
 
@@ -108,6 +109,29 @@ QWidget* SettingsPage::buildAppearance()
             [this](bool on) { m_ctx.settings.setAnimationsEnabled(on); });
     v->addWidget(makeSettingRow(tr("Animations"), tr("Transitions douces entre les écrans."), m_animations));
 
+    scaffold->body()->addWidget(card);
+    scaffold->body()->addStretch(1);
+    return scaffold;
+}
+
+QWidget* SettingsPage::buildLibrary()
+{
+    auto* scaffold = new PageScaffold(nullptr, 820);
+    titledSection(tr("Bibliothèque et import"), tr("Comment les fichiers importés sont conservés."), scaffold);
+
+    auto* card = makeCard();
+    auto* v = static_cast<QVBoxLayout*>(card->layout());
+    v->setSpacing(0);
+    m_importMode = new SegmentedControl({tr("Copier"), tr("Lier")});
+    m_importMode->setAccessibleName(tr("Mode d'import"));
+    connect(m_importMode, &SegmentedControl::currentIndexChanged, this, [this](int i) {
+        m_ctx.settings.setValue(SettingKeys::ImportMode, i == 1 ? QStringLiteral("link") : QStringLiteral("copy"));
+    });
+    v->addWidget(makeSettingRow(
+        tr("Mode d'import"),
+        tr("Copier (recommandé) : le fichier est rangé dans la bibliothèque de StudyLab et reste disponible même si "
+           "l'original est déplacé. Lier : le fichier reste à sa place, sans copie."),
+        m_importMode));
     scaffold->body()->addWidget(card);
     scaffold->body()->addStretch(1);
     return scaffold;
@@ -170,6 +194,7 @@ QWidget* SettingsPage::buildAbout()
 
 void SettingsPage::syncFromSettings()
 {
+    m_importMode->setCurrentIndex(m_ctx.settings.value(SettingKeys::ImportMode).toString() == QLatin1String("link") ? 1 : 0);
     switch (m_ctx.settings.themeMode()) {
     case ThemeMode::System: m_theme->setCurrentIndex(0); break;
     case ThemeMode::Light: m_theme->setCurrentIndex(1); break;

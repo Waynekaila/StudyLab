@@ -16,6 +16,9 @@ QFrame* makeCard(QWidget* parent = nullptr);
 
 QFrame* makeSeparator(QWidget* parent = nullptr);
 
+/// Nombre accordé en français, séparateur de milliers inclus : « 0 document », « 1 284 documents ».
+QString countLabel(qint64 n, const QString& singular, const QString& plural);
+
 /// Ligne « libellé … contrôle » d'un écran de réglages.
 QWidget* makeSettingRow(const QString& title, const QString& description, QWidget* control, QWidget* parent = nullptr);
 

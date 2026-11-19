@@ -1,6 +1,7 @@
 #include "Bootstrap.h"
 
 #include "data/sqlite/Database.h"
+#include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
 #include "ui/components/SegmentedControl.h"
 #include "ui/components/ToggleSwitch.h"
@@ -85,7 +86,8 @@ private slots:
         theme.apply();
         QVERIFY(!theme.isDark());
 
-        AppContext ctx{paths, database, settings, theme};
+        LibraryService library(database, paths);
+        AppContext ctx{paths, database, settings, theme, library};
         ui::MainWindow window(ctx);
         window.resize(1280, 820);
         window.show();
@@ -144,7 +146,8 @@ private slots:
         settings.setValue(QStringLiteral("ui/lastPage"), QStringLiteral("settings"));
         ui::ThemeManager theme(settings);
         theme.apply();
-        AppContext ctx{paths, database, settings, theme};
+        LibraryService library(database, paths);
+        AppContext ctx{paths, database, settings, theme, library};
         ui::MainWindow window(ctx);
         QCOMPARE(window.currentPage(), QStringLiteral("settings"));
     }
@@ -158,7 +161,8 @@ private slots:
         SettingsService settings(database);
         ui::ThemeManager theme(settings);
         theme.apply();
-        AppContext ctx{paths, database, settings, theme};
+        LibraryService library(database, paths);
+        AppContext ctx{paths, database, settings, theme, library};
         ui::SettingsPage page(ctx);
         QPushButton* backup = nullptr;
         for (auto* b : page.findChildren<QPushButton*>()) {

@@ -1,6 +1,7 @@
 #include "ui/components/Widgets.h"
 
 #include <QHBoxLayout>
+#include <QLocale>
 #include <QVBoxLayout>
 
 namespace studylab::ui {
@@ -53,6 +54,12 @@ QWidget* makeSettingRow(const QString& title, const QString& description, QWidge
     h->addWidget(control, 0, Qt::AlignVCenter);
     t->setBuddy(control);
     return row;
+}
+
+QString countLabel(qint64 n, const QString& singular, const QString& plural)
+{
+    const QLocale fr(QLocale::French, QLocale::France);
+    return fr.toString(n) + QLatin1Char(' ') + (n > 1 ? plural : singular);  // en français, 0 et 1 sont au singulier
 }
 
 }  // namespace studylab::ui
