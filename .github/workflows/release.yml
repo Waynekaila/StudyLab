@@ -1,0 +1,61 @@
+name: Publication
+
+# Construit et teste les paquets d'une version étiquetée (vX.Y.Z), puis les joint à la version GitHub.
+# Les notes de version sont la section correspondante de CHANGELOG.md.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Étiquette existante à publier (ex. v0.1.0)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  debian:
+    uses: ./.github/workflows/build-debian.yml
+    with:
+      ref: ${{ inputs.tag || github.ref_name }}
+
+  windows:
+    uses: ./.github/workflows/build-windows.yml
+    with:
+      ref: ${{ inputs.tag || github.ref_name }}
+
+  publish:
+    needs: [debian, windows]
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Notes de version (CHANGELOG.md)
+        run: |
+          version="${TAG#v}"
+          awk -v v="$version" '
+            /^## / { if (found) exit; if (index($0, "## " v " ") == 1) { found = 1; title = substr($0, 4); next } }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          test -s notes.md || { echo "Section $version absente de CHANGELOG.md"; exit 1; }
+          title=$(grep -m1 "^## $version " CHANGELOG.md | sed 's/^## //')
+          echo "TITLE=StudyLab $title" >> "$GITHUB_ENV"
+          (cd dist && sha256sum * > SHA256SUMS.txt)
+          ls -l dist
+      - name: Version GitHub
+        run: |
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber -R "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" dist/* --verify-tag --title "$TITLE" --notes-file notes.md -R "$GITHUB_REPOSITORY"
+          fi
