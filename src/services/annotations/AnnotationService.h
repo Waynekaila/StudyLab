@@ -34,6 +34,8 @@ public:
 
     Result<AnnotationRecord> find(qint64 id);
     Result<QList<AnnotationRecord>> list(qint64 documentId);
+    /// Dernières annotations de toute la bibliothèque (accueil).
+    Result<QList<AnnotationRecord>> recent(int limit);
     Result<int> count(qint64 documentId);
 
     /// Ajoute un signet sur la page, ou retire celui qui existe. Renvoie le signet s'il a été créé.

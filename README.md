@@ -11,13 +11,23 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | Phase | Contenu | État |
 |---|---|---|
 | 1 · Conception | Vision, architecture, choix des bibliothèques, schéma SQLite, maquettes, plan | ✅ Terminée — voir [`docs/design/`](docs/design/README.md) |
-| 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | 🚧 En cours — itération 6/7 (commentaires, recherche, sauvegardes) |
+| 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | ✅ Terminée — **version 0.1.0** (7 itérations) |
 | 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | — |
 | 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | — |
 | 5 · Finalisation | Optimisation, packaging, documentation | — |
 
-### Ce qui fonctionne aujourd'hui (itération 6)
+### Ce qui fonctionne aujourd'hui (MVP 0.1)
 
+- **Accueil** : reprendre la lecture à la page exacte, autres lectures en cours, dernières annotations et derniers
+  commentaires (un clic ouvre le passage), état de la bibliothèque et de la dernière sauvegarde.
+- **Export de la bibliothèque** (entière, documents affichés ou sélection avec Ctrl / Maj) en coffre Obsidian :
+  `README.md` avec l'index des documents, un dossier par document (fiche YAML, `Annotations.md`, `Commentaires.md`,
+  `metadata.json`), chapitres lus dans le sommaire du PDF ou la table des matières de l'EPUB, et `annotations.csv`
+  pour un tableur. En arrière-plan, avec progression et annulation.
+- **Liens `studylab://`** dans les notes exportées : un clic dans Obsidian rouvre StudyLab au passage annoté ou
+  commenté (une seule instance : le lien s'ouvre dans la fenêtre déjà lancée).
+- **Installeurs** : paquet `.deb` pour Debian 13 et installateur Windows 10/11 (sans droits administrateur),
+  construits et testés (installation, lancement, désinstallation) par l'intégration continue.
 - **Commentaires** (PDF et EPUB) : volet sous les annotations, rédigés en Markdown avec formules LaTeX (`$…$`,
   `$$…$$`, rendu KaTeX hors ligne) et liens `[[…]]`. Quatre types (question, explication, réflexion, référence),
   ancrés à un passage, à une annotation, à une page ou au document entier. Filtres (questions, explications, page ou
@@ -74,9 +84,20 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | ![Lecteur EPUB, affichage du texte](docs/screenshots/iteration5-epub.png) | ![Lecteur EPUB sombre](docs/screenshots/iteration5-epub-sombre.png) |
 | ![Commentaires](docs/screenshots/iteration6-commentaires.png) | ![Commentaires sombre](docs/screenshots/iteration6-commentaires-sombre.png) |
 | ![Recherche universelle](docs/screenshots/iteration6-recherche.png) | ![Sauvegardes](docs/screenshots/iteration6-sauvegardes.png) |
+| ![Accueil](docs/screenshots/iteration7-accueil.png) | ![Accueil sombre](docs/screenshots/iteration7-accueil-sombre.png) |
+| ![Export de la bibliothèque](docs/screenshots/iteration7-export.png) | |
 
-L'export complet de la bibliothèque, l'accueil et les installeurs arrivent à l'itération 7
-(plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md)).
+Suite : notes Markdown, liens et graphe (V1), puis cartes mémoire et répétition espacée (V2) —
+plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md). Historique : [`CHANGELOG.md`](CHANGELOG.md).
+
+## Installer
+
+Les paquets sont produits par l'intégration continue (onglet *Actions* du dépôt, artefacts `studylab-deb` et
+`studylab-windows-installer`) :
+
+- **Debian 13** : `sudo apt install ./studylab_0.1.0_amd64.deb` (les dépendances Qt sont installées par apt).
+- **Windows 10/11** : lancer `StudyLab-0.1.0-windows-x64-setup.exe`. L'installation se fait pour l'utilisateur courant,
+  sans droits administrateur ; la désinstallation conserve vos données.
 
 ## Compiler
 

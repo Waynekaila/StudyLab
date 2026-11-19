@@ -6,6 +6,10 @@
 #include <QTimer>
 #include <QWidget>
 
+#include <atomic>
+#include <functional>
+#include <memory>
+
 class QComboBox;
 class QLabel;
 class QLineEdit;
@@ -44,8 +48,20 @@ public:
     DocumentDetailPanel* detailPanel() const { return m_detail; }
     QLabel* importStatusLabel() const { return m_bannerText; }
     QWidget* emptyState() const { return m_empty; }
+    QPushButton* exportButton() const { return m_exportButton; }
+    QPushButton* openExportButton() const { return m_openExport; }
+
+    /// Exporte des documents en Markdown (coffre Obsidian + CSV) dans un dossier choisi, en arrière-plan.
+    void exportDocuments(const QList<qint64>& ids);
+    bool isExporting() const { return m_exporting; }
+    QList<qint64> selectedIds() const;
+    QList<qint64> visibleIds() const;
+    /// Choix du dossier parent de l'export (boîte de dialogue par défaut ; les tests fournissent le chemin).
+    void setExportDirectoryChooser(std::function<QString()> chooser) { m_chooseExportDir = std::move(chooser); }
 
 signals:
+    /// Fin d'un export (dossier créé, vide en cas d'échec).
+    void exportFinished(const QString& folder);
     /// Demande d'ouverture d'un document dans le lecteur.
     void openDocumentRequested(qint64 id);
 
@@ -70,6 +86,9 @@ private:
     void onImportProgress(int done, int total);
     void onImportFinished(const ImportReport& report);
     void resetFilters();
+    void showBannerState(const QString& state);
+    void onExportFinished(const QString& folder, int documents, int annotations, int comments,
+                          const QStringList& errors, bool cancelled, const QString& error);
 
     AppContext& m_ctx;
     LibraryModel* m_model;
@@ -100,6 +119,12 @@ private:
     DocumentDetailPanel* m_detail = nullptr;
     QTimer m_searchDebounce;
     qint64 m_selectedId = 0;
+    QPushButton* m_exportButton = nullptr;
+    QPushButton* m_openExport = nullptr;
+    QString m_exportFolder;
+    bool m_exporting = false;
+    std::shared_ptr<std::atomic_bool> m_exportCancel;
+    std::function<QString()> m_chooseExportDir;
     bool m_dirty = false;
 };
 

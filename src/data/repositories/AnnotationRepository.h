@@ -27,6 +27,8 @@ public:
     Result<AnnotationRecord> findById(qint64 id);
     /// Annotations actives d'un document, dans l'ordre de lecture.
     Result<QList<AnnotationRecord>> listForDocument(qint64 documentId);
+    /// Dernières annotations de la bibliothèque (hors signets et documents retirés), les plus récentes d'abord.
+    Result<QList<AnnotationRecord>> listRecent(int limit);
     Result<int> countForDocument(qint64 documentId);
     /// Signet de la page, s'il existe.
     Result<std::optional<AnnotationRecord>> bookmarkOnPage(qint64 documentId, int unitIndex);

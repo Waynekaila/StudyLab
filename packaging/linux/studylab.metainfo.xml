@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.waynekaila.StudyLab</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>StudyLab</name>
+  <summary xml:lang="fr">Lire, annoter et commenter vos documents d'étude</summary>
+  <summary>Read, annotate and comment your study documents</summary>
+  <description>
+    <p xml:lang="fr">StudyLab est une application de bureau hors ligne pour étudier des PDF et des EPUB : bibliothèque,
+      lecteurs, annotations en couleur, commentaires Markdown avec formules LaTeX, recherche universelle,
+      sauvegardes locales et export Markdown compatible Obsidian.</p>
+    <p>StudyLab is an offline desktop application to study PDF and EPUB documents: library, readers, colour
+      annotations, Markdown comments with LaTeX formulas, universal search, local backups and Obsidian-compatible
+      Markdown export.</p>
+  </description>
+  <launchable type="desktop-id">studylab.desktop</launchable>
+  <developer id="io.github.waynekaila">
+    <name>Wayne</name>
+  </developer>
+  <url type="homepage">https://github.com/Waynekaila/StudyLab</url>
+  <provides>
+    <binary>studylab</binary>
+  </provides>
+  <categories>
+    <category>Education</category>
+    <category>Office</category>
+  </categories>
+  <releases>
+    <release version="0.1.0" date="2026-11-19"/>
+  </releases>
+  <content_rating type="oars-1.1"/>
+</component>

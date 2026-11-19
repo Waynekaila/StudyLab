@@ -28,6 +28,8 @@ public:
     /// Commentaires actifs d'un document : libres d'abord, puis dans l'ordre de lecture.
     /// Ceux d'une annotation supprimée sont masqués (ils reviennent si la suppression est annulée).
     Result<QList<CommentRecord>> listForDocument(qint64 documentId);
+    /// Derniers commentaires écrits ou modifiés dans la bibliothèque, les plus récents d'abord.
+    Result<QList<CommentRecord>> listRecent(int limit);
     Result<int> countForDocument(qint64 documentId);
 
     Result<void> remove(qint64 id);

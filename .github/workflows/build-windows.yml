@@ -29,6 +29,41 @@ jobs:
         run: cmake --build --preset windows-msvc-release
       - name: Tests
         run: ctest --preset windows-msvc-release
+      - name: Dossier autonome (cmake --install + windeployqt)
+        shell: pwsh
+        run: |
+          cmake --install build/windows-msvc-release --prefix stage
+          windeployqt --release --no-system-d3d-compiler --no-opengl-sw stage/studylab.exe
+          if (-not (Test-Path stage/QtWebEngineProcess.exe)) { throw "QtWebEngineProcess.exe absent du dossier déployé" }
+      - name: Installateur (Inno Setup)
+        shell: pwsh
+        run: |
+          $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --no-progress -y
+            $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          }
+          $version = (Select-String -Path CMakeLists.txt -Pattern 'VERSION (\d+\.\d+\.\d+)').Matches[0].Groups[1].Value
+          & $iscc "/DAppVersion=$version" "/DSourceDir=$PWD\stage" "/O$PWD\dist" packaging/windows/studylab.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC a échoué ($LASTEXITCODE)" }
+      - name: Test d'installation (silencieuse, utilisateur courant)
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist -Filter "StudyLab-*-setup.exe" | Select-Object -First 1
+          $p = Start-Process $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER','/DIR=C:\StudyLabTest' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Installation : code $($p.ExitCode)" }
+          $run = Start-Process C:\StudyLabTest\studylab.exe -ArgumentList '--version' -Wait -PassThru -NoNewWindow -RedirectStandardOutput version.txt
+          Get-Content version.txt
+          if ($run.ExitCode -ne 0 -or -not (Select-String -Path version.txt -Pattern '^StudyLab \d')) { throw "studylab.exe --version a échoué" }
+          if (-not (Test-Path 'HKCU:\Software\Classes\studylab\shell\open\command')) { throw "Lien studylab:// non enregistré" }
+          $u = Start-Process C:\StudyLabTest\unins000.exe -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES' -Wait -PassThru
+          if ($u.ExitCode -ne 0) { throw "Désinstallation : code $($u.ExitCode)" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: studylab-windows-installer
+          path: dist/*.exe
+          if-no-files-found: error
       - name: Détail des tests en échec
         if: failure()
         shell: pwsh

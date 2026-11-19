@@ -32,6 +32,8 @@ public:
     Result<CommentRecord> find(qint64 id);
     Result<std::optional<CommentRecord>> forAnnotation(qint64 annotationId);
     Result<QList<CommentRecord>> list(qint64 documentId);
+    /// Derniers commentaires de toute la bibliothèque (accueil).
+    Result<QList<CommentRecord>> recent(int limit);
     Result<int> count(qint64 documentId);
 
 signals:

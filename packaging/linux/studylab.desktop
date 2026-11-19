@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=StudyLab
+GenericName=Lecture et étude de documents
+GenericName[en]=Study reader
+Comment=Lire, annoter et commenter des PDF et EPUB, puis exporter vers Obsidian
+Comment[en]=Read, annotate and comment PDF and EPUB files, then export to Obsidian
+Exec=studylab %u
+Icon=studylab
+Terminal=false
+Categories=Education;
+Keywords=PDF;EPUB;annotation;étude;révision;Obsidian;Markdown;
+MimeType=x-scheme-handler/studylab;
+StartupNotify=true
+StartupWMClass=studylab

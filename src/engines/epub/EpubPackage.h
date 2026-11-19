@@ -22,6 +22,14 @@ struct EpubManifestItem {
     QString properties;
 };
 
+/// Entrée de la table des matières (nav EPUB 3 ou NCX EPUB 2).
+struct EpubNavPoint {
+    QString label;
+    QString href;     ///< chemin complet dans l'archive, sans fragment
+    int depth = 0;    ///< 0 = premier niveau
+    int section = -1; ///< index dans le spine, -1 si le fichier n'y figure pas
+};
+
 /// Paquet EPUB 2/3 : conteneur ZIP, fichier OPF (métadonnées, manifeste, spine).
 /// Lecture seule ; utilisable depuis un thread de travail.
 class EpubPackage {
@@ -43,6 +51,9 @@ public:
 
     /// Contenu d'un fichier de l'archive (chemin complet), vide s'il n'existe pas.
     QByteArray fileData(const QString& pathInArchive) const;
+    /// Table des matières lue dans le document nav (EPUB 3) ou, à défaut, le NCX (EPUB 2).
+    QList<EpubNavPoint> toc() const;
+
     /// Taille décompressée de chaque fichier de l'archive (chemin complet → octets).
     QHash<QString, qint64> fileSizes() const;
 

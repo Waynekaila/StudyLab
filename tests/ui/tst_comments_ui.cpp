@@ -507,7 +507,8 @@ private slots:
         QFile md(folder.value() + QStringLiteral("/Commentaires.md"));
         QVERIFY(md.open(QIODevice::ReadOnly));
         const QString content = QString::fromUtf8(md.readAll());
-        QVERIFY(content.contains(QStringLiteral("> [!cite] Référence · p. 4")));
+        QVERIFY2(content.contains(QStringLiteral("> [!cite] Référence · [p. 4](studylab://open?doc=")) && content.contains(QStringLiteral("&comment=")),
+                 qPrintable(content));
         QVERIFY(content.contains(QStringLiteral("Feedback Systems")));
 
         // Rechercher partout : Ctrl+K depuis n'importe quel écran

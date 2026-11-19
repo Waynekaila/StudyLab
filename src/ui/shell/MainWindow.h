@@ -5,6 +5,8 @@
 #include <QHash>
 #include <QMainWindow>
 
+#include "core/Result.h"
+
 namespace studylab::ui {
 
 class FadeStackedWidget;
@@ -24,6 +26,13 @@ public:
     void showSearch();
     SearchPalette* searchPalette() const { return m_search; }
     Sidebar* sidebar() const { return m_sidebar; }
+
+    /// Ouvre un lien « studylab://open?… » (export Markdown) au bon passage.
+    Result<void> openLink(const QString& link);
+    /// Message d'une autre instance lancée par le système (lien cliqué ou nouveau lancement).
+    void handleInstanceMessage(const QString& message);
+    /// Ramène la fenêtre au premier plan.
+    void bringToFront();
 
 protected:
     void closeEvent(QCloseEvent* event) override;

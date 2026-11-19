@@ -1,5 +1,6 @@
 #include "Bootstrap.h"
 
+#include "core/AppLink.h"
 #include "core/AppPaths.h"
 #include "core/Log.h"
 #include "data/sqlite/Database.h"
@@ -10,6 +11,7 @@
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
 #include "ui/shell/AppContext.h"
+#include "ui/shell/InstanceChannel.h"
 #include "ui/reader/EpubWeb.h"
 #include "ui/shell/MainWindow.h"
 #include "ui/pages/SettingsPage.h"
@@ -17,9 +19,13 @@
 
 #include <QApplication>
 #include <QDir>
+#include <QIcon>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QProcess>
+#include <QTimer>
+
+#include <cstdio>
 
 using namespace studylab;
 
@@ -30,8 +36,26 @@ int main(int argc, char* argv[])
     QApplication::setDesktopFileName(QStringLiteral("studylab"));
     ui::registerReaderSchemes();  // avant QApplication (Qt WebEngine)
     QApplication app(argc, argv);
+    QApplication::setWindowIcon(QIcon(QStringLiteral(":/app/studylab.svg")));
+
+    const QStringList args = QCoreApplication::arguments().mid(1);
+    if (args.contains(QStringLiteral("--version"))) {
+        // Vérification des paquets (CI) : l'exécutable et toutes ses bibliothèques se chargent.
+        std::fputs(qPrintable(QStringLiteral("StudyLab %1\n").arg(QCoreApplication::applicationVersion())), stdout);
+        std::fflush(stdout);
+        return 0;
+    }
+    QStringList links;
+    for (const QString& a : args)
+        if (AppLink::looksLikeLink(a))
+            links << a;
 
     const AppPaths paths = AppPaths::standard();
+    // Une seule instance par dossier de données : un lien cliqué dans un export s'ouvre dans la fenêtre existante.
+    if (ui::InstanceChannel::sendToRunning(paths.dataDir(), links.isEmpty() ? QStringList{QStringLiteral("activate")} : links))
+        return 0;
+    ui::InstanceChannel channel(paths.dataDir());
+    channel.listen();
     auto startup = openAndMigrate(paths);
     if (!startup) {
         QMessageBox::critical(nullptr, QStringLiteral("StudyLab"),
@@ -94,11 +118,15 @@ int main(int argc, char* argv[])
         AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups};
         ui::MainWindow window(ctx);
         window.show();
+        QObject::connect(&channel, &ui::InstanceChannel::messageReceived, &window, &ui::MainWindow::handleInstanceMessage);
+        for (const QString& link : std::as_const(links))
+            QTimer::singleShot(0, &window, [&window, link] { window.handleInstanceMessage(link); });
         code = app.exec();
     }
     // Base fermée (services détruits) : la restauration programmée peut s'appliquer au redémarrage.
     report.db.reset();
     markStopped(paths);
+    channel.close();  // la nouvelle instance doit pouvoir prendre le canal
     if (app.property(ui::kRestartProperty).toBool())
         QProcess::startDetached(QCoreApplication::applicationFilePath(), {});
     return code;

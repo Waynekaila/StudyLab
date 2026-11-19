@@ -2,6 +2,7 @@ add_library(studylab_core STATIC
     Result.h
     Clock.h Clock.cpp
     Uuid.h Uuid.cpp
+    AppLink.h AppLink.cpp
     Log.h Log.cpp
     AppPaths.h AppPaths.cpp
     domain/Document.h domain/Document.cpp

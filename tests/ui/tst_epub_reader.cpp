@@ -477,7 +477,7 @@ private slots:
         QVERIFY(f.open(QIODevice::ReadOnly));
         const QString md = QString::fromUtf8(f.readAll());
         QVERIFY2(md.contains(QStringLiteral("## 3 · Machines thermiques")), qPrintable(md));
-        QVERIFY2(md.contains(QStringLiteral("> [!quote] ")) && md.contains(QStringLiteral(" % · Surlignage · rose")), qPrintable(md));
+        QVERIFY2(md.contains(QStringLiteral("> [!quote] ")) && md.contains(QStringLiteral(" %](studylab://open?doc=")) && md.contains(QStringLiteral(") · Surlignage · rose")), qPrintable(md));
         QVERIFY(md.contains(QStringLiteral("> machine de Carnot")));
     }
 

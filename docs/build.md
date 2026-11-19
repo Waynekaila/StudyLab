@@ -26,6 +26,25 @@ $env:PATH = "C:\Qt\6.8.3\msvc2022_64\bin;" + $env:PATH
 .\build\windows-msvc-release\src\app\studylab.exe
 ```
 
+## Paquets
+
+```sh
+# Debian 13 : paquet .deb (dépendances calculées par dpkg-shlibdeps)
+cmake --preset debian-release && cmake --build --preset debian-release
+cpack --config build/debian-release/CPackConfig.cmake -B dist
+sudo apt install ./dist/studylab_*_amd64.deb
+```
+
+```powershell
+# Windows : dossier autonome puis installateur Inno Setup 6
+cmake --install build/windows-msvc-release --prefix stage
+windeployqt --release --no-system-d3d-compiler --no-opengl-sw stage/studylab.exe
+iscc /DAppVersion=0.1.0 /DSourceDir=$PWD\stage /O$PWD\dist packaging\windows\studylab.iss
+```
+
+Les deux paquets enregistrent le schéma `studylab://` (liens des exports Markdown). `studylab --version` affiche la
+version et quitte : la CI s'en sert pour vérifier qu'un paquet installé se lance.
+
 ## Tests
 
 ```sh
@@ -40,6 +59,6 @@ pendant les tests : `STUDYLAB_SCREENSHOT_DIR=/tmp/captures ctest --preset debian
 | Système | Dossier |
 |---|---|
 | Debian | `~/.local/share/StudyLab/` |
-| Windows | `%APPDATA%\StudyLab\` |
+| Windows | `%LOCALAPPDATA%\StudyLab\` |
 
 La variable `STUDYLAB_DATA_DIR` permet d'utiliser un autre dossier (tests, installation portable).

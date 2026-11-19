@@ -19,3 +19,33 @@ jobs:
         run: cmake --build --preset debian-release
       - name: Tests
         run: ctest --preset debian-release
+      - name: Paquet .deb
+        run: cpack --config build/debian-release/CPackConfig.cmake -B dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: studylab-deb
+          path: dist/*.deb
+          if-no-files-found: error
+
+  install-test:
+    # Installation du paquet dans un conteneur Debian 13 neuf (sans outils de compilation)
+    needs: build-test
+    runs-on: ubuntu-24.04
+    container: debian:trixie
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: studylab-deb
+      - name: Installation
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y ./studylab_*.deb desktop-file-utils appstream
+      - name: Lancement et fichiers du bureau
+        run: |
+          QT_QPA_PLATFORM=offscreen studylab --version | tee version.txt
+          grep -q '^StudyLab [0-9]' version.txt
+          desktop-file-validate /usr/share/applications/studylab.desktop
+          appstreamcli validate --no-net --pedantic /usr/share/metainfo/io.github.waynekaila.StudyLab.metainfo.xml || appstreamcli validate --no-net /usr/share/metainfo/io.github.waynekaila.StudyLab.metainfo.xml
+          test -f /usr/share/icons/hicolor/scalable/apps/studylab.svg
+      - name: Désinstallation
+        run: apt-get remove -y studylab && ! command -v studylab

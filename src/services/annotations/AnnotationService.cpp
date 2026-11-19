@@ -109,6 +109,11 @@ Result<QList<AnnotationRecord>> AnnotationService::list(qint64 documentId)
     return m_repo.listForDocument(documentId);
 }
 
+Result<QList<AnnotationRecord>> AnnotationService::recent(int limit)
+{
+    return m_repo.listRecent(limit);
+}
+
 Result<int> AnnotationService::count(qint64 documentId)
 {
     return m_repo.countForDocument(documentId);

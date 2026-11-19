@@ -201,6 +201,17 @@ Result<std::optional<CommentRecord>> CommentRepository::findForAnnotation(qint64
     return std::optional<CommentRecord>{rows.value().first()};
 }
 
+Result<QList<CommentRecord>> CommentRepository::listRecent(int limit)
+{
+    auto stmt = m_db.prepare(kSelect + QStringLiteral(
+        "JOIN documents d ON d.id = c.document_id WHERE d.deleted_at IS NULL AND ") + kActive
+        + QStringLiteral(" ORDER BY c.updated_at DESC, c.id DESC LIMIT ?1"));
+    if (!stmt)
+        return stmt.error();
+    stmt.value().bind(1, limit);
+    return collect(stmt.value());
+}
+
 Result<QList<CommentRecord>> CommentRepository::listForDocument(qint64 documentId)
 {
     auto stmt = m_db.prepare(kSelect + QStringLiteral("WHERE c.document_id = ?1 AND ") + kActive);
