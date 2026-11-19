@@ -95,6 +95,13 @@ void MarkdownView::setMarkdown(const QString& text, const QString& emptyText)
     call(QStringLiteral("setMarkdown"), {text, emptyText});
 }
 
+void MarkdownView::setNote(const QJsonObject& note, const QString& emptyText)
+{
+    call(QStringLiteral("setNote"), {note, emptyText});
+}
+
+void MarkdownView::scrollToLine(int line) { call(QStringLiteral("scrollToLine"), {line}); }
+
 void MarkdownView::evaluate(const QString& expression, std::function<void(const QVariant&)> callback)
 {
     page()->runJavaScript(QStringLiteral("JSON.stringify([%1])").arg(expression), [callback](const QVariant& v) {
@@ -121,6 +128,10 @@ void MarkdownView::handle(const QString& event, const QJsonObject& payload)
         const QPoint local(int(payload.value(QStringLiteral("x")).toDouble() * zoomFactor()),
                            int(payload.value(QStringLiteral("y")).toDouble() * zoomFactor()));
         emit cardMenuRequested(id, mapToGlobal(local));
+    } else if (event == QLatin1String("wikilink")) {
+        const QString target = payload.value(QStringLiteral("target")).toString();
+        if (!target.isEmpty())
+            emit wikiLinkActivated(target);
     } else if (event == QLatin1String("link")) {
         const QUrl url(payload.value(QStringLiteral("href")).toString());
         if (url.isValid())

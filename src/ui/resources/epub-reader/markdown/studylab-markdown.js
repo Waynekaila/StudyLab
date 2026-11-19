@@ -1,6 +1,7 @@
-// Rendu Markdown des commentaires StudyLab : markdown-it (HTML brut désactivé) + KaTeX pour les
-// formules ($…$, $$…$$). Les liens [[…]] restent du texte, simplement mis en forme (résolus en V1).
-// Deux modes : liste de cartes (volet Commentaires) et aperçu d'un texte (éditeur).
+// Rendu Markdown de StudyLab : markdown-it (HTML brut désactivé) + KaTeX pour les formules ($…$, $$…$$).
+// Trois modes : liste de cartes (volet Commentaires), aperçu d'un texte (éditeur de commentaire) et
+// note (espace de notes : [[liens]] cliquables, liens non résolus signalés, images jointes, titres repérés
+// par leur ligne pour le plan).
 'use strict'
 
 let bridge = null
@@ -97,14 +98,42 @@ function wikiLinkPlugin (md) {
   md.renderer.rules.wikilink = (tokens, idx) => {
     const m = tokens[idx].meta
     const esc = md.utils.escapeHtml
+    if (noteMode && !m.target.startsWith('@')) {
+      const unresolved = noteState.unresolved.includes(m.target)
+      const title = unresolved ? `${m.target} · ${noteState.unresolvedLabel}` : m.target
+      return `<a class="wikilink${unresolved ? ' unresolved' : ''}" href="#" title="${esc(title)}" data-target="${esc(m.target)}">${esc(m.label || m.target)}</a>`
+    }
     return `<span class="wikilink" title="${esc(m.target)}" data-raw="[[${esc(m.raw)}]]">${esc(m.label || m.target)}</span>`
   }
 }
 
+// Mode note : état fourni par l'application à chaque rendu.
+let noteMode = false
+let noteState = { unresolved: [], images: {}, lineOffset: 0, unresolvedLabel: '' }
+
 const md = window.markdownit({ html: false, linkify: true, breaks: true, typographer: false })
   .use(mathPlugin).use(wikiLinkPlugin)
 // Liens : jamais suivis dans la page ; l'application décide (navigateur externe pour http/https).
-md.validateLink = url => /^(https?:|mailto:)/i.test(url.trim())
+// Images : seulement les pièces jointes de la note, servies en data: par l'application (hors ligne).
+md.validateLink = url => /^(https?:|mailto:)/i.test(url.trim()) || /^attachments\/[\w.-]+$/.test(url.trim())
+const defaultImage = md.renderer.rules.image
+md.renderer.rules.image = (tokens, idx, options, env, self) => {
+  const token = tokens[idx]
+  const src = token.attrGet('src') || ''
+  const data = noteState.images[src]
+  if (!data) {
+    const alt = self.renderInlineAsText(token.children, options, env)
+    return `<span class="missing-image" title="${md.utils.escapeHtml(src)}">${md.utils.escapeHtml(alt || src)}</span>`
+  }
+  token.attrSet('src', data)
+  return defaultImage(tokens, idx, options, env, self)
+}
+// Titres repérés par leur ligne dans le texte complet (plan → défilement de l'aperçu).
+md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
+  const t = tokens[idx]
+  if (t.map) t.attrSet('data-line', String(t.map[0] + (noteState.lineOffset || 0)))
+  return self.renderToken(tokens, idx, options)
+}
 
 const render = text => md.render(text || '')
 
@@ -148,6 +177,8 @@ function renderCards () {
 function cardOf (target) { return target && target.closest ? target.closest('.card') : null }
 
 document.addEventListener('click', e => {
+  const wiki = e.target.closest && e.target.closest('a.wikilink')
+  if (wiki) { e.preventDefault(); post('wikilink', { target: wiki.dataset.target }); return }
   const a = e.target.closest && e.target.closest('a[href]')
   if (a) { e.preventDefault(); post('link', { href: a.getAttribute('href') }); return }
   const card = cardOf(e.target)
@@ -197,10 +228,36 @@ window.StudyLab = {
     if (el && scroll) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   },
   setMarkdown (text, emptyText) {
+    noteMode = false
     document.body.classList.add('preview')
     const root = document.getElementById('root')
     root.innerHTML = text && text.trim() ? `<div class="md">${render(text)}</div>` : `<div class="empty">${esc(emptyText || '')}</div>`
   },
+  // note : {title, body (sans front matter), lineOffset, chips: [texte], unresolved: [cible], images: {chemin: data:}}
+  setNote (note, emptyText) {
+    noteMode = true
+    noteState = Object.assign({ unresolved: [], images: {}, lineOffset: 0, unresolvedLabel: '' }, note)
+    document.body.classList.add('preview', 'note')
+    const root = document.getElementById('root')
+    const chips = (note.chips || []).map(c => `<span class="chip">${esc(c)}</span>`).join('')
+    const head = (chips ? `<div class="chips">${chips}</div>` : '') + `<h1 class="note-title">${esc(note.title)}</h1>`
+    const body = note.body && note.body.trim() ? render(note.body) : `<p class="empty-note">${esc(emptyText || '')}</p>`
+    const y = window.scrollY
+    root.innerHTML = `<article class="md note">${head}${body}</article>`
+    window.scrollTo(0, y)
+  },
+  scrollToLine (line) {
+    let target = null
+    for (const el of document.querySelectorAll('[data-line]')) {
+      if (Number(el.dataset.line) <= line) target = el
+      else break
+    }
+    if (target) target.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    else window.scrollTo({ top: 0, behavior: 'smooth' })
+    return !!target
+  },
+  wikiLinks: () => [...document.querySelectorAll('a.wikilink')].map(a => ({ target: a.dataset.target, unresolved: a.classList.contains('unresolved') })),
+  clickWiki: target => { const a = [...document.querySelectorAll('a.wikilink')].find(el => el.dataset.target === target); if (a) a.click(); return !!a },
   // Tests et diagnostic
   render,
   cardIds: () => [...document.querySelectorAll('.card')].map(el => Number(el.dataset.id)),

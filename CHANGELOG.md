@@ -1,5 +1,13 @@
 # Historique des versions
 
+## Non publié — V1 « Relier ses connaissances »
+
+- **Mes notes** (itération V1-1) : espace de notes Markdown avec dossiers virtuels, huit types et leurs modèles,
+  front matter YAML, tags, éditeur Source / Partagé / Aperçu (KaTeX, tableaux, images collées), liens `[[…]]`
+  résolus par titre, nom de fichier ou alias, rétroliens, plan, liens non résolus (« créer »), mise à jour des liens
+  au renommage, enregistrement automatique et corbeille annulable.
+- Correction : les puces (tags) créées avant l'affichage d'un écran se superposaient.
+
 ## 0.1.0 — MVP « Lire, annoter, commenter, exporter » (2026-11-19)
 
 - **Bibliothèque** : import de PDF et EPUB (fichiers, dossiers, glisser-déposer) en arrière-plan, doublons détectés

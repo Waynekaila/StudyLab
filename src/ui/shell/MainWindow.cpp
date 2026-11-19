@@ -5,6 +5,7 @@
 #include "services/settings/SettingsService.h"
 #include "ui/components/FadeStackedWidget.h"
 #include "ui/library/LibraryPage.h"
+#include "ui/notes/NotesPage.h"
 #include "ui/reader/ReaderPage.h"
 #include "ui/pages/HomePage.h"
 #include "ui/pages/SettingsPage.h"
@@ -44,6 +45,7 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
                                 {QStringLiteral("home"), QStringLiteral("home"), tr("Accueil")},
                                 {QStringLiteral("library"), QStringLiteral("library"), tr("Bibliothèque")},
                                 {QStringLiteral("reader"), QStringLiteral("book"), tr("Lecture")},
+                                {QStringLiteral("notes"), QStringLiteral("note"), tr("Mes notes")},
                                 {QStringLiteral("settings"), QStringLiteral("settings"), tr("Paramètres")},
                             },
                             root);
@@ -80,6 +82,7 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
     connect(reader, &ReaderPage::fullScreenRequested, this, &MainWindow::toggleFullScreen);
     auto* fullScreen = new QShortcut(QKeySequence(Qt::Key_F11), this, this, &MainWindow::toggleFullScreen);
     fullScreen->setContext(Qt::WindowShortcut);
+    addPage(QStringLiteral("notes"), new NotesPage(ctx, m_stack));
     addPage(QStringLiteral("settings"), new SettingsPage(ctx, m_stack));
 
     // Rechercher partout
@@ -171,6 +174,8 @@ void MainWindow::closeEvent(QCloseEvent* event)
 {
     if (auto* reader = qobject_cast<ReaderPage*>(m_pages.value(QStringLiteral("reader"))))
         reader->saveSession();
+    if (auto* notes = qobject_cast<NotesPage*>(m_pages.value(QStringLiteral("notes"))))
+        notes->saveNow();
     QSettings qs;
     qs.setValue(QStringLiteral("ui/geometry"), saveGeometry());
     QMainWindow::closeEvent(event);

@@ -5,6 +5,7 @@
 #include "services/annotations/AnnotationService.h"
 #include "services/backup/BackupService.h"
 #include "services/comments/CommentService.h"
+#include "services/notes/NoteService.h"
 #include "services/search/SearchService.h"
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
@@ -96,7 +97,8 @@ private slots:
         CommentService comments(database);
         SearchService search(database);
         BackupService backups(paths, database);
-        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups};
+        NoteService notes(database, paths.attachmentsDir());
+        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups, notes};
         ui::MainWindow window(ctx);
         window.resize(1280, 820);
         window.show();
@@ -160,7 +162,8 @@ private slots:
         CommentService comments(database);
         SearchService search(database);
         BackupService backups(paths, database);
-        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups};
+        NoteService notes(database, paths.attachmentsDir());
+        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups, notes};
         ui::MainWindow window(ctx);
         QCOMPARE(window.currentPage(), QStringLiteral("settings"));
     }
@@ -179,7 +182,8 @@ private slots:
         CommentService comments(database);
         SearchService search(database);
         BackupService backups(paths, database);
-        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups};
+        NoteService notes(database, paths.attachmentsDir());
+        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups, notes};
         ui::SettingsPage page(ctx);
         QPushButton* backup = nullptr;
         for (auto* b : page.findChildren<QPushButton*>()) {

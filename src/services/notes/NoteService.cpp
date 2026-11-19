@@ -1,0 +1,449 @@
+#include "services/notes/NoteService.h"
+
+#include "core/Uuid.h"
+#include "core/domain/Comment.h"
+#include "data/sqlite/Database.h"
+#include "data/sqlite/Transaction.h"
+
+#include <QDir>
+#include <QFile>
+#include <QRegularExpression>
+#include <QSaveFile>
+
+namespace studylab {
+
+namespace {
+
+/// Cibles [[…]] d'un texte qui désignent une note (les citations [[@clé]] relèvent des références).
+QStringList noteTargets(const QString& body)
+{
+    QStringList out;
+    QStringList keys;
+    for (const QString& t : wikiLinkTargets(stripFrontMatter(body))) {
+        if (t.startsWith(u'@'))
+            continue;
+        const QString key = wikiLinkKey(t);
+        if (key.isEmpty() || keys.contains(key))
+            continue;
+        keys << key;
+        out << t;
+    }
+    return out;
+}
+
+/// Remplace la cible des [[liens]] dont la clé est dans oldKeys, en gardant « #section », « ^bloc » et « |alias ».
+QString retarget(const QString& body, const QStringList& oldKeys, const QString& newTarget, bool* changed)
+{
+    static const QRegularExpression link(QStringLiteral("\\[\\[([^\\[\\]\\n]+)\\]\\]"));
+    QString out;
+    qsizetype last = 0;
+    auto it = link.globalMatch(body);
+    while (it.hasNext()) {
+        const auto m = it.next();
+        const QString inner = m.captured(1);
+        if (!oldKeys.contains(wikiLinkKey(inner)))
+            continue;
+        static const QRegularExpression cut(QStringLiteral("[#^|]"));
+        const qsizetype end = inner.indexOf(cut);
+        const QString rest = end < 0 ? QString() : inner.mid(end);
+        out += body.mid(last, m.capturedStart() - last);
+        out += QStringLiteral("[[") + newTarget + rest + QStringLiteral("]]");
+        last = m.capturedEnd();
+        *changed = true;
+    }
+    out += body.mid(last);
+    return out;
+}
+
+Error invalid(const QString& message) { return Error::make(Error::Code::InvalidArgument, message); }
+
+}  // namespace
+
+NoteService::NoteService(db::Database& db, QString attachmentsDir, QObject* parent)
+    : QObject(parent), m_db(db), m_repo(db), m_attachmentsDir(std::move(attachmentsDir))
+{
+    qRegisterMetaType<NoteRecord>();
+}
+
+QString NoteService::normalizeFolder(const QString& folder)
+{
+    QStringList parts;
+    for (const QString& p : folder.split(u'/', Qt::SkipEmptyParts)) {
+        const QString t = noteSlug(p.simplified());
+        if (!p.trimmed().isEmpty())
+            parts << t;
+    }
+    return parts.join(u'/');
+}
+
+Result<QString> NoteService::uniqueSlug(const QString& title, qint64 exceptId)
+{
+    const QString base = noteSlug(title);
+    for (int n = 1; n < 10000; ++n) {
+        const QString candidate = n == 1 ? base : QStringLiteral("%1 %2").arg(base).arg(n);
+        auto taken = m_repo.slugTaken(candidate, exceptId);
+        if (!taken)
+            return taken.error();
+        if (!taken.value())
+            return candidate;
+    }
+    return Error::make(Error::Code::Generic, tr("Trop de notes portent ce titre."));
+}
+
+QHash<QString, qint64> NoteService::keyMap()
+{
+    QHash<QString, qint64> map;
+    auto keys = m_repo.keys();
+    if (!keys)
+        return map;
+    // Priorité : titre, puis nom de fichier, puis alias ; à égalité, la note la plus ancienne.
+    for (const auto& k : keys.value())
+        map.insert(wikiLinkKey(k.title), k.id);
+    for (const auto& k : keys.value()) {
+        const QString key = wikiLinkKey(k.slug);
+        if (!map.contains(key))
+            map.insert(key, k.id);
+    }
+    for (const auto& k : keys.value())
+        for (const QString& a : k.aliases) {
+            const QString key = wikiLinkKey(a);
+            if (!map.contains(key))
+                map.insert(key, k.id);
+        }
+    return map;
+}
+
+Result<void> NoteService::indexNote(const NoteRecord& note)
+{
+    if (auto r = m_repo.setAliases(note.id, noteAliases(note.body)); !r)
+        return r;
+    const QHash<QString, qint64> map = keyMap();
+    QList<db::NoteLinkRow> rows;
+    for (const QString& target : noteTargets(note.body)) {
+        db::NoteLinkRow row;
+        row.targetText = target;
+        row.targetNoteId = map.value(wikiLinkKey(target), 0);
+        rows << row;
+    }
+    return m_repo.replaceWikiLinks(note.id, rows);
+}
+
+Result<bool> NoteService::relinkAll()
+{
+    const QHash<QString, qint64> map = keyMap();
+    auto links = m_repo.allWikiLinks();
+    if (!links)
+        return links.error();
+    bool changed = false;
+    for (const auto& l : links.value()) {
+        const qint64 target = map.value(wikiLinkKey(l.targetText), 0);
+        if (target == l.targetNoteId)
+            continue;
+        if (auto r = m_repo.setLinkTarget(l.id, target); !r)
+            return r.error();
+        changed = true;
+    }
+    return changed;
+}
+
+Result<NoteRecord> NoteService::create(const QString& title, NoteType type, const QString& folder, const QString& body)
+{
+    QString t = title.simplified();
+    if (t.isEmpty())
+        t = tr("Sans titre");
+    db::Transaction tx(m_db);
+    if (!tx.isActive())
+        return tx.beginError();
+    auto slug = uniqueSlug(t, 0);
+    if (!slug)
+        return slug.error();
+    NoteRecord note;
+    // Un titre déjà pris reçoit le même suffixe que son nom de fichier (« Sans titre 2 »).
+    note.title = slug.value() == noteSlug(t) ? t : slug.value();
+    note.slug = slug.value();
+    note.type = type;
+    note.folder = normalizeFolder(folder);
+    note.body = body.isEmpty() ? noteTemplate(type, note.title) : body;
+    note.frontMatter = parseFrontMatter(note.body).values;
+    if (auto r = m_repo.insert(note); !r)
+        return r.error();
+    if (auto r = indexNote(note); !r)
+        return r.error();
+    auto relinked = relinkAll();
+    if (!relinked)
+        return relinked.error();
+    if (auto r = tx.commit(); !r)
+        return r.error();
+    auto stored = m_repo.findById(note.id);
+    if (stored) {
+        emit noteAdded(stored.value());
+        emit linksChanged();
+    }
+    return stored;
+}
+
+Result<NoteRecord> NoteService::save(qint64 id, const QString& title, const QString& body)
+{
+    auto current = m_repo.findById(id);
+    if (!current)
+        return current.error();
+    const NoteRecord before = current.value();
+    NoteRecord note = before;
+    const QString newTitle = title.simplified();
+    if (newTitle.isEmpty())
+        return invalid(tr("Une note exige un titre."));
+
+    db::Transaction tx(m_db);
+    if (!tx.isActive())
+        return tx.beginError();
+    const bool renamed = newTitle != before.title;
+    if (renamed) {
+        auto slug = uniqueSlug(newTitle, id);
+        if (!slug)
+            return slug.error();
+        note.slug = slug.value();
+        note.title = slug.value() == noteSlug(newTitle) ? newTitle : slug.value();
+    }
+    note.body = body;
+    note.frontMatter = parseFrontMatter(body).values;
+    if (auto r = m_repo.update(note); !r)
+        return r.error();
+
+    auto oldLinks = m_repo.outgoingLinks(id);
+    if (!oldLinks)
+        return oldLinks.error();
+    const QStringList oldAliases = noteAliases(before.body);
+    if (auto r = indexNote(note); !r)
+        return r.error();
+
+    // Renommage : les [[liens]] des autres notes suivent le nouveau titre.
+    QList<qint64> rewritten;
+    if (renamed) {
+        auto incoming = m_repo.incomingLinks(id);
+        if (!incoming)
+            return incoming.error();
+        const QStringList oldKeys{wikiLinkKey(before.title), wikiLinkKey(before.slug)};
+        for (const auto& l : incoming.value()) {
+            if (rewritten.contains(l.sourceNoteId) || !oldKeys.contains(wikiLinkKey(l.targetText)))
+                continue;
+            auto source = m_repo.findById(l.sourceNoteId);
+            if (!source)
+                continue;
+            bool changed = false;
+            NoteRecord s = source.value();
+            s.body = retarget(s.body, oldKeys, note.title, &changed);
+            if (!changed)
+                continue;
+            s.frontMatter = parseFrontMatter(s.body).values;
+            if (auto r = m_repo.update(s); !r)
+                return r.error();
+            if (auto r = indexNote(s); !r)
+                return r.error();
+            rewritten << s.id;
+        }
+    }
+    auto relinked = relinkAll();
+    if (!relinked)
+        return relinked.error();
+    auto newLinks = m_repo.outgoingLinks(id);
+    if (!newLinks)
+        return newLinks.error();
+    if (auto r = tx.commit(); !r)
+        return r.error();
+
+    auto stored = m_repo.findById(id);
+    if (!stored)
+        return stored.error();
+    emit noteChanged(stored.value());
+    for (qint64 other : std::as_const(rewritten))
+        if (auto o = m_repo.findById(other))
+            emit noteChanged(o.value());
+
+    auto targets = [](const QList<db::NoteLinkRow>& rows) {
+        QStringList out;
+        for (const auto& r : rows)
+            out << QStringLiteral("%1→%2").arg(r.targetText).arg(r.targetNoteId);
+        return out;
+    };
+    if (renamed || relinked.value() || oldAliases != noteAliases(note.body)
+        || targets(oldLinks.value()) != targets(newLinks.value()))
+        emit linksChanged();
+    return stored;
+}
+
+Result<NoteRecord> NoteService::modify(qint64 id, const std::function<void(NoteRecord&)>& change)
+{
+    auto current = m_repo.findById(id);
+    if (!current)
+        return current.error();
+    NoteRecord n = current.value();
+    change(n);
+    if (auto r = m_repo.update(n); !r)
+        return r.error();
+    auto stored = m_repo.findById(id);
+    if (stored)
+        emit noteChanged(stored.value());
+    return stored;
+}
+
+Result<NoteRecord> NoteService::setType(qint64 id, NoteType type)
+{
+    return modify(id, [type](NoteRecord& n) { n.type = type; });
+}
+
+Result<NoteRecord> NoteService::setFolder(qint64 id, const QString& folder)
+{
+    const QString f = normalizeFolder(folder);
+    return modify(id, [f](NoteRecord& n) { n.folder = f; });
+}
+
+Result<NoteRecord> NoteService::setPinned(qint64 id, bool pinned)
+{
+    return modify(id, [pinned](NoteRecord& n) { n.pinned = pinned; });
+}
+
+Result<int> NoteService::renameFolder(const QString& from, const QString& to)
+{
+    const QString src = normalizeFolder(from);
+    const QString dst = normalizeFolder(to);
+    if (src.isEmpty())
+        return invalid(tr("Dossier inconnu."));
+    if (src == dst)
+        return 0;
+    if (dst.startsWith(src + u'/'))
+        return invalid(tr("Un dossier ne peut pas être déplacé dans l'un de ses sous-dossiers."));
+    auto all = m_repo.list();
+    if (!all)
+        return all.error();
+    db::Transaction tx(m_db);
+    if (!tx.isActive())
+        return tx.beginError();
+    QList<qint64> moved;
+    for (NoteRecord n : all.value()) {
+        if (n.folder != src && !n.folder.startsWith(src + u'/'))
+            continue;
+        n.folder = normalizeFolder(dst + n.folder.mid(src.size()));
+        if (auto r = m_repo.update(n); !r)
+            return r.error();
+        moved << n.id;
+    }
+    if (auto r = tx.commit(); !r)
+        return r.error();
+    for (qint64 id : std::as_const(moved))
+        if (auto n = m_repo.findById(id))
+            emit noteChanged(n.value());
+    return int(moved.size());
+}
+
+Result<void> NoteService::remove(qint64 id)
+{
+    db::Transaction tx(m_db);
+    if (!tx.isActive())
+        return tx.beginError();
+    if (auto r = m_repo.remove(id); !r)
+        return r;
+    if (auto r = relinkAll(); !r)
+        return r.error();
+    if (auto r = tx.commit(); !r)
+        return r;
+    emit noteRemoved(id);
+    emit linksChanged();
+    return {};
+}
+
+Result<NoteRecord> NoteService::restore(qint64 id)
+{
+    db::Transaction tx(m_db);
+    if (!tx.isActive())
+        return tx.beginError();
+    if (auto r = m_repo.restore(id); !r)
+        return r.error();
+    if (auto r = relinkAll(); !r)
+        return r.error();
+    if (auto r = tx.commit(); !r)
+        return r.error();
+    auto stored = m_repo.findById(id);
+    if (stored) {
+        emit noteAdded(stored.value());
+        emit linksChanged();
+    }
+    return stored;
+}
+
+Result<NoteRecord> NoteService::find(qint64 id) { return m_repo.findById(id); }
+Result<QList<NoteRecord>> NoteService::list() { return m_repo.list(); }
+Result<int> NoteService::count() { return m_repo.count(); }
+
+Result<qint64> NoteService::resolve(const QString& target)
+{
+    if (target.trimmed().startsWith(u'@'))
+        return qint64(0);
+    return keyMap().value(wikiLinkKey(target), 0);
+}
+
+QHash<QString, qint64> NoteService::resolveMany(const QStringList& targets)
+{
+    const QHash<QString, qint64> map = keyMap();
+    QHash<QString, qint64> out;
+    for (const QString& t : targets)
+        out.insert(t, t.trimmed().startsWith(u'@') ? 0 : map.value(wikiLinkKey(t), 0));
+    return out;
+}
+
+Result<QList<NoteBacklink>> NoteService::backlinks(qint64 id)
+{
+    auto note = m_repo.findById(id);
+    if (!note)
+        return note.error();
+    auto incoming = m_repo.incomingLinks(id);
+    if (!incoming)
+        return incoming.error();
+    QList<NoteBacklink> out;
+    QList<qint64> seen;
+    for (const auto& l : incoming.value()) {
+        if (seen.contains(l.sourceNoteId))
+            continue;
+        seen << l.sourceNoteId;
+        auto source = m_repo.findById(l.sourceNoteId);
+        if (!source)
+            continue;
+        QStringList keys{wikiLinkKey(l.targetText)};
+        out.append({source.value().id, source.value().title, source.value().type,
+                    wikiLinkSnippet(source.value().body, keys)});
+    }
+    return out;
+}
+
+Result<QList<NoteLink>> NoteService::links(qint64 id)
+{
+    auto rows = m_repo.outgoingLinks(id);
+    if (!rows)
+        return rows.error();
+    QList<NoteLink> out;
+    for (const auto& r : rows.value())
+        out.append({r.targetText, r.targetNoteId});
+    return out;
+}
+
+Result<QString> NoteService::addImage(qint64 noteId, const QByteArray& data, const QString& extension)
+{
+    static const QStringList allowed{QStringLiteral("png"), QStringLiteral("jpg"), QStringLiteral("jpeg"),
+                                     QStringLiteral("gif"), QStringLiteral("webp")};
+    const QString ext = extension.toLower();
+    if (data.isEmpty() || !allowed.contains(ext))
+        return invalid(tr("Format d'image non pris en charge."));
+    if (!QDir().mkpath(m_attachmentsDir))
+        return Error::make(Error::Code::Io, tr("Impossible de créer le dossier %1").arg(m_attachmentsDir));
+    const QString uuid = newUuid();
+    const QString fileName = QStringLiteral("%1.%2").arg(uuid, ext);
+    QSaveFile file(QDir(m_attachmentsDir).filePath(fileName));
+    if (!file.open(QIODevice::WriteOnly) || file.write(data) != data.size() || !file.commit())
+        return Error::make(Error::Code::Io, tr("Impossible d'enregistrer l'image : %1").arg(file.errorString()));
+    const QString rel = QStringLiteral("attachments/") + fileName;
+    const QString mime = ext == QLatin1String("jpg") ? QStringLiteral("image/jpeg") : QStringLiteral("image/") + ext;
+    if (auto r = m_repo.addAttachment(noteId, uuid, fileName, rel, mime); !r)
+        return r.error();
+    return rel;
+}
+
+}  // namespace studylab

@@ -12,12 +12,19 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 |---|---|---|
 | 1 · Conception | Vision, architecture, choix des bibliothèques, schéma SQLite, maquettes, plan | ✅ Terminée — voir [`docs/design/`](docs/design/README.md) |
 | 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | ✅ Terminée — **version 0.1.0** (7 itérations) |
-| 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | — |
+| 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | 🚧 En cours — itération 1/7 (espace de notes) |
 | 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | — |
 | 5 · Finalisation | Optimisation, packaging, documentation | — |
 
-### Ce qui fonctionne aujourd'hui (MVP 0.1)
+### Ce qui fonctionne aujourd'hui (MVP 0.1 et début de la V1)
 
+- **Mes notes** (V1) : notes Markdown rangées dans des dossiers virtuels (« Thermodynamique/Cours »), huit types
+  avec leur modèle (note de lecture, fiche de cours, concept, formules, fiche de révision, recherche, compte rendu,
+  note personnelle), front matter YAML, tags (`tags:` ou `#tag`) cliquables pour filtrer. Éditeur avec coloration et
+  aperçu côte à côte (modes Source, Partagé, Aperçu) : formules KaTeX, tableaux, citations, images collées
+  (copiées dans le dossier de données, hors ligne). Liens `[[…]]` entre notes (par titre, nom de fichier ou alias),
+  rétroliens avec extrait, plan cliquable, liens non résolus avec « créer » ; renommer une note met à jour les liens
+  qui la citent. Enregistrement automatique, corbeille avec « Annuler ».
 - **Accueil** : reprendre la lecture à la page exacte, autres lectures en cours, dernières annotations et derniers
   commentaires (un clic ouvre le passage), état de la bibliothèque et de la dernière sauvegarde.
 - **Export de la bibliothèque** (entière, documents affichés ou sélection avec Ctrl / Maj) en coffre Obsidian :
@@ -86,8 +93,9 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | ![Recherche universelle](docs/screenshots/iteration6-recherche.png) | ![Sauvegardes](docs/screenshots/iteration6-sauvegardes.png) |
 | ![Accueil](docs/screenshots/iteration7-accueil.png) | ![Accueil sombre](docs/screenshots/iteration7-accueil-sombre.png) |
 | ![Export de la bibliothèque](docs/screenshots/iteration7-export.png) | |
+| ![Mes notes (V1)](docs/screenshots/v1-1-notes.png) | ![Mes notes, sombre](docs/screenshots/v1-1-notes-sombre.png) |
 
-Suite : notes Markdown, liens et graphe (V1), puis cartes mémoire et répétition espacée (V2) —
+Suite de la V1 : notes depuis la lecture, matières et collections, graphe, recherche plein texte ; puis cartes mémoire et répétition espacée (V2) —
 plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md). Historique : [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Installer

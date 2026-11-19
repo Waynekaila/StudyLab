@@ -7,6 +7,7 @@ class AnnotationService;
 class BackupService;
 class CommentService;
 class LibraryService;
+class NoteService;
 class SearchService;
 class SettingsService;
 namespace db {
@@ -27,6 +28,7 @@ struct AppContext {
     CommentService& comments;
     SearchService& search;
     BackupService& backups;
+    NoteService& notes;
 };
 
 }  // namespace studylab

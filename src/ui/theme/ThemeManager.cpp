@@ -291,6 +291,38 @@ QFrame#UndoBar QPushButton { color: %{lavender}; font-weight: 600; }
 QProgressBar { background: %{sunken}; border: none; border-radius: 3px; }
 QProgressBar::chunk { background: %{primary}; border-radius: 3px; }
 QMessageBox { background: %{surface}; }
+QFrame#NotesNav { background: %{surface2}; border: none; border-right: 1px solid %{borderSoft}; }
+QTreeWidget#NoteTree { background: transparent; border: none; outline: none; }
+QTreeWidget#NoteTree::item { padding: %{p4} %{p2}; border-radius: 6px; color: %{text}; }
+QTreeWidget#NoteTree::item:hover { background: %{sunken}; }
+QTreeWidget#NoteTree::item:selected { background: %{primarySoft}; color: %{primaryStrong}; }
+QFrame#NoteEditorPane { background: %{surface}; border: none; }
+QFrame#NoteBar { background: %{surface}; border: none; }
+QLineEdit#NoteTitle { background: transparent; border: none; border-radius: 0; font-size: %{fs22}; font-weight: 600; padding: %{p4} 0; }
+QPlainTextEdit#NoteText {
+    font-family: "JetBrains Mono", "DejaVu Sans Mono", "Consolas", monospace; font-size: %{fs13};
+    background: transparent; border: none; border-radius: 0; padding: %{p8} 0;
+    selection-background-color: %{primarySoft}; selection-color: %{text};
+}
+QToolButton#NoteTypeChip {
+    background: %{primarySoft}; color: %{primaryStrong}; border: none; border-radius: 8px;
+    padding: %{p4} %{p10}; font-weight: 600;
+}
+QToolButton#NoteTypeChip::menu-indicator { image: none; width: 0; }
+QToolButton#NewNoteButton::menu-indicator { image: none; width: 0; }
+QLabel#SaveState { color: %{text3}; }
+QSplitter#NoteSplit::handle { background: %{borderSoft}; }
+QFrame#NoteContext { background: %{surface2}; border: none; border-left: 1px solid %{borderSoft}; }
+QWidget#NoteContextBody { background: %{surface2}; }
+QPushButton#NoteLinkRow { text-align: left; background: %{surface}; border: 1px solid %{borderSoft}; border-radius: 10px; padding: 0; }
+QPushButton#NoteLinkRow:hover { border-color: %{border}; }
+QPushButton#NoteLinkRow:focus { border-color: %{primary}; }
+QPushButton#OutlineItem {
+    text-align: left; background: transparent; border: none; border-radius: 6px; color: %{text2};
+    padding: %{p4}; font-weight: 400; min-height: 0;
+}
+QPushButton#OutlineItem:hover { color: %{primaryStrong}; background: %{sunken}; }
+QPushButton#CreateLinkedNote { color: %{primaryStrong}; padding: %{p2} %{p6}; min-height: 0; }
 )QSS");
 
     const QColor sageText = p.dark ? p.sage : p.sage.darker(140);
