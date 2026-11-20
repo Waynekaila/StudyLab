@@ -5,6 +5,7 @@
 #include "engines/pdf/PdfRenderQueue.h"
 #include "services/annotations/AnnotationService.h"
 #include "services/export/MarkdownExporter.h"
+#include "services/comments/CommentService.h"
 #include "services/library/LibraryService.h"
 #include "services/search/SearchService.h"
 #include "services/settings/SettingsService.h"
@@ -50,6 +51,8 @@
 #include <QToolButton>
 #include <QTreeView>
 #include <QVBoxLayout>
+#include <QFutureWatcher>
+#include <QtConcurrent/QtConcurrentRun>
 
 namespace studylab::ui {
 
@@ -131,6 +134,7 @@ PdfReaderTab::PdfReaderTab(AppContext& ctx, qint64 documentId, QWidget* parent)
     v->setSpacing(0);
     m_toolbar = buildToolbar();
     v->addWidget(m_toolbar);
+    v->addWidget(buildFileBanner());
     m_searchBar = buildSearchBar();
     v->addWidget(m_searchBar);
 
@@ -402,6 +406,19 @@ QWidget* PdfReaderTab::buildToolbar()
     h->addWidget(m_searchButton);
     h->addWidget(m_focusButton);
     h->addWidget(m_fullButton);
+    m_moreButton = toolButton(tr("Autres actions"), bar);
+    m_moreButton->setObjectName(QStringLiteral("ReaderMoreButton"));
+    m_moreButton->setPopupMode(QToolButton::InstantPopup);
+    m_moreMenu = new QMenu(m_moreButton);
+    m_moreMenu->addAction(tr("Importer les annotations du PDF"), this, [this] { (void)importFileAnnotations(); });
+    m_moreMenu->addAction(tr("Exporter une copie annotée du PDF…"), this, &PdfReaderTab::exportAnnotatedCopyWithDialog);
+    m_moreMenu->addSeparator();
+    m_fileAnnotationsAction = m_moreMenu->addAction(tr("Afficher les annotations enregistrées dans le fichier"));
+    m_fileAnnotationsAction->setCheckable(true);
+    m_fileAnnotationsAction->setChecked(true);
+    connect(m_fileAnnotationsAction, &QAction::toggled, this, &PdfReaderTab::setFileAnnotationsVisible);
+    m_moreButton->setMenu(m_moreMenu);
+    h->addWidget(m_moreButton);
     h->addSpacing(6);
     addPaneToggle(h, bar);
     return bar;
@@ -515,6 +532,7 @@ void PdfReaderTab::refreshIcons()
     set(m_searchButton, "search");
     set(m_focusButton, "eye");
     set(m_fullButton, "maximize");
+    set(m_moreButton, "more");
     set(m_bookmarkButton, "bookmark");
     const char* toolIcons[] = {"", "highlighter", "underline", "strikethrough", "square-dashed", "message-square"};
     for (auto it = m_toolButtons.cbegin(); it != m_toolButtons.cend(); ++it)
@@ -575,6 +593,11 @@ Result<void> PdfReaderTab::ensureLoaded()
         return fail(tr("Ce PDF ne peut pas être ouvert : il est peut-être endommagé."));
 
     m_queue = std::make_unique<PdfRenderQueue>(m_doc.get());
+    if (m_settings.value(QStringLiteral("pdf/hideFileAnnotations/%1").arg(m_documentId)).toBool()) {
+        m_queue->setFileAnnotationsVisible(false);
+        const QSignalBlocker block(m_fileAnnotationsAction);
+        m_fileAnnotationsAction->setChecked(false);
+    }
     m_view->setDocument(m_doc.get(), m_queue.get());
     if (auto ocr = m_ctx.search.ocrPages(m_documentId))
         m_view->setOcrPages(ocr.value());
@@ -619,7 +642,194 @@ Result<void> PdfReaderTab::ensureLoaded()
     updateZoomCombo();
     (void)m_library.markOpened(m_documentId);
     flushPendingReveal();
+    startFileAnnotationScan();
     return {};
+}
+
+// ───────────────────────── Interopérabilité PDF (V2-5) ─────────────────────────
+
+QWidget* PdfReaderTab::buildFileBanner()
+{
+    auto* wrap = new QWidget(this);
+    auto* outer = new QVBoxLayout(wrap);
+    outer->setContentsMargins(m_theme.px(12), m_theme.px(8), m_theme.px(12), 0);
+    m_fileBanner = new QFrame(wrap);
+    m_fileBanner->setObjectName(QStringLiteral("ImportBanner"));
+    auto* h = new QHBoxLayout(m_fileBanner);
+    h->setContentsMargins(m_theme.px(14), m_theme.px(8), m_theme.px(8), m_theme.px(8));
+    h->setSpacing(m_theme.px(8));
+    m_fileBannerText = makeLabel(QString());
+    m_fileBannerText->setObjectName(QStringLiteral("FileAnnotationsBannerText"));
+    m_fileBannerText->setWordWrap(true);
+    h->addWidget(m_fileBannerText, 1);
+    m_fileBannerImport = new QPushButton(tr("Importer"), m_fileBanner);
+    m_fileBannerImport->setProperty("variant", QStringLiteral("primary"));
+    connect(m_fileBannerImport, &QPushButton::clicked, this, [this] { (void)importFileAnnotations(); });
+    h->addWidget(m_fileBannerImport);
+    m_fileBannerIgnore = new QPushButton(tr("Ignorer"), m_fileBanner);
+    m_fileBannerIgnore->setProperty("variant", QStringLiteral("ghost"));
+    connect(m_fileBannerIgnore, &QPushButton::clicked, this, [this, wrap] {
+        // « Ignorer » sur la proposition d'import : elle ne revient plus pour ce document.
+        if (m_fileBannerImport->isVisible())
+            m_settings.setValue(QStringLiteral("pdf/ignoreFileAnnotations/%1").arg(m_documentId), true);
+        wrap->hide();
+    });
+    h->addWidget(m_fileBannerIgnore);
+    outer->addWidget(m_fileBanner);
+    wrap->hide();
+    return wrap;
+}
+
+void PdfReaderTab::showFileBanner(const QString& text, const QString& state, bool offerImport)
+{
+    m_fileBannerText->setText(text);
+    m_fileBanner->setProperty("state", state);
+    m_fileBanner->style()->unpolish(m_fileBanner);
+    m_fileBanner->style()->polish(m_fileBanner);
+    m_fileBannerImport->setVisible(offerImport);
+    m_fileBannerIgnore->setText(offerImport ? tr("Ignorer") : tr("Fermer"));
+    m_fileBanner->parentWidget()->show();
+}
+
+PdfInteropService PdfReaderTab::interop()
+{
+    return PdfInteropService(m_library, m_annotations, m_ctx.comments);
+}
+
+void PdfReaderTab::startFileAnnotationScan()
+{
+    using Scan = std::optional<pdf::PdfAnnotationScan>;
+    const QString path = m_library.documentFile(m_record);
+    auto* watcher = new QFutureWatcher<Scan>(this);
+    connect(watcher, &QFutureWatcher<Scan>::finished, this, [this, watcher] {
+        watcher->deleteLater();
+        const Scan scan = watcher->result();
+        int fresh = 0;
+        if (scan) {
+            if (auto preview = interop().preview(m_documentId, *scan))
+                fresh = preview.value().fresh;
+        }
+        const bool ignored = m_settings.value(QStringLiteral("pdf/ignoreFileAnnotations/%1").arg(m_documentId)).toBool();
+        if (fresh > 0 && !ignored)
+            showFileBanner(fresh == 1 ? tr("Ce PDF contient une annotation créée dans un autre logiciel (surlignage, note…). "
+                                           "L'importer dans StudyLab ?")
+                                      : tr("Ce PDF contient %1 annotations créées dans un autre logiciel (surlignages, notes…). "
+                                           "Les importer dans StudyLab ?")
+                                            .arg(fresh),
+                           QString(), true);
+        emit fileAnnotationsScanned(fresh);
+    });
+    watcher->setFuture(QtConcurrent::run([path]() -> Scan {
+        auto r = PdfInteropService::readFile(path);
+        return r ? Scan(r.value()) : Scan();
+    }));
+}
+
+Result<PdfImportReport> PdfReaderTab::importFileAnnotations()
+{
+    if (!m_loaded)
+        return Error::make(Error::Code::InvalidArgument, tr("Le document n'est pas ouvert."));
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    auto res = interop().importAnnotations(m_documentId, pdfColorScheme());
+    QApplication::restoreOverrideCursor();
+    if (!res) {
+        showFileBanner(res.error().message, QStringLiteral("warning"), false);
+        return res;
+    }
+    const PdfImportReport& r = res.value();
+    QStringList parts;
+    if (r.imported == 0)
+        parts << tr("Aucune nouvelle annotation à importer depuis le fichier.");
+    else
+        parts << (r.imported == 1 ? tr("1 annotation importée depuis le fichier.")
+                                  : tr("%1 annotations importées depuis le fichier.").arg(r.imported));
+    if (r.duplicates > 0)
+        parts << (r.duplicates == 1 ? tr("1 était déjà dans StudyLab.") : tr("%1 étaient déjà dans StudyLab.").arg(r.duplicates));
+    if (r.unsupported > 0)
+        parts << (r.unsupported == 1 ? tr("1 annotation sans équivalent (pièce jointe, page tournée…) a été laissée de côté.")
+                                     : tr("%1 annotations sans équivalent (pièce jointe, page tournée…) ont été laissées de côté.")
+                                           .arg(r.unsupported));
+    if (r.fileFullyImported && fileAnnotationsVisible()) {
+        setFileAnnotationsVisible(false);
+        parts << tr("Celles du fichier ne sont plus dessinées, pour ne pas les voir en double.");
+    }
+    showFileBanner(parts.join(QLatin1Char(' ')), r.imported > 0 ? QStringLiteral("done") : QString(), false);
+    return res;
+}
+
+Result<PdfExportReport> PdfReaderTab::exportAnnotatedCopy(const QString& path)
+{
+    auto res = interop().exportAnnotatedCopy(m_documentId, path, pdfColorScheme());
+    if (!res) {
+        showFileBanner(res.error().message, QStringLiteral("warning"), false);
+        return res;
+    }
+    const PdfExportReport& r = res.value();
+    QString text = tr("Copie annotée enregistrée : %1").arg(QDir::toNativeSeparators(path));
+    QStringList what;
+    if (r.annotations > 0)
+        what << (r.annotations == 1 ? tr("1 annotation") : tr("%1 annotations").arg(r.annotations));
+    if (r.comments > 0)
+        what << (r.comments == 1 ? tr("1 commentaire") : tr("%1 commentaires").arg(r.comments));
+    if (!what.isEmpty())
+        text += QStringLiteral(" (%1)").arg(what.join(tr(" et ")));
+    text += QLatin1Char('.');
+    if (r.alreadyPresent > 0)
+        text += QLatin1Char(' ') + (r.alreadyPresent == 1 ? tr("1 annotation déjà présente dans le fichier n'a pas été dupliquée.")
+                                                          : tr("%1 annotations déjà présentes dans le fichier n'ont pas été dupliquées.")
+                                                                .arg(r.alreadyPresent));
+    if (r.skipped > 0)
+        text += QLatin1Char(' ') + (r.skipped == 1 ? tr("1 annotation sur une page tournée n'a pas pu être écrite.")
+                                                   : tr("%1 annotations sur des pages tournées n'ont pas pu être écrites.").arg(r.skipped));
+    showFileBanner(text, QStringLiteral("done"), false);
+    return res;
+}
+
+void PdfReaderTab::exportAnnotatedCopyWithDialog()
+{
+    if (!m_loaded)
+        return;
+    bool any = false;
+    for (const auto& r : m_records)
+        any = any || r.type != AnnotationType::Bookmark;
+    if (!any) {
+        auto count = m_ctx.comments.count(m_documentId);
+        any = count && count.value() > 0;
+    }
+    if (!any) {
+        showFileBanner(tr("Ce document n'a encore ni annotation ni commentaire à écrire dans une copie."), QString(), false);
+        return;
+    }
+    QString dir = m_settings.value(QStringLiteral("export/lastDirectory")).toString();
+    if (dir.isEmpty() || !QFileInfo(dir).isDir())
+        dir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    const QString path = QFileDialog::getSaveFileName(window(), tr("Exporter une copie annotée"),
+                                                      QDir(dir).filePath(PdfInteropService::suggestedFileName(m_record)),
+                                                      tr("Document PDF (*.pdf)"));
+    if (path.isEmpty())
+        return;
+    m_settings.setValue(QStringLiteral("export/lastDirectory"), QFileInfo(path).absolutePath());
+    (void)exportAnnotatedCopy(path);
+}
+
+void PdfReaderTab::setFileAnnotationsVisible(bool visible)
+{
+    {
+        const QSignalBlocker block(m_fileAnnotationsAction);
+        m_fileAnnotationsAction->setChecked(visible);
+    }
+    m_settings.setValue(QStringLiteral("pdf/hideFileAnnotations/%1").arg(m_documentId), !visible);
+    if (!m_queue || m_queue->fileAnnotationsVisible() == visible)
+        return;
+    m_queue->setFileAnnotationsVisible(visible);
+    m_view->reloadPages();
+    if (m_thumbModel)
+        m_thumbModel->reloadImages();
+}
+
+bool PdfReaderTab::fileAnnotationsVisible() const
+{
+    return m_queue ? m_queue->fileAnnotationsVisible() : m_fileAnnotationsAction->isChecked();
 }
 
 void PdfReaderTab::restoreState()

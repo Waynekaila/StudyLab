@@ -3,6 +3,8 @@
 #include <QCache>
 #include <QHash>
 #include <QImage>
+
+#include <atomic>
 #include <QList>
 #include <QMutex>
 #include <QObject>
@@ -75,18 +77,25 @@ public:
     void setCacheLimitMb(int mb);
     int pendingCount() const;
 
+    /// Dessin des annotations enregistrées dans le fichier (activé par défaut). Les désactiver évite de les voir
+    /// en double une fois importées dans StudyLab. Vide le cache : la vue doit redemander ses tuiles.
+    void setFileAnnotationsVisible(bool visible);
+    bool fileAnnotationsVisible() const { return m_fileAnnotations; }
+
 signals:
     void tileReady(const studylab::PdfTileKey& key);
 
 private:
     QStringList m_pageLabels;
     class Worker;
-    void onRendered(const PdfTileKey& key, const QImage& image);
+    void onRendered(const PdfTileKey& key, const QImage& image, int generation);
 
     QPdfDocument* m_document;
     QList<QSizeF> m_pageSizes;  ///< points, lus une fois (accès sans verrou depuis l'interface)
     mutable QCache<PdfTileKey, QImage> m_cache;
     Worker* m_worker;
+    std::atomic<bool> m_fileAnnotations{true};
+    std::atomic<int> m_generation{0};  ///< change à chaque réglage : les rendus en cours sont alors ignorés
 };
 
 }  // namespace studylab

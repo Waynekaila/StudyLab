@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/domain/Annotation.h"
+#include "services/pdfinterop/PdfInteropService.h"
 #include "ui/theme/Tokens.h"
 
 #include <QColor>
@@ -14,6 +15,8 @@ QColor annotationFill(const Palette& pal, AnnotationColor c);
 QColor annotationAccent(const Palette& pal, AnnotationColor c);
 QColor annotationPageFill(AnnotationColor c);
 QColor annotationPageStroke(AnnotationColor c);
+/// Couleurs écrites dans une copie annotée du PDF (teintes claires de la page), et reconnues à l'import.
+PdfColorScheme pdfColorScheme();
 
 /// Pastille ronde de couleur ; l'état « coché » ajoute un anneau.
 QIcon colorSwatchIcon(const QColor& color, const QColor& ring, int size = 18);

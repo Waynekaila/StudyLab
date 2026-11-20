@@ -13,7 +13,7 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | 1 · Conception | Vision, architecture, choix des bibliothèques, schéma SQLite, maquettes, plan | ✅ Terminée — voir [`docs/design/`](docs/design/README.md) |
 | 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | ✅ Terminée — **version 0.1.0** (7 itérations) |
 | 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | ✅ Terminée — **version 0.2.0** (7 itérations) |
-| 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | 🚧 En cours — V2-1 à V2-4 faites (cartes, FSRS, fiches de révision, tableau de bord et Activité) |
+| 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | 🚧 En cours — V2-1 à V2-5 faites (cartes, FSRS, fiches de révision, tableau de bord et Activité, annotations PDF échangées) |
 | 5 · Finalisation | Optimisation, packaging, documentation | — |
 
 ### Ce qui fonctionne aujourd'hui (version 0.2 : MVP et V1)
@@ -38,6 +38,12 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
   régularité sur six mois et un journal filtrable (lu, annoté, commenté, noté, révisé, importé) dont chaque ligne
   rouvre ce qu'elle désigne. Le temps n'est compté que si le document est à l'écran et qu'on s'en sert ; la mesure se
   désactive dans les paramètres et rien ne quitte l'ordinateur.
+- **Annotations PDF échangées** (V2, non publié) : un PDF déjà annoté ailleurs (Acrobat, Okular, Zotero, Xodo…)
+  affiche un bandeau qui propose d'importer ses surlignages, soulignements, barrés, notes et rectangles, avec le texte
+  couvert, la couleur la plus proche et le commentaire ; un second import n'ajoute rien. Dans l'autre sens,
+  « Exporter une copie annotée du PDF… » (menu « … » du lecteur) écrit une copie qui montre dans n'importe quel
+  lecteur PDF les annotations StudyLab, leurs commentaires et les commentaires de page. L'original n'est jamais
+  modifié.
 - **Mes notes** (V1) : notes Markdown rangées dans des dossiers virtuels (« Thermodynamique/Cours »), huit types
   avec leur modèle (note de lecture, fiche de cours, concept, formules, fiche de révision, recherche, compte rendu,
   note personnelle), front matter YAML, tags (`tags:` ou `#tag`) cliquables pour filtrer. Éditeur avec coloration et
@@ -163,8 +169,10 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | ![Révision d'une carte tirée d'une annotation (V2)](docs/screenshots/v2-1-revisions.png) | ![Réglages d'un paquet : FSRS](docs/screenshots/v2-2-reglages-paquet.png) |
 | ![Fiche de révision générée, brouillon à relire](docs/screenshots/v2-3-fiche-revision.png) | ![Tableau de bord : révisions du jour, objectif de la semaine](docs/screenshots/v2-4-accueil.png) |
 | ![Écran Activité](docs/screenshots/v2-4-activite.png) | ![Activité sur 30 jours, sombre](docs/screenshots/v2-4-activite-sombre.png) |
+| ![PDF annoté dans un autre logiciel : proposition d'import](docs/screenshots/v2-5-annotations-du-pdf.png) | ![Annotations importées, sans double dessin](docs/screenshots/v2-5-annotations-importees.png) |
+| ![Copie annotée enregistrée](docs/screenshots/v2-5-copie-annotee-enregistree.png) | ![Copie annotée vue par le moteur PDF](docs/screenshots/v2-5-copie-annotee-page.png) |
 
-Suite : interopérabilité PDF avancée, formats supplémentaires et raccourcis configurables (V2) —
+Suite : formats supplémentaires et raccourcis configurables, puis finalisation (V2) —
 plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md). Historique : [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Installer

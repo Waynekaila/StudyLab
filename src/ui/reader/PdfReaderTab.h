@@ -2,6 +2,7 @@
 
 #include "ui/reader/PdfView.h"
 #include "ui/reader/ReaderTab.h"
+#include "services/pdfinterop/PdfInteropService.h"
 
 #include <QTimer>
 #include <QWidget>
@@ -14,6 +15,8 @@ class QComboBox;
 class QFrame;
 class QLabel;
 class QLineEdit;
+class QMenu;
+class QPushButton;
 class QListView;
 class QPdfBookmarkModel;
 class QPdfDocument;
@@ -84,8 +87,27 @@ public:
     /// Titre du chapitre (sommaire) contenant la page, vide si le document n'a pas de sommaire.
     QString chapterOf(int page) const override;
 
+    // Interopérabilité PDF (V2-5)
+    /// Importe les annotations du fichier absentes de StudyLab ; le bandeau affiche le résultat.
+    Result<PdfImportReport> importFileAnnotations();
+    /// Écrit une copie annotée du PDF ; le bandeau affiche le résultat.
+    Result<PdfExportReport> exportAnnotatedCopy(const QString& path);
+    void exportAnnotatedCopyWithDialog();
+    /// Dessin des annotations enregistrées dans le fichier (mémorisé par document).
+    void setFileAnnotationsVisible(bool visible);
+    bool fileAnnotationsVisible() const;
+    QMenu* moreMenu() const { return m_moreMenu; }
+    QFrame* fileBanner() const { return m_fileBanner; }
+    QLabel* fileBannerText() const { return m_fileBannerText; }
+    QPushButton* fileBannerImportButton() const { return m_fileBannerImport; }
+    QPushButton* fileBannerIgnoreButton() const { return m_fileBannerIgnore; }
+
     QToolButton* toolButtonFor(PdfView::Tool tool) const;
     QToolButton* bookmarkButton() const { return m_bookmarkButton; }
+
+signals:
+    /// Lecture des annotations du fichier terminée (à l'ouverture) : `fresh` annotations à importer.
+    void fileAnnotationsScanned(int fresh);
 
 protected:
     void showEvent(QShowEvent* event) override;
@@ -110,6 +132,10 @@ private:
     void showEditPopup(qint64 id) override;
     void updateBookmarkButton() override;
     void buildChapters();
+    QWidget* buildFileBanner();
+    void startFileAnnotationScan();
+    void showFileBanner(const QString& text, const QString& state, bool offerImport);
+    PdfInteropService interop();
     void onSelectionFinished();
 
     bool m_loaded = false;
@@ -122,6 +148,13 @@ private:
     std::function<QString(int)> m_passwordProvider;
 
     PdfView* m_view = nullptr;
+    QToolButton* m_moreButton = nullptr;
+    QMenu* m_moreMenu = nullptr;
+    QAction* m_fileAnnotationsAction = nullptr;
+    QFrame* m_fileBanner = nullptr;
+    QLabel* m_fileBannerText = nullptr;
+    QPushButton* m_fileBannerImport = nullptr;
+    QPushButton* m_fileBannerIgnore = nullptr;
     QWidget* m_toolbar = nullptr;
     QFrame* m_side = nullptr;
     SegmentedControl* m_sideTabs = nullptr;

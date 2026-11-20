@@ -52,9 +52,11 @@ protected:
                 q.pop_front();
                 m_busy = true;
             }
+            const int generation = m_owner->m_generation;
             const QImage img = render(key);
-            QMetaObject::invokeMethod(m_owner, [owner = m_owner, key, img] { owner->onRendered(key, img); },
-                                      Qt::QueuedConnection);
+            QMetaObject::invokeMethod(
+                m_owner, [owner = m_owner, key, img, generation] { owner->onRendered(key, img, generation); },
+                Qt::QueuedConnection);
         }
     }
 
@@ -65,7 +67,8 @@ private:
         if (full.isEmpty())
             return {};
         QPdfDocumentRenderOptions opts;
-        opts.setRenderFlags(QPdfDocumentRenderOptions::RenderFlag::Annotations);
+        if (m_owner->m_fileAnnotations)
+            opts.setRenderFlags(QPdfDocumentRenderOptions::RenderFlag::Annotations);
         QImage img;
         if (key.isPreview()) {
             img = m_doc->render(key.page, full, opts);
@@ -160,9 +163,18 @@ int PdfRenderQueue::pendingCount() const
     return m_worker->pending();
 }
 
-void PdfRenderQueue::onRendered(const PdfTileKey& key, const QImage& image)
+void PdfRenderQueue::setFileAnnotationsVisible(bool visible)
 {
-    if (image.isNull())
+    if (m_fileAnnotations == visible)
+        return;
+    m_fileAnnotations = visible;
+    ++m_generation;
+    m_cache.clear();
+}
+
+void PdfRenderQueue::onRendered(const PdfTileKey& key, const QImage& image, int generation)
+{
+    if (image.isNull() || generation != m_generation)
         return;
     m_cache.insert(key, new QImage(image), qMax<qsizetype>(1, image.sizeInBytes() / 1024));
     emit tileReady(key);

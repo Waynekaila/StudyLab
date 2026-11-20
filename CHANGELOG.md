@@ -24,6 +24,14 @@
   note. Objectifs : pages par semaine, minutes de lecture et cartes par jour. Écran Activité : chiffres sur 7 jours,
   30 jours ou 12 mois, temps de lecture par jour ou par mois, régularité sur six mois et série en cours, journal
   regroupé par jour et filtrable, chaque entrée rouvrant le document, le passage ou la note.
+- **Interopérabilité PDF** (itération V2-5) : à l'ouverture, un bandeau signale les annotations faites dans un autre
+  logiciel (surlignages, soulignements, barrés, notes et leurs réponses, rectangles ; tracés, tampons et ellipses
+  réduits à une zone) et propose de les importer avec leur couleur la plus proche, leur texte et leur commentaire ;
+  les doublons sont écartés, et le dessin de celles du fichier s'arrête une fois toutes importées (réglable dans le
+  menu « … »). « Exporter une copie annotée du PDF… » écrit une copie lisible par tout lecteur PDF : surlignages,
+  soulignements, barrés, zones et notes avec leur commentaire, commentaires de page ou de passage en notes. Le
+  fichier de la bibliothèque n'est jamais modifié ; la copie ajoute une révision au PDF d'origine sans réécrire ses
+  octets. Lecteur d'objets PDF intégré (tables de références classiques ou en flux, flux d'objets, réparation).
 
 ## 0.2.0 — V1 « Relier ses connaissances » (2026-11-20)
 

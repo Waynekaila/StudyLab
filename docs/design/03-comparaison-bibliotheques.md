@@ -24,7 +24,7 @@ Critères : **licence** (compatibilité avec une distribution libre ou propriét
 **Recommandation : Qt PDF** pour le MVP et la V1.
 - Licence compatible, aucune dépendance à compiler, même moteur (PDFium) sur les deux OS, intégré à Qt 6.8 LTS.
 - StudyLab stocke ses annotations **en base**, pas dans le PDF : l'absence d'écriture d'annotations dans Qt PDF n'est pas bloquante.
-- Limites assumées et plan : *importer* les annotations déjà présentes dans un PDF (faites avec un autre logiciel) et *exporter une copie annotée* sont prévus en V2 via **PDFium en direct** (même moteur, licence BSD), isolé derrière l'interface `IPdfAnnotationIO`.
+- Limites assumées et plan : *importer* les annotations déjà présentes dans un PDF (faites avec un autre logiciel) et *exporter une copie annotée* sont prévus en V2 via **PDFium en direct** (même moteur, licence BSD), isolé derrière l'interface `IPdfAnnotationIO`. *Réalisé autrement en V2-5* : Qt PDF n'expose pas les fonctions de PDFium, StudyLab lit et écrit lui-même les objets d'annotation (`engines/pdf/PdfObjects`, `PdfAnnotationIO`) ; voir 09-ecarts.
 - Poppler et MuPDF sont écartés pour des raisons de licence (GPL / AGPL), pas de qualité.
 
 ## 3.2 Moteur EPUB
