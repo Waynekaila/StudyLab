@@ -37,6 +37,8 @@ public:
 
     /// Importe selon le mode choisi dans les paramètres (copie par défaut).
     void importPaths(const QStringList& paths);
+    /// Choix des fichiers à importer (boîte de dialogue du système).
+    void chooseFiles();
     void selectDocument(qint64 id);
 
     LibraryModel* model() const { return m_model; }
@@ -82,7 +84,6 @@ private:
     void updateEmptyState();
     void setViewMode(bool list);
     void onSelectionChanged();
-    void chooseFiles();
     void chooseFolder();
     void onImportStarted();
     void onImportProgress(int done, int total);

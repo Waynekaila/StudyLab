@@ -1,5 +1,7 @@
 #include "services/library/LibraryService.h"
 
+#include "data/repositories/ActivityRepository.h"
+
 #include "core/Log.h"
 #include "data/sqlite/Database.h"
 
@@ -108,6 +110,7 @@ Result<void> LibraryService::markOpened(qint64 id)
     if (doc.value().status == ReadingStatus::ToRead)
         if (auto r = m_repo.setStatus(id, ReadingStatus::Reading); !r)
             return r;
+    (void)db::ActivityRepository(m_db).log(QStringLiteral("opened"), QStringLiteral("document"), id);
     emit documentChanged(id);
     emit documentsChanged();
     return {};
@@ -221,6 +224,7 @@ void LibraryService::onResults(int begin, int end)
             continue;
         }
         m_report.importedIds << r.id;
+        (void)db::ActivityRepository(m_db).log(QStringLiteral("imported"), QStringLiteral("document"), r.id);
         if (!m_changeThrottle.isActive())
             m_changeThrottle.start();
     }

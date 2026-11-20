@@ -2,6 +2,7 @@
 
 #include "core/AppLink.h"
 
+#include "services/activity/ActivityService.h"
 #include "services/library/LibraryService.h"
 #include "services/search/OcrIndexer.h"
 #include "ui/reader/PdfReaderTab.h"
@@ -15,6 +16,7 @@
 #include "ui/organize/CollectionsPage.h"
 #include "ui/organize/SubjectsPage.h"
 #include "ui/reader/ReaderPage.h"
+#include "ui/pages/ActivityPage.h"
 #include "ui/pages/HomePage.h"
 #include "ui/pages/SettingsPage.h"
 #include "ui/references/ReferencesPage.h"
@@ -46,6 +48,12 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
 {
     setWindowTitle(QStringLiteral("StudyLab"));
     setMinimumSize(960, 600);
+    if (!m_ctx.activity) {  // tests : journal d'activité propre à la fenêtre
+        m_ctx.activity = new ActivityService(ctx.db, this);
+        m_ownsActivity = true;
+    }
+    // Cartes mémoire et répétition espacée (V2-1)
+    m_study = new StudyService(ctx.db, this);
 
     auto* root = new QWidget(this);
     root->setObjectName(QStringLiteral("AppRoot"));
@@ -64,6 +72,7 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
                                 {QStringLiteral("collections"), QStringLiteral("layers"), tr("Collections")},
                                 {QStringLiteral("graph"), QStringLiteral("graph"), tr("Graphe")},
                                 {QStringLiteral("revisions"), QStringLiteral("cards"), tr("Révisions")},
+                                {QStringLiteral("activity"), QStringLiteral("activity"), tr("Activité")},
                                 {QStringLiteral("references"), QStringLiteral("quote"), tr("Références")},
                                 {QStringLiteral("settings"), QStringLiteral("settings"), tr("Paramètres")},
                             },
@@ -77,7 +86,7 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
     root->setFocusPolicy(Qt::ClickFocus);
     root->setFocus();
 
-    auto* home = new HomePage(ctx, m_stack);
+    auto* home = new HomePage(ctx, m_study, m_stack);
     addPage(QStringLiteral("home"), home);
     connect(home, &HomePage::navigateRequested, this, &MainWindow::navigateTo);
     auto* library = new LibraryPage(ctx, m_stack);
@@ -140,8 +149,6 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
         notes->followLink(title);
     });
     connect(graph, &GraphPage::notesRequested, this, [this] { navigateTo(QStringLiteral("notes")); });
-    // Cartes mémoire et répétition espacée (V2-1)
-    m_study = new StudyService(ctx.db, this);
     auto* revisions = new RevisionsPage(ctx, *m_study, m_stack);
     addPage(QStringLiteral("revisions"), revisions);
     connect(revisions, &RevisionsPage::openDocumentRequested, this, openDoc);
@@ -158,6 +165,25 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
         createCard(int(CardSource::Note), id, front, back);
     });
     connect(m_study, &StudyService::changed, this, &MainWindow::refreshStudyBadge);
+    // Tableau de bord et écran Activité (V2-4)
+    auto* activity = new ActivityPage(ctx, *m_ctx.activity, m_stack);
+    addPage(QStringLiteral("activity"), activity);
+    connect(activity, &ActivityPage::navigateRequested, this, &MainWindow::navigateTo);
+    connect(activity, &ActivityPage::openDocumentRequested, this, openDoc);
+    connect(activity, &ActivityPage::openNoteRequested, this, openNote);
+    connect(activity, &ActivityPage::openItemRequested, this, [this, reader](qint64 doc, bool comment, qint64 item) {
+        navigateTo(QStringLiteral("reader"));
+        reader->openItem(doc, comment, item);
+    });
+    connect(home, &HomePage::openNoteRequested, this, openNote);
+    connect(home, &HomePage::newNoteRequested, this, [this, notes] {
+        navigateTo(QStringLiteral("notes"));
+        notes->newNote(NoteType::Personal);
+    });
+    connect(home, &HomePage::importRequested, this, [this, library] {
+        navigateTo(QStringLiteral("library"));
+        library->chooseFiles();
+    });
     // Le jour de révision change à 4 h : la pastille est recalculée régulièrement.
     auto* badgeTimer = new QTimer(this);
     badgeTimer->setInterval(5 * 60 * 1000);
@@ -326,6 +352,12 @@ MainWindow::~MainWindow()
     // (sinon la perte du focus à la fermeture l'enregistrerait au milieu de la destruction).
     if (auto* notes = qobject_cast<NotesPage*>(m_pages.value(QStringLiteral("notes"))))
         notes->saveNow();
+    // Les pages (onglets de lecture compris) écrivent encore à leur destruction : elles partent avant les services
+    // que la fenêtre possède.
+    delete takeCentralWidget();
+    m_pages.clear();
+    if (m_ownsActivity)
+        m_ctx.activity = nullptr;
 }
 
 void MainWindow::closeEvent(QCloseEvent* event)

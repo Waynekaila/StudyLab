@@ -198,6 +198,17 @@ QPushButton#SidebarSearch:hover { border-color: %{border}; color: %{text2}; }
 QPushButton#HomeRow { text-align: left; background: transparent; border: none; border-radius: 8px; padding: 0; }
 QPushButton#HomeRow:hover { background: %{surface2}; }
 QPushButton#HomeRow:focus { background: %{primarySoft}; }
+QPushButton#CardLink { background: transparent; border: none; color: %{primary}; padding: 0 %{p2}; font-weight: 500; }
+QPushButton#CardLink:hover { color: %{primaryStrong}; text-decoration: underline; }
+QPushButton#NoteChip {
+    background: %{sunken}; color: %{text2}; border: none; border-radius: 8px; padding: %{p2} %{p10};
+    font-size: %{fs12}; font-weight: 400;
+}
+QPushButton#NoteChip:hover { background: %{primarySoft}; color: %{primaryStrong}; }
+QToolButton#FavoriteCover { background: transparent; border: none; border-radius: 6px; padding: 2px; }
+QToolButton#FavoriteCover:hover { background: %{surface2}; }
+QLabel#HomeRowCount { font-weight: 600; }
+QLabel#ResumeQuote { background: %{surface2}; border-left: 3px solid %{accYellow}; border-radius: 6px; padding: %{p6} %{p10}; }
 QFrame#SearchPalette { background: %{surface}; border: 1px solid %{border}; border-radius: 14px; }
 QListWidget#SearchResults { background: transparent; border: none; outline: none; }
 QListWidget#SearchResults::item { border-radius: 8px; }
@@ -396,6 +407,7 @@ QLabel#RateTitle[rating="4"] { color: %{sageText}; }
         {QStringLiteral("lavenderSoft"), p.lavenderSoft.name()},
         {QStringLiteral("lavenderText"), (p.dark ? p.lavender : p.lavender.darker(150)).name()},
         {QStringLiteral("lavender"), p.lavender.name()},
+        {QStringLiteral("accYellow"), p.accYellow.name()},
     };
     for (const auto& [key, value] : tokens)
         qss.replace(QStringLiteral("%{") + key + QLatin1Char('}'), value);

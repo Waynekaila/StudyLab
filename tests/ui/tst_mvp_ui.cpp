@@ -191,12 +191,12 @@ private slots:
         QVERIFY(home);
         QVERIFY(!home->continueButton()->isVisible());
         QVERIFY(home->annotationRows().isEmpty());
-        QCOMPARE(home->documentCountLabel()->text(), QStringLiteral("0"));
+        QVERIFY2(home->subtitle()->text().contains(QStringLiteral("0 document")), qPrintable(home->subtitle()->text()));
         QVERIFY(home->backupLabel()->text().contains(QStringLiteral("Dernière sauvegarde")));  // sauvegarde du démarrage
 
         const Demo d = fill(env);
         home->refresh();
-        QCOMPARE(home->documentCountLabel()->text(), QStringLiteral("3"));
+        QVERIFY2(home->subtitle()->text().contains(QStringLiteral("3 documents")), qPrintable(home->subtitle()->text()));
         QVERIFY(home->continueButton()->isVisible());
         QCOMPARE(home->resumeTitle()->text(), QStringLiteral("Réponse fréquentielle"));
         QVERIFY2(home->resumePosition()->text().startsWith(QStringLiteral("Page 4 sur 6 · 67 %")),

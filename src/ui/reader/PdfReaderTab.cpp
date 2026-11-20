@@ -1,5 +1,7 @@
 #include "ui/reader/PdfReaderTab.h"
 
+#include "ui/reader/ReadingClock.h"
+
 #include "engines/pdf/PdfRenderQueue.h"
 #include "services/annotations/AnnotationService.h"
 #include "services/export/MarkdownExporter.h"
@@ -668,6 +670,7 @@ void PdfReaderTab::updatePageIndicator()
     if (!m_pageEdit->hasFocus())
         m_pageEdit->setText(QString::number(m_view->currentPage() + 1));
     m_ocrBadge->setVisible(m_view->hasOcrText(m_view->currentPage()));
+    m_clock->notePage(m_view->currentPage());
 }
 
 void PdfReaderTab::reloadOcrText()

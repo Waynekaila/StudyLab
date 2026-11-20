@@ -42,6 +42,7 @@ public:
     SegmentedControl* themeControl() const { return m_theme; }
     QComboBox* scaleCombo() const { return m_scale; }
     ToggleSwitch* animationsSwitch() const { return m_animations; }
+    ToggleSwitch* trackReadingSwitch() const { return m_trackReading; }
     SegmentedControl* importModeControl() const { return m_importMode; }
     QListWidget* categories() const { return m_categories; }
     QListWidget* backupList() const { return m_backups; }
@@ -101,6 +102,7 @@ private:
     SegmentedControl* m_theme = nullptr;
     QComboBox* m_scale = nullptr;
     ToggleSwitch* m_animations = nullptr;
+    ToggleSwitch* m_trackReading = nullptr;
     SegmentedControl* m_importMode = nullptr;
     QLabel* m_backupStatus = nullptr;
     QLabel* m_lastBackup = nullptr;

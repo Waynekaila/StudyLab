@@ -1,5 +1,7 @@
 #include "ui/reader/EpubReaderTab.h"
 
+#include "ui/reader/ReadingClock.h"
+
 #include "engines/epub/EpubPackage.h"
 #include "services/annotations/AnnotationService.h"
 #include "services/library/LibraryService.h"
@@ -660,6 +662,7 @@ void EpubReaderTab::onOpened()
 void EpubReaderTab::onRelocated(const EpubLocation& l)
 {
     m_popup->hide();
+    m_clock->notePage(l.location);
     m_chapterLabel->setText(l.tocLabel);
     m_chapterLabel->setToolTip(l.tocLabel);
     QString progress = QStringLiteral("%1 %").arg(qRound(l.fraction * 100));

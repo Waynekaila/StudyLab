@@ -16,6 +16,14 @@
   depuis ses passages annotés, ses notes « Concept », les formules de ses notes et commentaires, ses questions non
   résolues et les cartes de ses paquets ; chaque élément renvoie à son origine. Rubriques au choix, fiche rattachée
   à la matière, bandeau « brouillon à relire » et « Marquer comme relue » (annulable) dans Mes notes.
+- **Tableau de bord et écran Activité** (itération V2-4) : temps de lecture actif (onglet visible, fenêtre au premier
+  plan, pas de pause de plus de deux minutes) et pages vues mesurés par le lecteur, désactivables dans les
+  paramètres ; journal des ouvertures, imports, annotations, commentaires, notes et révisions. Accueil complet :
+  révisions du jour par matière, objectif de la semaine (anneau, temps de lecture, comparaison avec la semaine
+  précédente), lectures en cours, progression par matière, favoris, notes récentes, boutons Importer et Nouvelle
+  note. Objectifs : pages par semaine, minutes de lecture et cartes par jour. Écran Activité : chiffres sur 7 jours,
+  30 jours ou 12 mois, temps de lecture par jour ou par mois, régularité sur six mois et série en cours, journal
+  regroupé par jour et filtrable, chaque entrée rouvrant le document, le passage ou la note.
 
 ## 0.2.0 — V1 « Relier ses connaissances » (2026-11-20)
 

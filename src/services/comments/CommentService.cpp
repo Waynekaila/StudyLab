@@ -1,8 +1,10 @@
 #include "services/comments/CommentService.h"
 
+#include "data/repositories/ActivityRepository.h"
+
 namespace studylab {
 
-CommentService::CommentService(db::Database& db, QObject* parent) : QObject(parent), m_repo(db)
+CommentService::CommentService(db::Database& db, QObject* parent) : QObject(parent), m_db(db), m_repo(db)
 {
     qRegisterMetaType<CommentRecord>();
 }
@@ -11,6 +13,8 @@ Result<CommentRecord> CommentService::create(CommentRecord record)
 {
     if (auto r = m_repo.insert(record); !r)
         return r.error();
+    (void)db::ActivityRepository(m_db).log(QStringLiteral("commented"), QStringLiteral("comment"), record.id,
+                                           {{QStringLiteral("document"), record.documentId}});
     auto stored = m_repo.findById(record.id);
     if (stored)
         emit commentAdded(stored.value());

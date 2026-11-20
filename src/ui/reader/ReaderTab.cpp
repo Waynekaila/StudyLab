@@ -1,5 +1,7 @@
 #include "ui/reader/ReaderTab.h"
 
+#include "ui/reader/ReadingClock.h"
+
 #include "services/annotations/AnnotationService.h"
 #include "services/comments/CommentService.h"
 #include "services/export/MarkdownExporter.h"
@@ -48,6 +50,7 @@ ReaderTab::ReaderTab(AppContext& ctx, qint64 documentId, QWidget* parent)
 {
     if (auto r = m_library.document(documentId))
         m_record = r.value();
+    m_clock = new ReadingClock(ctx, documentId, this);
     m_color = annotationColorFromKey(m_settings.value(QStringLiteral("reader/annotationColor")).toString())
                   .value_or(AnnotationColor::Yellow);
 }

@@ -265,6 +265,7 @@ const StudyLab = {
                     page: r && !r.scrolled ? Math.max(1, r.page) : 0,
                     pages: r && !r.scrolled ? Math.max(1, r.pages - 2) : 0,
                     sectionMinutes: d.time?.section ?? 0,
+                    location: d.location?.current ?? 0, locations: d.location?.total ?? 0,
                 })
                 reportBookmark()
             })

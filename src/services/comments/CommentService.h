@@ -44,6 +44,7 @@ signals:
 private:
     Result<CommentRecord> modify(qint64 id, const std::function<void(CommentRecord&)>& change);
 
+    db::Database& m_db;
     db::CommentRepository m_repo;
 };
 

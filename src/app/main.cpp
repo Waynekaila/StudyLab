@@ -4,6 +4,7 @@
 #include "core/AppPaths.h"
 #include "core/Log.h"
 #include "data/sqlite/Database.h"
+#include "services/activity/ActivityService.h"
 #include "services/annotations/AnnotationService.h"
 #include "services/backup/BackupService.h"
 #include "services/comments/CommentService.h"
@@ -119,7 +120,9 @@ int main(int argc, char* argv[])
         BackupService backups(paths, database);
         NoteService notes(database, paths.attachmentsDir());
         OrganizeService organize(database);
-        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups, notes, organize};
+        ActivityService activity(database);
+        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups, notes, organize,
+                       &activity};
         ui::MainWindow window(ctx);
         window.show();
         QObject::connect(&channel, &ui::InstanceChannel::messageReceived, &window, &ui::MainWindow::handleInstanceMessage);

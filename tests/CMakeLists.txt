@@ -79,3 +79,8 @@ studylab_add_test(tst_textbook SOURCES unit/tst_textbook.cpp LIBS studylab_epub)
 target_compile_definitions(tst_textbook PRIVATE STUDYLAB_TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/data")
 studylab_add_test(tst_ocr SOURCES integration/tst_ocr.cpp LIBS studylab_search studylab_test_support)
 set_tests_properties(tst_ocr PROPERTIES TIMEOUT 300)
+studylab_add_test(tst_activity SOURCES unit/tst_activity.cpp
+    LIBS studylab_activity studylab_annotations studylab_comments studylab_notes)
+studylab_add_test(tst_activity_ui SOURCES ui/tst_activity_ui.cpp ../src/app/Bootstrap.cpp LIBS studylab_ui studylab_test_support)
+target_include_directories(tst_activity_ui PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
+set_tests_properties(tst_activity_ui PROPERTIES TIMEOUT 300)

@@ -28,6 +28,7 @@ namespace studylab::ui {
 
 class AnnotationPopup;
 class AnnotationsPane;
+class ReadingClock;
 class ThemeManager;
 
 /// Document ouvert dans un onglet de l'espace Lecture (PDF ou EPUB).
@@ -40,6 +41,8 @@ public:
     ~ReaderTab() override;
 
     qint64 documentId() const { return m_documentId; }
+    /// Temps de lecture et pages vues de l'onglet (V2-4).
+    ReadingClock* readingClock() const { return m_clock; }
     QString title() const { return m_record.title; }
     virtual bool isLoaded() const = 0;
     /// Mode sans distraction : seule la page reste visible.
@@ -158,6 +161,7 @@ protected:
     ThemeManager& m_theme;
     qint64 m_documentId;
     DocumentRecord m_record;
+    ReadingClock* m_clock = nullptr;
     bool m_focusMode = false;
 
     QList<AnnotationRecord> m_records;

@@ -110,7 +110,7 @@ private slots:
         QCOMPARE(window.currentPage(), QStringLiteral("home"));
         auto* home = qobject_cast<ui::HomePage*>(window.page(QStringLiteral("home")));
         QVERIFY(home);
-        QCOMPARE(home->documentCountLabel()->text(), QStringLiteral("0"));
+        QVERIFY2(home->subtitle()->text().contains(QStringLiteral("0 document")), qPrintable(home->subtitle()->text()));
         maybeScreenshot(window, QStringLiteral("accueil-clair"));
 
         // Navigation par la barre latérale

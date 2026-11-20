@@ -7,6 +7,7 @@ add_library(studylab_ui STATIC
     components/FadeStackedWidget.h components/FadeStackedWidget.cpp
     components/Widgets.h components/Widgets.cpp
     components/FlowLayout.h components/FlowLayout.cpp
+    components/Charts.h components/Charts.cpp
     components/MarkdownHighlighter.h components/MarkdownHighlighter.cpp
     shell/AppContext.h
     shell/Sidebar.h shell/Sidebar.cpp
@@ -15,6 +16,7 @@ add_library(studylab_ui STATIC
     shell/InstanceChannel.h shell/InstanceChannel.cpp
     pages/PageScaffold.h pages/PageScaffold.cpp
     pages/HomePage.h pages/HomePage.cpp
+    pages/ActivityPage.h pages/ActivityPage.cpp
     pages/SettingsPage.h pages/SettingsPage.cpp
     library/CoverArt.h library/CoverArt.cpp
     library/LibraryModel.h library/LibraryModel.cpp
@@ -30,6 +32,7 @@ add_library(studylab_ui STATIC
     reader/AnnotationPopup.h reader/AnnotationPopup.cpp
     reader/AnnotationsPane.h reader/AnnotationsPane.cpp
     reader/ReaderTab.h reader/ReaderTab.cpp
+    reader/ReadingClock.h reader/ReadingClock.cpp
     reader/EpubWeb.h reader/EpubWeb.cpp
     reader/EpubView.h reader/EpubView.cpp
     reader/EpubReaderTab.h reader/EpubReaderTab.cpp
@@ -50,7 +53,7 @@ add_library(studylab_ui STATIC
     study/RevisionsPage.h study/RevisionsPage.cpp
     study/DeckSettingsDialog.h study/DeckSettingsDialog.cpp
     study/RevisionSheetDialog.h study/RevisionSheetDialog.cpp)
-target_link_libraries(studylab_ui PUBLIC studylab_library studylab_annotations studylab_comments studylab_notes studylab_organize studylab_knowledge studylab_references studylab_search studylab_study studylab_backup studylab_export studylab_settings studylab_epub studylab_data studylab_core Qt6::Widgets Qt6::Svg Qt6::WebEngineWidgets Qt6::WebChannel Qt6::Network Qt6::Concurrent)
+target_link_libraries(studylab_ui PUBLIC studylab_library studylab_annotations studylab_comments studylab_notes studylab_organize studylab_knowledge studylab_references studylab_search studylab_study studylab_activity studylab_backup studylab_export studylab_settings studylab_epub studylab_data studylab_core Qt6::Widgets Qt6::Svg Qt6::WebEngineWidgets Qt6::WebChannel Qt6::Network Qt6::Concurrent)
 studylab_set_warnings(studylab_ui)
 
 file(GLOB STUDYLAB_ICONS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} CONFIGURE_DEPENDS resources/icons/*.svg)

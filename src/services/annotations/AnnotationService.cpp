@@ -1,5 +1,6 @@
 #include "services/annotations/AnnotationService.h"
 
+#include "data/repositories/ActivityRepository.h"
 #include "data/sqlite/Database.h"
 #include "data/sqlite/Statement.h"
 
@@ -37,6 +38,9 @@ Result<AnnotationRecord> AnnotationService::create(AnnotationRecord record)
     record.selectedText = normalizeQuote(record.selectedText);
     if (auto r = m_repo.insert(record); !r)
         return r.error();
+    if (record.type != AnnotationType::Bookmark)  // journal d'activité (V2-4) ; un échec n'annule pas l'annotation
+        (void)db::ActivityRepository(m_db).log(QStringLiteral("annotated"), QStringLiteral("annotation"), record.id,
+                                               {{QStringLiteral("document"), record.documentId}});
     auto stored = m_repo.findById(record.id);
     if (stored)
         emit annotationAdded(stored.value());
