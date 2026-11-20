@@ -42,6 +42,8 @@ elseif(UNIX AND NOT APPLE)
     # Greffons chargés à l'exécution (non vus par dpkg-shlibdeps) : plateformes, SVG, processus WebEngine.
     set(CPACK_DEBIAN_PACKAGE_DEPENDS "qt6-qpa-plugins, qt6-svg-plugins | libqt6svg6, libqt6webenginecore6-bin")
     set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "qt6-wayland, xdg-utils")
+    # OCR facultatif : Tesseract est chargé à l'exécution s'il est installé.
+    set(CPACK_DEBIAN_PACKAGE_SUGGESTS "tesseract-ocr, tesseract-ocr-fra")
 endif()
 
 include(CPack)

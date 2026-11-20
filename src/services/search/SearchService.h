@@ -4,6 +4,9 @@
 #include "core/Result.h"
 #include "core/domain/Annotation.h"
 #include "core/domain/Document.h"
+#include "engines/ocr/OcrPage.h"
+
+#include <QHash>
 
 #include <QList>
 #include <QString>
@@ -68,6 +71,9 @@ public:
 
     /// Retrouve le document et le passage d'un lien d'export. Document supprimé ou inconnu : NotFound.
     Result<ResolvedLink> resolve(const AppLink& link);
+
+    /// Texte reconnu (OCR) des pages numérisées d'un document, avec la position des mots.
+    Result<QHash<int, OcrPage>> ocrPages(qint64 documentId);
 
     /// Retire les marqueurs d'un extrait.
     static QString plain(const QString& snippet);

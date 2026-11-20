@@ -12,7 +12,7 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 |---|---|---|
 | 1 · Conception | Vision, architecture, choix des bibliothèques, schéma SQLite, maquettes, plan | ✅ Terminée — voir [`docs/design/`](docs/design/README.md) |
 | 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | ✅ Terminée — **version 0.1.0** (7 itérations) |
-| 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | 🚧 En cours — itération 6/7 (références bibliographiques) |
+| 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | 🚧 En cours — itération 7/7 terminée, version 0.2 en préparation |
 | 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | — |
 | 5 · Finalisation | Optimisation, packaging, documentation | — |
 
@@ -39,6 +39,10 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
   et indexé en tâche de fond, une seule fois par document, sans gêner la lecture. Ctrl + K cherche désormais aussi
   dans les **notes** et **dans le texte des documents** : un passage ouvre le document à la bonne page ou section,
   le terme cherché mis en évidence. L'état de l'index et « Réindexer » se trouvent dans Paramètres › Données.
+- **OCR des PDF numérisés** (V1, facultatif) : si Tesseract est installé, les pages sans texte sont lues en tâche de
+  fond, à basse priorité, page par page (reprise après interruption). Leur texte devient cherchable (Ctrl + K et
+  recherche du lecteur), sélectionnable, copiable et annotable comme un texte natif ; la page est marquée « Texte
+  OCR ». Activation, langues et « Relire » dans Paramètres › Données. Sans Tesseract, rien ne change.
 - **Références bibliographiques** (V1) : import BibTeX / BibLaTeX et CSL-JSON (Zotero, JabRef, Mendeley…),
   saisie ou fiche tirée d'un document (« Citer » dans la bibliothèque), rattachement automatique au document par
   DOI, ISBN ou titre. Dans une note, `[[@clé]]` cite la référence : l'aperçu affiche « (Çengel et Boles, 2019,
@@ -135,9 +139,9 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | ![Recherche dans les notes et le texte des documents](docs/screenshots/v1-5-recherche.png) | ![Passage ouvert à la bonne page](docs/screenshots/v1-5-passage.png) |
 | ![Références bibliographiques](docs/screenshots/v1-6-references.png) | ![Citations et bibliographie dans une note](docs/screenshots/v1-6-citations.png) |
 | ![Coffre Obsidian importé](docs/screenshots/v1-6b-import-coffre.png) | ![Cours en Markdown dans le lecteur](docs/screenshots/v1-6c-markdown.png) |
-| ![Notes exportées en PDF](docs/screenshots/v1-7-export-pdf.png) | |
+| ![Notes exportées en PDF](docs/screenshots/v1-7-export-pdf.png) | ![Page numérisée lue par l'OCR](docs/screenshots/v1-7-ocr.png) |
 
-Suite de la V1 : OCR facultatif (puis version 0.2) ; puis cartes mémoire et répétition espacée (V2) —
+Suite : version 0.2 (V1) ; puis cartes mémoire et répétition espacée (V2) —
 plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md). Historique : [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Installer
@@ -148,6 +152,9 @@ Les paquets sont produits par l'intégration continue (onglet *Actions* du dép�
 - **Debian 13** : `sudo apt install ./studylab_0.1.0_amd64.deb` (les dépendances Qt sont installées par apt).
 - **Windows 10/11** : lancer `StudyLab-0.1.0-windows-x64-setup.exe`. L'installation se fait pour l'utilisateur courant,
   sans droits administrateur ; la désinstallation conserve vos données.
+- **OCR (facultatif)** : Debian `sudo apt install tesseract-ocr tesseract-ocr-fra` ; Windows, l'installateur
+  « Tesseract-OCR » (UB Mannheim) dans Program Files, avec les langues voulues. StudyLab le trouve au démarrage
+  (ou via `STUDYLAB_TESSERACT`, chemin de la bibliothèque, et `TESSDATA_PREFIX`).
 
 ## Compiler
 

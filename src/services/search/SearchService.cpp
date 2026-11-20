@@ -1,5 +1,7 @@
 #include "services/search/SearchService.h"
 
+#include "data/repositories/PageTextRepository.h"
+
 #include "core/domain/Comment.h"
 #include "core/domain/Note.h"
 #include "data/repositories/DocumentRepository.h"
@@ -260,6 +262,20 @@ Result<ResolvedLink> SearchService::resolve(const AppLink& link)
         r.comment = true;
     }
     return r;
+}
+
+Result<QHash<int, OcrPage>> SearchService::ocrPages(qint64 documentId)
+{
+    auto words = db::PageTextRepository(m_db).ocrWords(documentId);
+    if (!words)
+        return words.error();
+    QHash<int, OcrPage> out;
+    for (const auto& [page, json] : words.value()) {
+        OcrPage p = OcrPage::fromJson(json);
+        if (!p.isEmpty())
+            out.insert(page, std::move(p));
+    }
+    return out;
 }
 
 }  // namespace studylab

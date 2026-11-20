@@ -44,6 +44,23 @@ bool writePdf(const QString& path, const PdfSpec& spec)
     for (int i = 0; i < spec.pages; ++i) {
         if (i > 0)
             w.newPage();
+        if (spec.scanned) {
+            // Scan à 288 dpi (4 pixels par point) : une image de la page, sans couche de texte.
+            constexpr int k = 4;
+            QImage img(w.width() * k, w.height() * k, QImage::Format_RGB32);
+            img.fill(Qt::white);
+            QPainter ip(&img);
+            ip.scale(k, k);
+            QFont big = fixtureFont();
+            big.setPointSizeF(14);
+            ip.setFont(big);
+            ip.setPen(Qt::black);
+            const QRectF box(40, 50, w.width() - 80, w.height() - 100);
+            ip.drawText(box, Qt::TextWordWrap, QStringLiteral("%1 page %2\n\n%3").arg(spec.title).arg(i + 1).arg(spec.bodyText));
+            ip.end();
+            p.drawImage(QRectF(0, 0, w.width(), w.height()), img);
+            continue;
+        }
         p.drawText(QPointF(40, 60), QStringLiteral("%1 — page %2").arg(spec.title).arg(i + 1));
         if (!spec.bodyText.contains(QLatin1Char('\n'))) {
             p.drawText(QPointF(40, 90), spec.bodyText);

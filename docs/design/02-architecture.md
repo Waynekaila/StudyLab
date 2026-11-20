@@ -65,6 +65,7 @@ Règle de dépendance : une couche ne dépend que des couches en dessous. `core`
 | Document Engine | `engines/document` | Interface commune `IDocumentEngine` : ouvrir, métadonnées, nombre de pages/sections, texte par page/section, rendu, recherche, table des matières | core |
 | PDF Engine | `engines/pdf` | Implémentation Qt PDF : rendu de tuiles en arrière-plan, sélection de texte, géométrie des glyphes, recherche | document, QtPdf |
 | EPUB Engine | `engines/epub` | Dézippage (`QZipReader`, voir 09-ecarts-implementation.md), TXT / Markdown mis en forme de livre (`TextBook`), OPF/NCX/nav, spine, rendu des chapitres dans QWebEngine, pagination CSS, ancres | document, QtWebEngine |
+| OCR Engine | `engines/ocr` | Tesseract 5 chargé à l'exécution (`QLibrary`, API C), facultatif ; mots et boîtes normalisées (`OcrPage`). La file `OcrIndexer` (`services/search`) lit les pages sans texte des PDF en tâche de fond | core, QtGui |
 | Annotation Engine | `services/annotation` | Création/modification, **ancrage et ré-ancrage**, collecte automatique, filtres, export | data, engines |
 | Comment Engine | `services/comment` | Commentaires liés (annotation, passage, page, libre), types (question, explication, réflexion) | data |
 | Notes Engine | `services/notes` | Notes Markdown, analyse des `[[liens]]` et `#tags` (md4c), rétroliens, modèles de notes, création depuis annotations | data |

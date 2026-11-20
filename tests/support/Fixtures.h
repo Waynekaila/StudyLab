@@ -9,6 +9,8 @@ struct PdfSpec {
     QString title;
     int pages = 2;
     QString bodyText = QStringLiteral("Le second principe de la thermodynamique.");
+    /// Page numérisée : le texte est dessiné dans une image (aucun texte dans le PDF), pour l'OCR.
+    bool scanned = false;
 };
 
 /// Génère un PDF réel (QPdfWriter) avec un titre dans le dictionnaire Info.

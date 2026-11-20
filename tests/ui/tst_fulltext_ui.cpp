@@ -8,6 +8,8 @@
 #include "services/library/LibraryService.h"
 #include "services/notes/NoteService.h"
 #include "services/organize/OrganizeService.h"
+#include "engines/ocr/TesseractOcr.h"
+#include "services/search/OcrIndexer.h"
 #include "services/search/SearchService.h"
 #include "services/search/TextIndexer.h"
 #include "services/settings/SettingsService.h"
@@ -17,6 +19,7 @@
 #include "ui/reader/EpubReaderTab.h"
 #include "ui/reader/EpubView.h"
 #include "ui/reader/PdfReaderTab.h"
+#include "ui/components/ToggleSwitch.h"
 #include "ui/reader/PdfView.h"
 #include "ui/reader/ReaderPage.h"
 #include "ui/shell/AppContext.h"
@@ -25,6 +28,7 @@
 #include "ui/theme/ThemeManager.h"
 
 #include <QDir>
+#include <QPdfDocument>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
@@ -94,6 +98,7 @@ class TstFullTextUi : public QObject {
     QTemporaryDir m_files;
     QString m_pdf;
     QString m_epub;
+    QString m_scan;
 
     static void maybeScreenshot(QWidget& w, const QString& name)
     {
@@ -154,6 +159,13 @@ private slots:
                       QStringLiteral("<h1>Lentilles</h1><p>Une lentille mince forme une image.</p>")};
         e.tocTitles = {QStringLiteral("Rayons"), QStringLiteral("Dioptres"), QStringLiteral("Lentilles")};
         QVERIFY(writeEpub(m_epub, e));
+        m_scan = m_files.filePath(QStringLiteral("polycopie.pdf"));
+        PdfSpec scan;
+        scan.title = QStringLiteral("Polycopie numérisé");
+        scan.pages = 3;
+        scan.scanned = true;
+        scan.bodyText = QStringLiteral("Le cycle de Carnot comporte deux isothermes et deux adiabatiques.");
+        QVERIFY(writePdf(m_scan, scan));
     }
 
     void paletteFindsNotesAndPassages()
@@ -241,6 +253,83 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(tab->view()->location().section, hit.unit, kTimeout);
         QCOMPARE(tab->searchEdit()->text(), QStringLiteral("refraction"));
         QTRY_VERIFY_WITH_TIMEOUT(tab->view()->searchDone() && tab->view()->searchResultCount() >= 1, kTimeout);
+    }
+
+    void scannedPdfIsReadByOcr()
+    {
+        if (!TesseractOcr::isAvailable())
+            QSKIP("Tesseract absent : OCR désactivé");
+        Env env;
+        const qint64 scan = env.import(m_scan);
+        QVERIFY(scan > 0);
+        ui::MainWindow window(*env.ctx);
+        window.resize(1400, 900);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        OcrIndexer* ocr = window.ocrIndexer();
+        QVERIFY(ocr && ocr->isEnabled());
+        QSignalSpy ocrDone(ocr, &OcrIndexer::finished);
+        QVERIFY(waitIndexed(window));
+        QVERIFY(ocrDone.wait(120000));
+        QCOMPARE(ocr->progress(), qMakePair(1, 0));
+
+        // Ctrl K trouve le texte reconnu et ouvre la page numérisée, terme surligné.
+        ui::SearchPalette* palette = window.searchPalette();
+        palette->popup();
+        palette->search(QStringLiteral("adiabatiques"));
+        QCOMPARE(palette->results().passages.size(), 2);  // au plus deux passages par document
+        const SearchHit hit = palette->results().passages.first();
+        activateRow(palette, rowOf(palette, SearchHit::Kind::Passage, hit.itemId));
+        auto* reader = qobject_cast<ui::ReaderPage*>(window.page(QStringLiteral("reader")));
+        auto* tab = qobject_cast<ui::PdfReaderTab*>(reader->tabFor(scan));
+        QVERIFY(tab);
+        QTRY_VERIFY_WITH_TIMEOUT(tab->isLoaded(), kTimeout);
+        QTRY_COMPARE_WITH_TIMEOUT(tab->view()->currentPage(), hit.unit, kTimeout);
+        QVERIFY(tab->view()->hasOcrText(hit.unit));
+        QTRY_VERIFY(tab->ocrBadge()->isVisible());
+        QTRY_COMPARE(tab->view()->searchResultCount(), 3);
+        QTRY_VERIFY(tab->view()->currentSearchResult() >= 0);
+        QCOMPARE(tab->view()->searchResultPage(tab->view()->currentSearchResult()), hit.unit);
+        QCOMPARE(tab->searchCountLabel()->text(), QStringLiteral("%1 sur 3").arg(tab->view()->currentSearchResult() + 1));
+
+        // Sélection et annotation du texte reconnu, comme sur une page native.
+        const QRectF page = tab->view()->pageRect(1);
+        QVERIFY(!page.isEmpty());
+        const QSizeF pts = tab->view()->document()->pagePointSize(1);
+        tab->view()->selectText(1, QPointF(0, 0), 1, QPointF(pts.width(), pts.height()));
+        QVERIFY2(tab->view()->selectedText().contains(QStringLiteral("isothermes")), qPrintable(tab->view()->selectedText()));
+        const auto anchors = tab->view()->selectionAnchors();
+        QCOMPARE(anchors.size(), 1);
+        QVERIFY(anchors.first().rects.size() >= 2);  // une zone par ligne
+        QVERIFY(anchors.first().start == 0);
+        auto added = tab->annotateSelection(AnnotationType::Highlight, AnnotationColor::Yellow);
+        QVERIFY2(added.ok(), added.ok() ? "" : qPrintable(added.error().message));
+        QCOMPARE(added.value().size(), 1);
+        QVERIFY(added.value().first().selectedText.contains(QStringLiteral("Carnot")));
+        // Un clic sans glisser ne sélectionne rien.
+        tab->view()->selectText(1, QPointF(100, 100), 1, QPointF(100, 100));
+        QVERIFY(!tab->view()->hasSelection());
+        tab->view()->goToPage(0);
+        maybeScreenshot(window, QStringLiteral("v1-7-ocr"));
+
+        // Paramètres : état de l'OCR, « Relire » remet le document en file.
+        auto* settings = qobject_cast<ui::SettingsPage*>(window.page(QStringLiteral("settings")));
+        QVERIFY(settings);
+        QCOMPARE(settings->ocrStatus()->text(), QStringLiteral("Pages numérisées lues : 1 document."));
+        QVERIFY(settings->ocrSwitch()->isChecked());
+        QVERIFY(settings->ocrLanguagesButton()->text().contains(QStringLiteral("Français")));
+        window.navigateTo(QStringLiteral("settings"));
+        settings->categories()->setCurrentRow(2);
+        maybeScreenshot(window, QStringLiteral("v1-7-ocr-parametres"));
+        ocrDone.clear();
+        QTest::mouseClick(settings->ocrRerunButton(), Qt::LeftButton);
+        QVERIFY(ocrDone.wait(120000));
+        QCOMPARE(settings->ocrStatus()->text(), QStringLiteral("Pages numérisées lues : 1 document."));
+        // Désactivé : réglage enregistré, plus de lecture.
+        settings->ocrSwitch()->click();
+        QVERIFY(!env.settings->value(SettingKeys::OcrEnabled, true).toBool());
+        QVERIFY(!ocr->isEnabled());
+        QCOMPARE(settings->ocrStatus()->text(), QStringLiteral("OCR désactivé : les pages numérisées ne sont pas lues."));
     }
 
     void settingsShowIndexState()

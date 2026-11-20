@@ -73,3 +73,5 @@ studylab_add_test(tst_vault_import SOURCES integration/tst_vault_import.cpp
     LIBS studylab_notes studylab_references studylab_export)
 studylab_add_test(tst_textbook SOURCES unit/tst_textbook.cpp LIBS studylab_epub)
 target_compile_definitions(tst_textbook PRIVATE STUDYLAB_TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/data")
+studylab_add_test(tst_ocr SOURCES integration/tst_ocr.cpp LIBS studylab_search studylab_test_support)
+set_tests_properties(tst_ocr PROPERTIES TIMEOUT 300)
