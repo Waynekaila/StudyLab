@@ -178,6 +178,12 @@ private slots:
         QVERIFY(cycles > 0);
         QCOMPARE(page.currentSubjectId(), cycles);
         QCOMPARE(page.itemFor(cycles)->parent(), page.itemFor(d.thermo));
+        // Export des notes : actif pour une matière qui a des notes (sous-matières comprises), triées par titre.
+        QCOMPARE(page.subjectNoteIds(d.thermo).size(), 3);
+        QVERIFY(page.contextMenuFor(d.thermo)->findChild<QAction*>(QStringLiteral("export-pdf"))->isEnabled());
+        QVERIFY(page.contextMenuFor(d.thermo)->findChild<QAction*>(QStringLiteral("export-html"))->isEnabled());
+        QVERIFY(page.subjectNoteIds(cycles).isEmpty());
+        QVERIFY(!page.contextMenuFor(cycles)->findChild<QAction*>(QStringLiteral("export-pdf"))->isEnabled());
         QMenu* menu = page.contextMenuFor(cycles);
         menu->findChild<QAction*>(QStringLiteral("color-pink"))->trigger();
         QCOMPARE(env.organize->subject(cycles).value().color, QStringLiteral("pink"));

@@ -52,6 +52,11 @@ public:
     /// l'arborescence. Les notes vont dans un dossier au nom du coffre, sauf pour un export StudyLab (restauré
     /// tel quel). false si rien n'a pu être lu.
     bool importVault(const QString& path);
+    /// Exporte des notes en PDF ou HTML (selon l'extension de `path`) ; exporter()->finished() à la fin.
+    bool exportNotes(const QList<qint64>& ids, const QString& heading, const QString& path);
+    class NoteExporter& exporter();
+    /// Notes d'un dossier et de ses sous-dossiers, dans l'ordre de l'arborescence.
+    QList<qint64> notesInFolder(const QString& folder) const;
 
     qint64 currentNoteId() const { return m_currentId; }
     Mode mode() const { return m_mode; }
@@ -152,6 +157,7 @@ private:
     QWidget* m_tagHost = nullptr;
     QLabel* m_importStatus = nullptr;
     bool m_importing = false;
+    class NoteExporter* m_exporter = nullptr;
     FlowLayout* m_tagFlow = nullptr;
     QList<QToolButton*> m_tagButtons;
     QFrame* m_undoBar = nullptr;

@@ -11,6 +11,8 @@
 #include "ui/components/SegmentedControl.h"
 #include "ui/components/Widgets.h"
 #include "ui/notes/NoteEditor.h"
+#include "ui/notes/NoteExporter.h"
+#include "ui/notes/NotePreview.h"
 #include "ui/organize/OrganizeWidgets.h"
 #include "ui/reader/MarkdownView.h"
 #include "ui/theme/Icons.h"
@@ -731,6 +733,29 @@ QList<qint64> NotesPage::visibleNoteIds() const
     return out;
 }
 
+NoteExporter& NotesPage::exporter()
+{
+    if (!m_exporter)
+        m_exporter = new NoteExporter(m_ctx, this);
+    return *m_exporter;
+}
+
+QList<qint64> NotesPage::notesInFolder(const QString& folder) const
+{
+    QList<qint64> ids;
+    if (auto all = m_ctx.notes.list())
+        for (const NoteRecord& n : all.value())  // triées par dossier puis titre
+            if (n.folder == folder || n.folder.startsWith(folder + u'/'))
+                ids << n.id;
+    return ids;
+}
+
+bool NotesPage::exportNotes(const QList<qint64>& ids, const QString& heading, const QString& path)
+{
+    saveNow();
+    return exporter().start(ids, heading, path);
+}
+
 void NotesPage::chooseVault()
 {
     const QString dir = QFileDialog::getExistingDirectory(
@@ -957,6 +982,15 @@ void NotesPage::showTreeMenu(const QPoint& pos)
             newNote(NoteType::Personal);
         });
         menu.addAction(tr("Renommer le dossier…"), this, [this, folder] { renameFolder(folder); });
+        menu.addSeparator();
+        const QList<qint64> ids = notesInFolder(folder);
+        const QString name = folder.section(u'/', -1);
+        menu.addAction(Icons::get(QStringLiteral("download"), m_ctx.theme.palette().text2, 16), tr("Exporter le dossier en PDF…"),
+                       this, [this, ids, name] { exporter().exportWithDialog(this, ids, name, name, NoteExporter::Format::Pdf); })
+            ->setEnabled(!ids.isEmpty());
+        menu.addAction(tr("Exporter le dossier en HTML…"), this,
+                       [this, ids, name] { exporter().exportWithDialog(this, ids, name, name, NoteExporter::Format::Html); })
+            ->setEnabled(!ids.isEmpty());
     } else {
         auto note = m_ctx.notes.find(id);
         if (!note)
@@ -970,6 +1004,17 @@ void NotesPage::showTreeMenu(const QPoint& pos)
                        });
         menu.addAction(tr("Déplacer vers un dossier…"), this, [this, id] { moveNote(id); });
         addOrganizeMenus(&menu, id);
+        menu.addSeparator();
+        const QString title = note.value().title;
+        menu.addAction(Icons::get(QStringLiteral("download"), m_ctx.theme.palette().text2, 16), tr("Exporter en PDF…"), this,
+                       [this, id, title] {
+                           saveNow();
+                           exporter().exportWithDialog(this, {id}, {}, title, NoteExporter::Format::Pdf);
+                       });
+        menu.addAction(tr("Exporter en HTML…"), this, [this, id, title] {
+            saveNow();
+            exporter().exportWithDialog(this, {id}, {}, title, NoteExporter::Format::Html);
+        });
         menu.addSeparator();
         menu.addAction(Icons::get(QStringLiteral("trash"), m_ctx.theme.palette().danger, 16), tr("Mettre à la corbeille"),
                        this, [this, id] { deleteNote(id); });
@@ -1100,84 +1145,16 @@ QString NotesPage::imageData(const QString& relPath) const
 {
     if (auto it = m_imageCache.constFind(relPath); it != m_imageCache.cend())
         return it.value();
-    static const QRegularExpression safe(QStringLiteral("^attachments/[\\w.-]+$"));
-    QString uri;
-    if (safe.match(relPath).hasMatch()) {
-        QFile f(QDir(m_ctx.notes.attachmentsDir()).filePath(relPath.mid(12)));
-        if (f.size() < 20 * 1024 * 1024 && f.open(QIODevice::ReadOnly)) {
-            QString ext = relPath.section(u'.', -1).toLower();
-            if (ext == QLatin1String("jpg"))
-                ext = QStringLiteral("jpeg");
-            uri = QStringLiteral("data:image/%1;base64,").arg(ext) + QString::fromLatin1(f.readAll().toBase64());
-        }
-    }
+    const QString uri = attachmentDataUri(m_ctx.notes.attachmentsDir(), relPath);
     m_imageCache.insert(relPath, uri);
     return uri;
 }
 
 QJsonObject NotesPage::previewPayload() const
 {
-    const QString text = m_editor->toPlainText();
-    const FrontMatter fm = parseFrontMatter(text);
-    QJsonArray chips;
-    if (!m_current.folder.isEmpty())
-        chips.append(m_current.folder.section(u'/', -1));
-    for (const QString& t : noteTags(text))
-        chips.append(QStringLiteral("#") + t);
-
-    QStringList targets;
-    for (const QString& t : wikiLinkTargets(fm.present ? text.mid(fm.bodyStart) : text))
-        if (!t.startsWith(u'@'))
-            targets << t;
-    QJsonArray unresolved;
-    QJsonArray documents;
-    const QHash<QString, NoteLinkTarget> resolved = m_ctx.notes.resolveMany(targets);
-    for (auto it = resolved.cbegin(); it != resolved.cend(); ++it) {
-        if (!it.value().resolved())
-            unresolved.append(it.key());
-        else if (it.value().kind == NoteLinkTarget::Kind::Document)
-            documents.append(it.key());
-    }
-
-    // Citations [[@clé]] : libellé auteur-date, entrée complète ; bibliographie en fin d'aperçu.
-    QJsonObject citations;
-    QJsonArray bibliography;
-    const QHash<QString, Reference> cited = m_refs.resolveKeys(citedKeys(text));
-    QList<Reference> citedRefs = cited.values();
-    std::sort(citedRefs.begin(), citedRefs.end(), [](const Reference& a, const Reference& b) {
-        return foldForSort(formatBibliography(a)) < foldForSort(formatBibliography(b));
-    });
-    for (const Reference& r : std::as_const(citedRefs)) {
-        citations.insert(r.citekey.toLower(), QJsonObject{{QStringLiteral("label"), formatCitation(r)},
-                                                          {QStringLiteral("entry"), formatBibliography(r)}});
-        bibliography.append(formatBibliography(r, true));
-    }
-
-    QJsonObject images;
-    static const QRegularExpression img(QStringLiteral("!\\[[^\\]]*\\]\\((attachments/[\\w.-]+)\\)"));
-    auto it = img.globalMatch(text);
-    while (it.hasNext()) {
-        const QString rel = it.next().captured(1);
-        const QString uri = imageData(rel);
-        if (!uri.isEmpty())
-            images.insert(rel, uri);
-    }
     const QString title = m_title->text().simplified();
-    return {
-        {QStringLiteral("title"), title.isEmpty() ? m_current.title : title},
-        {QStringLiteral("body"), fm.present ? text.mid(fm.bodyStart) : text},
-        {QStringLiteral("lineOffset"), fm.present ? fm.lineCount : 0},
-        {QStringLiteral("chips"), chips},
-        {QStringLiteral("unresolved"), unresolved},
-        {QStringLiteral("unresolvedLabel"), tr("note à créer")},
-        {QStringLiteral("documents"), documents},
-        {QStringLiteral("documentLabel"), tr("document de la bibliothèque")},
-        {QStringLiteral("images"), images},
-        {QStringLiteral("citations"), citations},
-        {QStringLiteral("citationMissingLabel"), tr("référence introuvable")},
-        {QStringLiteral("bibliography"), bibliography},
-        {QStringLiteral("bibliographyTitle"), tr("Références")},
-    };
+    return notePreviewPayload(m_ctx.notes, m_refs, title.isEmpty() ? m_current.title : title, m_current.folder,
+                              m_editor->toPlainText(), [this](const QString& rel) { return imageData(rel); });
 }
 
 void NotesPage::refreshPreview()
