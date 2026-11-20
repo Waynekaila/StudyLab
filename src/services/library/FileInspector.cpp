@@ -22,12 +22,20 @@ std::optional<DocumentFormat> FileInspector::detectFormat(const QString& path)
             || QFileInfo(path).suffix().compare(QLatin1String("epub"), Qt::CaseInsensitive) == 0)
             return DocumentFormat::Epub;
     }
+    // Texte : reconnu à l'extension, à condition de ne pas être binaire (octet nul dans le début du fichier).
+    const QString ext = QFileInfo(path).suffix().toLower();
+    const bool text = ext == QLatin1String("txt") || ext == QLatin1String("text");
+    const bool markdown = ext == QLatin1String("md") || ext == QLatin1String("markdown");
+    if ((text || markdown) && !head.contains('\0'))
+        return markdown ? DocumentFormat::Markdown : DocumentFormat::Txt;
     return std::nullopt;
 }
 
 bool FileInspector::hasSupportedExtension(const QString& path)
 {
     const QString ext = QFileInfo(path).suffix().toLower();
+    // Parcours d'un dossier : PDF et EPUB seulement. Un .txt ou un .md y est souvent un « lisez-moi » ; un texte
+    // s'importe en le choisissant lui-même (ou par l'import d'un coffre, pour des notes).
     return ext == QLatin1String("pdf") || ext == QLatin1String("epub");
 }
 

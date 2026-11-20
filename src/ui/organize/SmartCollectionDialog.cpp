@@ -41,7 +41,7 @@ QList<QPair<QString, QString>> choices(SmartRule::Field f, const QList<SubjectRe
             out << qMakePair(readingStatusKey(s), readingStatusLabel(s));
         break;
     case SmartRule::Field::Format:
-        for (DocumentFormat d : {DocumentFormat::Pdf, DocumentFormat::Epub})
+        for (DocumentFormat d : allDocumentFormats())
             out << qMakePair(documentFormatKey(d), documentFormatLabel(d));
         break;
     default:

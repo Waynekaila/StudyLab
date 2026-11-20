@@ -71,6 +71,13 @@ private slots:
         QCOMPARE(FileInspector::detectFormat(m_src + QStringLiteral("/thermo.pdf")), DocumentFormat::Pdf);
         QCOMPARE(FileInspector::detectFormat(m_src + QStringLiteral("/candide.epub")), DocumentFormat::Epub);
         QVERIFY(!FileInspector::detectFormat(m_src + QStringLiteral("/faux.pdf")).has_value());
+        QCOMPARE(FileInspector::detectFormat(m_src + QStringLiteral("/cours/notes.txt")), DocumentFormat::Txt);
+        QCOMPARE(FileInspector::detectFormat(QStringLiteral(STUDYLAB_TEST_DATA "/text/cours.md")), DocumentFormat::Markdown);
+        QFile binary(m_tmp.filePath(QStringLiteral("binaire.txt")));
+        QVERIFY(binary.open(QIODevice::WriteOnly));
+        binary.write(QByteArray("abc\0def", 7));
+        binary.close();
+        QVERIFY(!FileInspector::detectFormat(binary.fileName()).has_value());
         QCOMPARE(FileInspector::sha256(m_src + QStringLiteral("/thermo.pdf")).value(),
                  FileInspector::sha256(m_src + QStringLiteral("/cours/copie de thermo.pdf")).value());
         QCOMPARE(FileInspector::sha256(m_src + QStringLiteral("/thermo.pdf")).value().size(), 64);
@@ -155,6 +162,32 @@ private slots:
         QCOMPARE(again.importedIds.size(), 0);
         QCOMPARE(again.duplicates.size(), 1);
         QVERIFY(again.duplicates.first().reason.contains(QStringLiteral("Thermodynamique appliquée")));
+    }
+
+    void importsTextAndMarkdown()
+    {
+        QTemporaryDir data;
+        AppPaths paths(data.path());
+        QVERIFY(paths.ensureCreated());
+        auto db = db::Database::openInMemory();
+        QVERIFY(db::Migrator(db::Migrator::loadFrom().value()).migrate(*db.value()).ok());
+        LibraryService lib(*db.value(), paths);
+        const ImportReport r = runImport(lib, {QStringLiteral(STUDYLAB_TEST_DATA "/text/cours.md"),
+                                               QStringLiteral(STUDYLAB_TEST_DATA "/text/notes-cp1252.txt")});
+        QCOMPARE(r.importedIds.size(), 2);
+        QVERIFY(r.failures.isEmpty());
+        const DocumentRecord md = lib.document(r.importedIds.at(0)).value();
+        QCOMPARE(md.format, DocumentFormat::Markdown);
+        QCOMPARE(md.title, QStringLiteral("Thermodynamique — cours"));
+        QCOMPARE(md.authors.size(), 2);
+        QCOMPARE(md.pageCount, 3);  // sections
+        QVERIFY(md.filePath.endsWith(QStringLiteral(".md")));
+        QVERIFY(QFileInfo::exists(lib.documentFile(md)));
+        const DocumentRecord txt = lib.document(r.importedIds.at(1)).value();
+        QCOMPARE(txt.format, DocumentFormat::Txt);
+        QVERIFY(txt.filePath.endsWith(QStringLiteral(".txt")));
+        // Le fichier copié dans la bibliothèque se lit comme l'original.
+        QVERIFY(EpubPackage::open(lib.documentFile(txt)).ok());
     }
 
     void linkedModeKeepsFileInPlace()

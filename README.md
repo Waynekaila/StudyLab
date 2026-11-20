@@ -44,6 +44,9 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
   DOI, ISBN ou titre. Dans une note, `[[@clé]]` cite la référence : l'aperçu affiche « (Çengel et Boles, 2019,
   p. 12) » et ajoute la bibliographie en fin de note ; taper `[[@` propose les clés. Changer une clé met à jour les
   notes qui la citent. Export BibTeX ou CSL-JSON, et `Références.bib` dans l'export Obsidian.
+- **Textes et fichiers Markdown** (V1) : un `.txt` ou un `.md` s'importe dans la bibliothèque comme un livre et
+  s'ouvre dans le lecteur EPUB : sommaire tiré des titres, mise en forme (listes, tableaux, code, citations, images
+  locales), surlignages, commentaires, recherche et export comme pour un EPUB. Front matter `title:` / `author:` repris.
 - **Import d'un coffre Obsidian** (V1) : « + › Importer un coffre Obsidian ou un dossier Markdown… » dans Mes notes.
   Chaque fichier `.md` devient une note (dossiers conservés, front matter et `type:` repris), les images sont
   copiées, les `[[liens]]` résolus et les `.bib` importés comme références. Un export StudyLab se réimporte sans
@@ -128,9 +131,9 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | ![Graphe de connaissances](docs/screenshots/v1-4-graphe.png) | ![Graphe, sombre](docs/screenshots/v1-4-graphe-sombre.png) |
 | ![Recherche dans les notes et le texte des documents](docs/screenshots/v1-5-recherche.png) | ![Passage ouvert à la bonne page](docs/screenshots/v1-5-passage.png) |
 | ![Références bibliographiques](docs/screenshots/v1-6-references.png) | ![Citations et bibliographie dans une note](docs/screenshots/v1-6-citations.png) |
-| ![Coffre Obsidian importé](docs/screenshots/v1-6b-import-coffre.png) | |
+| ![Coffre Obsidian importé](docs/screenshots/v1-6b-import-coffre.png) | ![Cours en Markdown dans le lecteur](docs/screenshots/v1-6c-markdown.png) |
 
-Suite de la V1 : lecture TXT/Markdown, OCR et export HTML/PDF ; puis cartes mémoire et répétition espacée (V2) —
+Suite de la V1 : OCR et export HTML/PDF ; puis cartes mémoire et répétition espacée (V2) —
 plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md). Historique : [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Installer

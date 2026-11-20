@@ -260,7 +260,9 @@ void DocumentDetailPanel::render()
     if (r.pageCount > 0)
         format += QStringLiteral(" · ") + (r.format == DocumentFormat::Pdf
                                                ? countLabel(r.pageCount, tr("page"), tr("pages"))
-                                               : countLabel(r.pageCount, tr("chapitre"), tr("chapitres")));
+                                               : r.format == DocumentFormat::Epub
+                                               ? countLabel(r.pageCount, tr("chapitre"), tr("chapitres"))
+                                               : countLabel(r.pageCount, tr("section"), tr("sections")));
     format += QStringLiteral(" · ") + CoverArt::formatFileSize(r.fileSize);
     addField(tr("Format"), format);
     const QString file = m_library.documentFile(r);
@@ -272,7 +274,6 @@ void DocumentDetailPanel::render()
         addField(QString(), tr("⚠ Fichier introuvable sur le disque"));
     m_reveal->setEnabled(available);
     m_reveal->setIcon(Icons::get(QStringLiteral("folder"), m_theme.palette().text2, 16));
-    m_read->setVisible(r.format == DocumentFormat::Pdf);
     m_read->setEnabled(available);
     const QDateTime added = QDateTime::fromString(r.addedAt, Qt::ISODate).toLocalTime();
     addField(tr("Ajouté le"), fr.toString(added.date(), QStringLiteral("d MMMM yyyy")));

@@ -157,7 +157,9 @@ void LibraryDelegate::paintList(QPainter& p, const QStyleOptionViewItem& option,
         right -= dateW + 8 * s;
         const QString fmt = r->pageCount > 0
                                 ? QStringLiteral("%1 · %2 %3").arg(documentFormatLabel(r->format)).arg(r->pageCount)
-                                      .arg(r->format == DocumentFormat::Pdf ? QStringLiteral("p.") : QStringLiteral("ch."))
+                                      .arg(r->format == DocumentFormat::Pdf ? QStringLiteral("p.")
+                                           : r->format == DocumentFormat::Epub ? QStringLiteral("ch.")
+                                                                                : QStringLiteral("sect."))
                                 : documentFormatLabel(r->format);
         p.drawText(QRectF(right - formatW, row.top(), formatW, row.height()), Qt::AlignLeft | Qt::AlignVCenter, fmt);
         right -= formatW + 8 * s;

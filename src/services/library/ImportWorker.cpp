@@ -97,7 +97,7 @@ ImportCandidate prepare(const QString& path, const AppPaths& paths, StorageMode 
     }
     const auto format = FileInspector::detectFormat(path);
     if (!format) {
-        c.error = QStringLiteral("Format non pris en charge (PDF et EPUB uniquement pour l'instant).");
+        c.error = QStringLiteral("Format non pris en charge (PDF, EPUB, TXT et Markdown).");
         return c;
     }
     auto hash = FileInspector::sha256(path);

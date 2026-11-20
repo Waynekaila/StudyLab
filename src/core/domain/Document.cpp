@@ -46,7 +46,25 @@ QList<ReadingStatus> allReadingStatuses()
             ReadingStatus::Finished, ReadingStatus::ToReread, ReadingStatus::Archived};
 }
 
-QString documentFormatKey(DocumentFormat f) { return f == DocumentFormat::Epub ? QStringLiteral("epub") : QStringLiteral("pdf"); }
+QString documentFormatKey(DocumentFormat f)
+{
+    switch (f) {
+    case DocumentFormat::Pdf:
+        return QStringLiteral("pdf");
+    case DocumentFormat::Epub:
+        return QStringLiteral("epub");
+    case DocumentFormat::Txt:
+        return QStringLiteral("txt");
+    case DocumentFormat::Markdown:
+        return QStringLiteral("md");
+    }
+    return QStringLiteral("pdf");
+}
+
+QList<DocumentFormat> allDocumentFormats()
+{
+    return {DocumentFormat::Pdf, DocumentFormat::Epub, DocumentFormat::Txt, DocumentFormat::Markdown};
+}
 
 std::optional<DocumentFormat> documentFormatFromKey(const QString& key)
 {
@@ -54,10 +72,27 @@ std::optional<DocumentFormat> documentFormatFromKey(const QString& key)
         return DocumentFormat::Pdf;
     if (key == QLatin1String("epub"))
         return DocumentFormat::Epub;
+    if (key == QLatin1String("txt"))
+        return DocumentFormat::Txt;
+    if (key == QLatin1String("md"))
+        return DocumentFormat::Markdown;
     return std::nullopt;
 }
 
-QString documentFormatLabel(DocumentFormat f) { return f == DocumentFormat::Epub ? QStringLiteral("EPUB") : QStringLiteral("PDF"); }
+QString documentFormatLabel(DocumentFormat f)
+{
+    switch (f) {
+    case DocumentFormat::Pdf:
+        return QStringLiteral("PDF");
+    case DocumentFormat::Epub:
+        return QStringLiteral("EPUB");
+    case DocumentFormat::Txt:
+        return QStringLiteral("TXT");
+    case DocumentFormat::Markdown:
+        return QStringLiteral("Markdown");
+    }
+    return QStringLiteral("PDF");
+}
 
 namespace {
 QString stripDiacritics(const QString& s)

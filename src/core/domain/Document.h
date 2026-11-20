@@ -9,7 +9,7 @@
 namespace studylab {
 
 enum class ReadingStatus { ToRead, Reading, Paused, Finished, ToReread, Archived };
-enum class DocumentFormat { Pdf, Epub };
+enum class DocumentFormat { Pdf, Epub, Txt, Markdown };
 enum class StorageMode { Managed, Linked };
 
 QString readingStatusKey(ReadingStatus s);            ///< Valeur stockée : "to_read", "reading"…
@@ -17,9 +17,12 @@ std::optional<ReadingStatus> readingStatusFromKey(const QString& key);
 QString readingStatusLabel(ReadingStatus s);          ///< Libellé affiché : « À lire », « En cours »…
 QList<ReadingStatus> allReadingStatuses();
 
-QString documentFormatKey(DocumentFormat f);          ///< "pdf", "epub"
+QString documentFormatKey(DocumentFormat f);          ///< "pdf", "epub", "txt", "md"
 std::optional<DocumentFormat> documentFormatFromKey(const QString& key);
-QString documentFormatLabel(DocumentFormat f);        ///< "PDF", "EPUB"
+QString documentFormatLabel(DocumentFormat f);        ///< "PDF", "EPUB", "TXT", "Markdown"
+QList<DocumentFormat> allDocumentFormats();
+/// Texte recomposable (EPUB, TXT, Markdown) : lu par le lecteur EPUB, repéré par section et CFI.
+inline bool isReflowable(DocumentFormat f) { return f != DocumentFormat::Pdf; }
 
 /// Document de la bibliothèque, tel que stocké dans la table « documents » (+ auteurs et tags).
 struct DocumentRecord {
