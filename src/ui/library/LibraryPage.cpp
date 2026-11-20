@@ -94,7 +94,7 @@ LibraryPage::LibraryPage(AppContext& ctx, QWidget* parent)
     connect(m_view->selectionModel(), &QItemSelectionModel::currentChanged, this, &LibraryPage::onSelectionChanged);
     connect(m_view, &QListView::activated, this, [this](const QModelIndex& idx) {
         const auto* r = m_model->recordAt(idx.row());
-        if (r && r->format == DocumentFormat::Pdf)
+        if (r)
             emit openDocumentRequested(r->id);
     });
     connect(m_detail, &DocumentDetailPanel::readRequested, this, &LibraryPage::openDocumentRequested);
@@ -260,8 +260,8 @@ QWidget* LibraryPage::buildFilters()
     m_formatFilter = new QComboBox;
     m_formatFilter->setAccessibleName(tr("Filtrer par format"));
     m_formatFilter->addItem(tr("Format"), -1);
-    m_formatFilter->addItem(documentFormatLabel(DocumentFormat::Pdf), int(DocumentFormat::Pdf));
-    m_formatFilter->addItem(documentFormatLabel(DocumentFormat::Epub), int(DocumentFormat::Epub));
+    for (DocumentFormat f : allDocumentFormats())
+        m_formatFilter->addItem(documentFormatLabel(f), int(f));
     h->addWidget(m_formatFilter);
 
     m_tagFilter = new QComboBox;
@@ -450,7 +450,7 @@ void LibraryPage::updateEmptyState()
     m_contentStack->setCurrentWidget(noResults ? m_empty : static_cast<QWidget*>(m_view));
     if (libraryEmpty) {
         m_emptyTitle->setText(tr("Votre bibliothèque est vide"));
-        m_emptyText->setText(tr("Importez vos PDF et EPUB, ou glissez-déposez des fichiers ou un dossier "
+        m_emptyText->setText(tr("Importez vos PDF, EPUB, textes et fichiers Markdown, ou glissez-déposez des fichiers ou un dossier "
                                 "n'importe où dans la fenêtre. Les doublons sont détectés automatiquement."));
     } else {
         m_emptyTitle->setText(tr("Aucun document ne correspond"));
@@ -512,7 +512,7 @@ void LibraryPage::chooseFiles()
                             .value(kLastImportDir, QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation))
                             .toString();
     const QStringList files = QFileDialog::getOpenFileNames(window(), tr("Importer des documents"), dir,
-                                                            tr("Documents (*.pdf *.epub);;PDF (*.pdf);;EPUB (*.epub)"));
+                                                            tr("Documents (*.pdf *.epub *.txt *.md *.markdown);;PDF (*.pdf);;EPUB (*.epub);;Texte (*.txt);;Markdown (*.md *.markdown)"));
     if (files.isEmpty())
         return;
     m_ctx.settings.setValue(kLastImportDir, QFileInfo(files.first()).absolutePath());

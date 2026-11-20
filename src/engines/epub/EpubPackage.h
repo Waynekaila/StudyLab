@@ -10,6 +10,7 @@
 
 #include <memory>
 
+class QBuffer;
 class QZipReader;
 
 namespace studylab {
@@ -34,7 +35,8 @@ struct EpubNavPoint {
 /// Lecture seule ; utilisable depuis un thread de travail.
 class EpubPackage {
 public:
-    /// Ouvre et vérifie le paquet (type MIME, container.xml, OPF, absence de DRM).
+    /// Ouvre et vérifie le paquet (type MIME, container.xml, OPF, absence de DRM). Un fichier .txt ou .md est
+    /// d'abord mis en forme de livre, en mémoire (TextBook).
     static Result<std::unique_ptr<EpubPackage>> open(const QString& path);
     ~EpubPackage();
     EpubPackage(const EpubPackage&) = delete;
@@ -61,6 +63,7 @@ private:
     EpubPackage() = default;
     Result<void> parseOpf(const QByteArray& opf, const QString& title);
 
+    std::unique_ptr<QBuffer> m_buffer;  // livre construit en mémoire (texte, Markdown)
     std::unique_ptr<QZipReader> m_zip;
     QString m_opfPath;
     QString m_version;

@@ -1,6 +1,10 @@
 #include "engines/epub/EpubPackage.h"
 
+#include "engines/epub/TextBook.h"
+
 #include <private/qzipreader_p.h>
+
+#include <QBuffer>
 
 #include <QFileInfo>
 #include <QHash>
@@ -46,7 +50,17 @@ EpubPackage::~EpubPackage() = default;
 Result<std::unique_ptr<EpubPackage>> EpubPackage::open(const QString& path)
 {
     std::unique_ptr<EpubPackage> pkg(new EpubPackage);
-    pkg->m_zip = std::make_unique<QZipReader>(path);
+    if (TextBook::isTextFile(path)) {
+        auto book = TextBook::build(path);
+        if (!book)
+            return book.error();
+        pkg->m_buffer = std::make_unique<QBuffer>();
+        pkg->m_buffer->setData(book.value());
+        pkg->m_buffer->open(QIODevice::ReadOnly);
+        pkg->m_zip = std::make_unique<QZipReader>(pkg->m_buffer.get());
+    } else {
+        pkg->m_zip = std::make_unique<QZipReader>(path);
+    }
     if (!pkg->m_zip->isReadable() || pkg->m_zip->status() != QZipReader::NoError)
         return Error::make(Error::Code::InvalidArgument, QStringLiteral("Archive EPUB illisible ou endommagée."));
 

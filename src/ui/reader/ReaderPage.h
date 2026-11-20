@@ -19,7 +19,7 @@ public:
     explicit ReaderPage(AppContext& ctx, QWidget* parent = nullptr);
     ~ReaderPage() override;
 
-    /// Ouvre un document (ou active son onglet s'il est déjà ouvert). PDF et EPUB.
+    /// Ouvre un document (ou active son onglet s'il est déjà ouvert). PDF ; EPUB, TXT et Markdown dans le lecteur EPUB.
     void openDocument(qint64 documentId);
     /// Ouvre le document et affiche l'annotation ou le commentaire (résultat de recherche).
     void openItem(qint64 documentId, bool comment, qint64 itemId);

@@ -59,8 +59,8 @@ Result<QStringList> TextIndexer::extract(const QString& path, const QString& for
 {
     if (format == QLatin1String("pdf"))
         return PdfTextExtractor::extract(path, cancel);
-    if (format == QLatin1String("epub"))
-        return EpubTextExtractor::extract(path, cancel);
+    if (format == QLatin1String("epub") || format == QLatin1String("txt") || format == QLatin1String("md"))
+        return EpubTextExtractor::extract(path, cancel);  // TXT / Markdown : mêmes sections que le lecteur
     return Error::make(Error::Code::InvalidArgument, QStringLiteral("Format non pris en charge : %1").arg(format));
 }
 

@@ -29,7 +29,7 @@ public:
     Result<void> replace(qint64 documentId, const QStringList& units);
     /// Marque l'échec (fichier illisible, protégé) : le document n'est plus proposé jusqu'à une réindexation.
     Result<void> markFailed(qint64 documentId);
-    /// Documents PDF et EPUB actifs à indexer, les plus récemment ajoutés d'abord.
+    /// Documents PDF, EPUB, TXT et Markdown actifs à indexer, les plus récemment ajoutés d'abord.
     Result<QList<PendingTextDocument>> pending();
     /// Tout réindexer (texte conservé jusqu'au remplacement).
     Result<void> resetAll();

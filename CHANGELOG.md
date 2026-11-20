@@ -32,6 +32,12 @@
   `[[liens]]` résolus une fois tout importé, fichiers `.bib` importés comme références ; dossiers cachés
   (`.obsidian`, `.trash`) ignorés. Un export StudyLab se réimporte tel quel (mêmes dossiers, types et uuid) ; les
   notes déjà présentes (même uuid, ou même titre, dossier et texte) ne sont pas dupliquées.
+- **Lecture des fichiers TXT et Markdown** (itération V1-6c) : importés dans la bibliothèque (choisis un par un ;
+  le parcours d'un dossier reste limité aux PDF et EPUB), mis en forme de livre EPUB en mémoire et lus dans le
+  lecteur EPUB avec annotations, commentaires, recherche, plein texte et export. Markdown : titres, listes, tableaux,
+  code, citations, liens, images locales ; découpage en sections aux titres qui se répètent ; `title:`, `author:` et
+  `lang:` du front matter repris. Texte brut en UTF-8 ou Windows-1252, en parties d'environ 40 000 caractères.
+- Correction : « Lire » et le double-clic dans la bibliothèque n'ouvraient que les PDF ; les EPUB s'ouvrent aussi.
 - **Export de la bibliothèque** : les notes sont jointes (toutes pour la bibliothèque entière, celles tirées des
   documents pour une sélection) dans `Notes/<dossier>/`, avec leurs images dans `_attachments/` ; la fiche de
   chaque document a son titre en alias, pour que `[[Titre]]` y mène dans Obsidian.

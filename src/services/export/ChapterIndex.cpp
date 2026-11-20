@@ -62,7 +62,7 @@ ChapterIndex ChapterIndex::forEpub(const QString& path)
 
 ChapterIndex ChapterIndex::forDocument(const QString& path, DocumentFormat format)
 {
-    return format == DocumentFormat::Epub ? forEpub(path) : forPdf(path);
+    return isReflowable(format) ? forEpub(path) : forPdf(path);
 }
 
 QString ChapterIndex::chapterOf(int unit) const

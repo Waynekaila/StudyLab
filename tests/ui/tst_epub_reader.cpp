@@ -343,6 +343,52 @@ private slots:
         QVERIFY(!stored.scrolled);
     }
 
+    /// V1-6c : un fichier Markdown s'ouvre dans le lecteur, avec sommaire, image, annotation et recherche.
+    void opensMarkdownAndText()
+    {
+        Env env;
+        const qint64 id = env.import(QStringLiteral(STUDYLAB_TEST_DATA "/text/cours.md"));
+        QVERIFY(id > 0);
+        QCOMPARE(env.library->document(id).value().format, DocumentFormat::Markdown);
+        ui::ReaderPage page(*env.ctx);
+        page.resize(1400, 900);
+        page.show();
+        auto* tab = openTab(page, id);
+        QVERIFY2(tab, "le fichier Markdown ne s'est pas ouvert");
+        QCOMPARE(tab->view()->sectionCount(), 3);
+        QCOMPARE(tab->view()->toc().size(), 4);
+        QCOMPARE(tab->view()->toc().at(2).label, QStringLiteral("Second principe"));
+        tab->view()->goTo(tab->view()->toc().at(1).href);
+        QTRY_COMPARE_WITH_TIMEOUT(tab->view()->location().section, 1, kTimeout);
+        QTRY_COMPARE_WITH_TIMEOUT(tab->chapterLabel()->text(), QStringLiteral("Premier principe"), kTimeout);
+
+        QSignalSpy sel(tab->view(), &ui::EpubView::selectionMade);
+        QVERIFY(js(tab->view(), QStringLiteral("StudyLab.selectText('se conserve')")).toBool());
+        QTRY_VERIFY_WITH_TIMEOUT(!sel.isEmpty(), kTimeout);
+        QVERIFY(tab->annotateSelection(AnnotationType::Highlight, AnnotationColor::Yellow).ok());
+        QCOMPARE(tab->annotations().size(), 1);
+        QCOMPARE(tab->annotations().first().selectedText, QStringLiteral("se conserve"));
+        QCOMPARE(tab->chapterOf(tab->annotations().first().unitIndex), QStringLiteral("Premier principe"));
+
+        tab->showSearch();
+        QTest::keyClicks(tab->searchEdit(), QStringLiteral("rendement"));
+        QTest::keyClick(tab->searchEdit(), Qt::Key_Return);
+        QTRY_VERIFY_WITH_TIMEOUT(tab->view()->searchDone() && tab->view()->searchResultCount() > 0, kTimeout);
+        tab->findNext();
+        QTRY_COMPARE_WITH_TIMEOUT(tab->view()->location().section, 2, kTimeout);
+        maybeScreenshot(page, QStringLiteral("v1-6c-markdown"));
+
+        // Texte brut (Windows-1252) : une section, texte lisible.
+        const qint64 txt = env.import(QStringLiteral(STUDYLAB_TEST_DATA "/text/notes-cp1252.txt"));
+        QVERIFY(txt > 0);
+        auto* textTab = openTab(page, txt);
+        QVERIFY2(textTab, "le fichier texte ne s'est pas ouvert");
+        QCOMPARE(textTab->view()->sectionCount(), 1);
+        QSignalSpy sel2(textTab->view(), &ui::EpubView::selectionMade);
+        QVERIFY(js(textTab->view(), QStringLiteral("StudyLab.selectText('tiret long')")).toBool());
+        QTRY_VERIFY_WITH_TIMEOUT(!sel2.isEmpty(), kTimeout);
+    }
+
     void searchFindsAndNavigates()
     {
         Env env;

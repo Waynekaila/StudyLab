@@ -151,10 +151,8 @@ void ReaderPage::openDocument(qint64 documentId)
     ReaderTab* tab = nullptr;
     if (doc.value().format == DocumentFormat::Pdf)
         tab = new PdfReaderTab(m_ctx, documentId, m_tabs);
-    else if (doc.value().format == DocumentFormat::Epub)
+    else  // EPUB, et TXT / Markdown mis en forme de livre (TextBook)
         tab = new EpubReaderTab(m_ctx, documentId, m_tabs);
-    else
-        return;
     const QString title = doc.value().title;
     const int idx = m_tabs->addTab(tab, QFontMetrics(font()).elidedText(title, Qt::ElideRight, 180));
     m_tabs->setTabToolTip(idx, title);

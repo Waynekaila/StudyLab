@@ -207,7 +207,7 @@ QWidget* HomePage::buildResume()
     m_resumeEmpty = new QWidget(card);
     auto* empty = new QVBoxLayout(m_resumeEmpty);
     empty->setContentsMargins(0, 4, 0, 0);
-    auto* emptyText = makeLabel(tr("Aucun document ouvert pour l'instant. Importez vos PDF et EPUB dans la "
+    auto* emptyText = makeLabel(tr("Aucun document ouvert pour l'instant. Importez vos PDF, EPUB, textes et fichiers Markdown dans la "
                                    "bibliothèque (ou glissez-les dans la fenêtre), puis ouvrez-en un : vous le "
                                    "retrouverez ici, à la page où vous l'avez laissé."),
                                 "muted");
@@ -340,7 +340,7 @@ void HomePage::refresh()
     const qint64 n = m_ctx.library.count();
     m_docCount->setText(fr.toString(n));
     if (n == 0) {
-        m_docHint->setText(tr("Importez vos PDF et EPUB depuis la bibliothèque, ou glissez-déposez-les dans la fenêtre."));
+        m_docHint->setText(tr("Importez vos PDF, EPUB, textes et fichiers Markdown depuis la bibliothèque, ou glissez-déposez-les dans la fenêtre."));
     } else {
         db::DocumentQuery q;
         q.status = ReadingStatus::Reading;
@@ -415,7 +415,7 @@ void HomePage::refreshResume()
         if (!d.authors.isEmpty())
             caption << d.authors.first();
         caption << tr("%1 % lu").arg(int(d.progress * 100 + 0.5));
-        auto* row = makeRow(Icons::get(d.format == DocumentFormat::Epub ? QStringLiteral("book-open") : QStringLiteral("book"),
+        auto* row = makeRow(Icons::get(isReflowable(d.format) ? QStringLiteral("book-open") : QStringLiteral("book"),
                                        pal.text3, m_ctx.theme.px(16))
                                 .pixmap(m_ctx.theme.px(16)),
                             elided(d.title, 70), caption.join(QStringLiteral(" · ")));

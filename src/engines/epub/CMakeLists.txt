@@ -2,7 +2,8 @@
 # elle évite d'ajouter libzip pour l'itération 2. Écart documenté dans docs/design/02-architecture.md.
 add_library(studylab_epub STATIC
     EpubPackage.h EpubPackage.cpp
-    EpubTextExtractor.h EpubTextExtractor.cpp)
+    EpubTextExtractor.h EpubTextExtractor.cpp
+    TextBook.h TextBook.cpp)
 target_link_libraries(studylab_epub
     PUBLIC studylab_engines_document Qt6::Gui
     PRIVATE Qt6::CorePrivate Qt6::GuiPrivate)

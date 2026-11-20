@@ -49,7 +49,7 @@ Result<QList<PendingTextDocument>> PageTextRepository::pending()
 {
     auto stmt = m_db.prepare(QStringLiteral(
         "SELECT id, format, file_path, storage_mode FROM documents WHERE deleted_at IS NULL AND text_indexed = 0 "
-        "AND format IN ('pdf', 'epub') ORDER BY added_at DESC, id DESC"));
+        "AND format IN ('pdf', 'epub', 'txt', 'md') ORDER BY added_at DESC, id DESC"));
     if (!stmt)
         return stmt.error();
     QList<PendingTextDocument> out;
@@ -75,7 +75,7 @@ Result<QPair<int, int>> PageTextRepository::progress()
 {
     auto stmt = m_db.prepare(QStringLiteral(
         "SELECT COUNT(*) FILTER (WHERE text_indexed <> 0), COUNT(*) FROM documents "
-        "WHERE deleted_at IS NULL AND format IN ('pdf', 'epub')"));
+        "WHERE deleted_at IS NULL AND format IN ('pdf', 'epub', 'txt', 'md')"));
     if (!stmt)
         return stmt.error();
     auto row = stmt.value().step();
