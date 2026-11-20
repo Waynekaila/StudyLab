@@ -16,6 +16,9 @@
 #include "ui/pages/SettingsPage.h"
 #include "ui/shell/AppContext.h"
 #include "ui/shell/MainWindow.h"
+#include "ui/shell/Navigation.h"
+#include "ui/shell/SearchPalette.h"
+#include "ui/shell/Shortcuts.h"
 #include "ui/shell/Sidebar.h"
 #include "ui/theme/ThemeManager.h"
 
@@ -23,6 +26,10 @@
 #include <QComboBox>
 #include <QDir>
 #include <QFile>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QKeySequenceEdit>
+#include <QListWidget>
 #include <QLabel>
 #include <QPushButton>
 #include <QSettings>
@@ -147,6 +154,142 @@ private slots:
         QTest::mouseClick(sidebar->button(QStringLiteral("home")), Qt::LeftButton);
         QCOMPARE(window.currentPage(), QStringLiteral("home"));
         maybeScreenshot(window, QStringLiteral("accueil-sombre"));
+    }
+
+    void navigationAndShortcutsConfigurable()
+    {
+        QTemporaryDir dir;
+        AppPaths paths(dir.path());
+        auto startup = openAndMigrate(paths);
+        QVERIFY(startup.ok());
+        db::Database& database = *startup.value().db;
+        SettingsService settings(database);
+        settings.setThemeMode(ThemeMode::Light);
+        ui::ThemeManager theme(settings);
+        theme.apply();
+        LibraryService library(database, paths);
+        AnnotationService annotations(database);
+        CommentService comments(database);
+        SearchService search(database);
+        BackupService backups(paths, database);
+        NoteService notes(database, paths.attachmentsDir());
+        OrganizeService organize(database);
+        AppContext ctx{paths, database, settings, theme, library, annotations, comments, search, backups, notes, organize};
+
+        // Disposition enregistrée par une version antérieure : identifiant inconnu ignoré, entrées absentes
+        // replacées après celle qui les précède par défaut.
+        settings.setValue(ui::Navigation::kSettingKey,
+                          QJsonObject{{QStringLiteral("order"), QJsonArray{QStringLiteral("settings"), QStringLiteral("home"),
+                                                                          QStringLiteral("disparu")}},
+                                      {QStringLiteral("hidden"), QJsonArray{QStringLiteral("settings"), QStringLiteral("graph")}}});
+        const ui::Navigation::Layout old = ui::Navigation::layout(settings);
+        QCOMPARE(old.order.mid(0, 4), (QStringList{QStringLiteral("settings"), QStringLiteral("home"),
+                                                   QStringLiteral("library"), QStringLiteral("reader")}));
+        QCOMPARE(old.order.size(), ui::Navigation::entries().size());
+        QCOMPARE(old.hidden, (QSet<QString>{QStringLiteral("graph")}));  // les Paramètres ne se masquent pas
+        ui::Navigation::reset(settings);
+        QVERIFY(ui::Navigation::isDefault(settings));
+
+        ui::MainWindow window(ctx);
+        window.resize(1280, 820);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        auto* sidebar = window.findChild<ui::Sidebar*>();
+        QCOMPARE(sidebar->entryIds().size(), 11);
+        auto* page = qobject_cast<ui::SettingsPage*>(window.page(QStringLiteral("settings")));
+        page->categories()->setCurrentRow(3);  // Navigation et raccourcis
+        QTest::mouseClick(sidebar->button(QStringLiteral("settings")), Qt::LeftButton);
+        QVERIFY(!page->navigationResetButton()->isEnabled());
+
+        // Masquer le Graphe, remonter les Révisions en tête : la barre suit aussitôt.
+        QListWidget* list = page->navigationList();
+        QCOMPARE(list->count(), 11);
+        const auto row = [list](const QString& id) {
+            for (int i = 0; i < list->count(); ++i)
+                if (list->item(i)->data(Qt::UserRole).toString() == id)
+                    return i;
+            return -1;
+        };
+        QVERIFY(!(list->item(row(QStringLiteral("settings")))->flags() & Qt::ItemIsUserCheckable));
+        list->item(row(QStringLiteral("graph")))->setCheckState(Qt::Unchecked);
+        QVERIFY(!sidebar->entryIds().contains(QStringLiteral("graph")));
+        QVERIFY(!sidebar->button(QStringLiteral("graph")));
+        list->setCurrentRow(row(QStringLiteral("revisions")));
+        auto* up = page->findChildren<QPushButton*>().at(0);
+        for (QPushButton* b : page->findChildren<QPushButton*>())
+            if (b->text() == QStringLiteral("Monter"))
+                up = b;
+        for (int i = 0; i < 7; ++i)
+            up->click();
+        QCOMPARE(sidebar->entryIds().first(), QStringLiteral("revisions"));
+        QCOMPARE(row(QStringLiteral("revisions")), 0);
+        QVERIFY(!up->isEnabled());
+        QVERIFY(page->navigationResetButton()->isEnabled());
+        QCOMPARE(sidebar->current(), QStringLiteral("settings"));
+        QVERIFY(sidebar->button(QStringLiteral("settings"))->isChecked());
+        maybeScreenshot(window, QStringLiteral("v2-6-navigation-raccourcis"));
+
+        // Un espace masqué reste accessible par son raccourci (Graphe : Ctrl+7).
+        QTest::keyClick(&window, Qt::Key_7, Qt::ControlModifier);
+        QCOMPARE(window.currentPage(), QStringLiteral("graph"));
+        QTest::keyClick(&window, Qt::Key_Comma, Qt::ControlModifier);
+        QCOMPARE(window.currentPage(), QStringLiteral("settings"));
+
+        // Raccourci modifié : appliqué tout de suite, l'ancien ne fait plus rien, l'infobulle suit.
+        auto* palette = window.findChild<ui::SearchPalette*>();
+        QVERIFY(palette);
+        page->shortcutEdit(QStringLiteral("app.search"))->setKeySequence(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F));
+        page->commitShortcut(QStringLiteral("app.search"));
+        QCOMPARE(settings.value(QStringLiteral("shortcuts/app.search")).toString(), QStringLiteral("Ctrl+Shift+F"));
+        QVERIFY(sidebar->searchButton()->toolTip().contains(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F).toString(QKeySequence::NativeText)));
+        QTest::keyClick(&window, Qt::Key_K, Qt::ControlModifier);
+        QVERIFY(!palette->isVisible());
+        QTest::keyClick(&window, Qt::Key_F, Qt::ControlModifier | Qt::ShiftModifier);
+        QTRY_VERIFY(palette->isVisible());
+        palette->hide();
+
+        // Refus : déjà utilisé, touche seule, touche réservée ; le champ revient à la touche en vigueur.
+        page->shortcutEdit(QStringLiteral("nav.home"))->setKeySequence(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F));
+        page->commitShortcut(QStringLiteral("nav.home"));
+        QVERIFY(page->shortcutStatus()->isVisibleTo(page));
+        QVERIFY2(page->shortcutStatus()->text().contains(QStringLiteral("Rechercher partout")), qPrintable(page->shortcutStatus()->text()));
+        QCOMPARE(page->shortcutEdit(QStringLiteral("nav.home"))->keySequence(), QKeySequence(Qt::CTRL | Qt::Key_1));
+        QCOMPARE(ui::Shortcuts::key(settings, QStringLiteral("nav.home")), QKeySequence(Qt::CTRL | Qt::Key_1));
+        QVERIFY(!ui::Shortcuts::validate(settings, QStringLiteral("reader.find"), QKeySequence(Qt::Key_K)).isEmpty());
+        QVERIFY(!ui::Shortcuts::validate(settings, QStringLiteral("reader.find"), QKeySequence(QKeySequence::Copy)).isEmpty());
+        QVERIFY(ui::Shortcuts::validate(settings, QStringLiteral("reader.find"), QKeySequence(Qt::Key_F3)).isEmpty());
+        // Groupes séparés : Ctrl+S sert à la fois aux notes et (ici) à la recherche dans le lecteur.
+        QVERIFY(ui::Shortcuts::validate(settings, QStringLiteral("reader.find"), QKeySequence(Qt::CTRL | Qt::Key_S)).isEmpty());
+        // Révisions : touche seule permise, mais pas en double dans la séance.
+        QVERIFY(ui::Shortcuts::setKey(settings, QStringLiteral("revisions.reveal"), QKeySequence(Qt::Key_R)));
+        QVERIFY(!ui::Shortcuts::setKey(settings, QStringLiteral("revisions.edit"), QKeySequence(Qt::Key_R)));
+        auto* hints = window.page(QStringLiteral("revisions"))->findChild<QLabel*>(QStringLiteral("SessionKeyHints"));
+        QVERIFY(hints);
+        QVERIFY2(hints->text().startsWith(QStringLiteral("R : retourner")), qPrintable(hints->text()));
+
+        // Retirer un raccourci (croix du champ) : enregistré vide, plus d'action.
+        page->shortcutEdit(QStringLiteral("nav.home"))->clear();
+        QVERIFY(ui::Shortcuts::key(settings, QStringLiteral("nav.home")).isEmpty());
+        QCOMPARE(settings.value(QStringLiteral("shortcuts/nav.home")).toString(), QString());
+        QTest::keyClick(&window, Qt::Key_1, Qt::ControlModifier);
+        QCOMPARE(window.currentPage(), QStringLiteral("settings"));
+
+        // Tout rétablir, navigation par défaut.
+        QVERIFY(page->shortcutsResetButton()->isEnabled());
+        page->shortcutsResetButton()->click();
+        QCOMPARE(ui::Shortcuts::key(settings, QStringLiteral("app.search")), QKeySequence(Qt::CTRL | Qt::Key_K));
+        QCOMPARE(page->shortcutEdit(QStringLiteral("nav.home"))->keySequence(), QKeySequence(Qt::CTRL | Qt::Key_1));
+        QVERIFY(!page->shortcutsResetButton()->isEnabled());
+        QVERIFY(hints->text().startsWith(QKeySequence(Qt::Key_Space).toString(QKeySequence::NativeText) + QStringLiteral(" : retourner")));
+        page->navigationResetButton()->click();
+        QVERIFY(ui::Navigation::isDefault(settings));
+        QCOMPARE(sidebar->entryIds().first(), QStringLiteral("home"));
+        QVERIFY(sidebar->button(QStringLiteral("graph")));
+        QTest::keyClick(&window, Qt::Key_1, Qt::ControlModifier);
+        QCOMPARE(window.currentPage(), QStringLiteral("home"));
+        QVERIFY(sidebar->button(QStringLiteral("home"))->isChecked());
     }
 
     void lastPageRestored()

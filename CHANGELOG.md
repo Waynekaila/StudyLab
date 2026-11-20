@@ -38,6 +38,12 @@
   modifications suivies montrées acceptées). Une image (PNG, JPEG, GIF, BMP, WebP, TIFF de plusieurs pages) s'ouvre
   dans le lecteur PDF, une page par image, à sa taille réelle : zones, notes, signets, zoom, miniatures et OCR
   (texte reconnu et cherchable) comme pour un scan. Le parcours d'un dossier prend les `.docx` mais pas les images.
+- **Navigation et raccourcis configurables** (itération V2-6, seconde partie) : dans Paramètres › Navigation et
+  raccourcis, les espaces de la barre de gauche se rangent (glisser, Monter, Descendre) et se masquent ; les
+  raccourcis clavier se changent ou se retirent (recherche, plein écran, aller à un espace avec Ctrl+1 à Ctrl+9 et
+  Ctrl+, , recherche, page, signet et historique du lecteur, nouvelle note et enregistrement, touches de la séance de
+  révision). Appliqué sans redémarrage, infobulles et aide de la séance comprises ; une touche déjà prise au même
+  endroit, réservée ou seule hors des révisions est refusée avec son motif.
 
 ## 0.2.0 — V1 « Relier ses connaissances » (2026-11-20)
 

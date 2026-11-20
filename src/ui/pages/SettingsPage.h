@@ -2,11 +2,13 @@
 
 #include "ui/shell/AppContext.h"
 
+#include <QHash>
 #include <QWidget>
 
 #include <functional>
 
 class QComboBox;
+class QKeySequenceEdit;
 class QLabel;
 class QListWidget;
 class QMenu;
@@ -32,7 +34,8 @@ inline constexpr char kRestartProperty[] = "studylabRestart";
 class SegmentedControl;
 class ToggleSwitch;
 
-/// Paramètres : Apparence, Bibliothèque et import, Données (sauvegardes, restauration), À propos.
+/// Paramètres : Apparence, Bibliothèque et import, Données (sauvegardes, restauration), Navigation et raccourcis,
+/// À propos.
 class SettingsPage : public QWidget {
     Q_OBJECT
 public:
@@ -57,6 +60,14 @@ public:
     QPushButton* ocrLanguagesButton() const { return m_ocrLanguages; }
     QPushButton* ocrRerunButton() const { return m_ocrRerun; }
     QLabel* ocrStatus() const { return m_ocrStatus; }
+    QListWidget* navigationList() const { return m_navList; }
+    QPushButton* navigationResetButton() const { return m_navReset; }
+    /// Champ de saisie du raccourci d'une action (identifiant de `Shortcuts::actions()`).
+    QKeySequenceEdit* shortcutEdit(const QString& id) const;
+    /// Applique la touche saisie dans le champ de l'action, comme à la fin de la saisie.
+    void commitShortcut(const QString& id);
+    QLabel* shortcutStatus() const { return m_shortcutStatus; }
+    QPushButton* shortcutsResetButton() const { return m_shortcutsReset; }
 
     /// Indexation du texte intégral (Données) : état et « Réindexer ».
     void setTextIndexer(TextIndexer* indexer);
@@ -78,7 +89,11 @@ private:
     QWidget* buildAppearance();
     QWidget* buildLibrary();
     QWidget* buildData();
+    QWidget* buildKeyboard();
     QWidget* buildAbout();
+    void syncNavigation();
+    void saveNavigation();
+    void syncShortcuts();
     void syncFromSettings();
     void createBackup();
     void restoreSelected();
@@ -112,6 +127,14 @@ private:
     QPushButton* m_cancelRestore = nullptr;
     QLabel* m_pendingLabel = nullptr;
     RestoreConfirmer m_confirmRestore;
+    QListWidget* m_navList = nullptr;
+    QPushButton* m_navUp = nullptr;
+    QPushButton* m_navDown = nullptr;
+    QPushButton* m_navReset = nullptr;
+    QHash<QString, QKeySequenceEdit*> m_keyEdits;
+    QHash<QString, QPushButton*> m_keyResets;
+    QLabel* m_shortcutStatus = nullptr;
+    QPushButton* m_shortcutsReset = nullptr;
 };
 
 }  // namespace studylab::ui

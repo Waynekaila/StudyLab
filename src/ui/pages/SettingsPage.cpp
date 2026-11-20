@@ -11,6 +11,9 @@
 #include "ui/components/ToggleSwitch.h"
 #include "ui/components/Widgets.h"
 #include "ui/pages/PageScaffold.h"
+#include "ui/shell/Navigation.h"
+#include "ui/shell/Shortcuts.h"
+#include "ui/theme/Icons.h"
 #include "ui/theme/ThemeManager.h"
 
 #include <QComboBox>
@@ -20,6 +23,7 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QHBoxLayout>
+#include <QKeySequenceEdit>
 #include <QLabel>
 #include <QJsonArray>
 #include <QListWidget>
@@ -32,7 +36,10 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
+#include <QStyle>
+
 #include <cmath>
+#include <optional>
 
 namespace studylab::ui {
 
@@ -66,13 +73,15 @@ SettingsPage::SettingsPage(AppContext& ctx, QWidget* parent) : QWidget(parent), 
     sideLayout->setContentsMargins(12, 22, 12, 12);
     m_categories = new QListWidget(side);
     m_categories->setObjectName(QStringLiteral("Categories"));
-    m_categories->addItems({tr("Apparence"), tr("Bibliothèque et import"), tr("Données"), tr("À propos")});
+    m_categories->addItems({tr("Apparence"), tr("Bibliothèque et import"), tr("Données"), tr("Navigation et raccourcis"),
+                            tr("À propos")});
     sideLayout->addWidget(m_categories);
 
     m_stack = new QStackedWidget(this);
     m_stack->addWidget(buildAppearance());
     m_stack->addWidget(buildLibrary());
     m_stack->addWidget(buildData());
+    m_stack->addWidget(buildKeyboard());
     m_stack->addWidget(buildAbout());
 
     h->addWidget(side);
@@ -498,6 +507,235 @@ void SettingsPage::restoreSelected()
         qApp->setProperty(kRestartProperty, true);
         window()->close();
     }
+}
+
+QWidget* SettingsPage::buildKeyboard()
+{
+    auto* scaffold = new PageScaffold(nullptr, 820);
+    titledSection(tr("Navigation et raccourcis"),
+                  tr("Ordre des espaces dans la barre de gauche et touches des commandes. Appliqué immédiatement."), scaffold);
+
+    // ----- Navigation ---------------------------------------------------------------------------------------
+    auto* navCard = makeCard();
+    auto* nv = static_cast<QVBoxLayout*>(navCard->layout());
+    nv->addWidget(makeLabel(tr("Barre de navigation"), "h3"));
+    auto* navHelp = makeLabel(tr("Cochez les espaces à afficher et glissez-les (ou utilisez Monter et Descendre) pour "
+                                 "les ranger. Un espace masqué reste accessible par son raccourci. Les Paramètres "
+                                 "restent toujours affichés."),
+                              "muted");
+    navHelp->setWordWrap(true);
+    nv->addWidget(navHelp);
+    auto* navRow = new QHBoxLayout;
+    m_navList = new QListWidget;
+    m_navList->setObjectName(QStringLiteral("NavigationList"));
+    m_navList->setAccessibleName(tr("Espaces de la barre de navigation"));
+    m_navList->setDragDropMode(QAbstractItemView::InternalMove);
+    m_navList->setDefaultDropAction(Qt::MoveAction);
+    m_navList->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_navList->setFixedHeight(m_ctx.theme.px(270));
+    navRow->addWidget(m_navList, 1);
+    auto* navButtons = new QVBoxLayout;
+    m_navUp = new QPushButton(tr("Monter"));
+    m_navDown = new QPushButton(tr("Descendre"));
+    m_navReset = new QPushButton(tr("Par défaut"));
+    m_navReset->setToolTip(tr("Rétablir l'ordre d'origine et afficher tous les espaces"));
+    navButtons->addWidget(m_navUp);
+    navButtons->addWidget(m_navDown);
+    navButtons->addSpacing(12);
+    navButtons->addWidget(m_navReset);
+    navButtons->addStretch(1);
+    navRow->addLayout(navButtons);
+    nv->addLayout(navRow);
+    scaffold->body()->addWidget(navCard);
+
+    const auto move = [this](int delta) {
+        const int row = m_navList->currentRow();
+        const int to = row + delta;
+        if (row < 0 || to < 0 || to >= m_navList->count())
+            return;
+        {
+            const QSignalBlocker block(m_navList);
+            QListWidgetItem* item = m_navList->takeItem(row);
+            m_navList->insertItem(to, item);
+            m_navList->setCurrentRow(to);
+        }
+        saveNavigation();
+    };
+    connect(m_navUp, &QPushButton::clicked, this, [move] { move(-1); });
+    connect(m_navDown, &QPushButton::clicked, this, [move] { move(+1); });
+    connect(m_navReset, &QPushButton::clicked, this, [this] { Navigation::reset(m_ctx.settings); });
+    connect(m_navList, &QListWidget::itemChanged, this, [this] { saveNavigation(); });
+    connect(m_navList->model(), &QAbstractItemModel::rowsMoved, this, [this] { saveNavigation(); });
+    connect(m_navList, &QListWidget::currentRowChanged, this, [this](int row) {
+        m_navUp->setEnabled(row > 0);
+        m_navDown->setEnabled(row >= 0 && row < m_navList->count() - 1);
+    });
+
+    // ----- Raccourcis ---------------------------------------------------------------------------------------
+    auto* keyCard = makeCard();
+    auto* kv = static_cast<QVBoxLayout*>(keyCard->layout());
+    kv->setSpacing(0);
+    auto* keyHead = new QHBoxLayout;
+    auto* keyTitle = new QVBoxLayout;
+    keyTitle->setSpacing(4);
+    keyTitle->addWidget(makeLabel(tr("Raccourcis clavier"), "h3"));
+    auto* keyHelp = makeLabel(tr("Cliquez dans un champ puis tapez la combinaison voulue ; la croix retire le "
+                                 "raccourci. Échap, Entrée, Suppr et les commandes d'édition (Ctrl+C, Ctrl+Z…) ne "
+                                 "changent pas."),
+                              "muted");
+    keyHelp->setWordWrap(true);
+    keyTitle->addWidget(keyHelp);
+    keyHead->addLayout(keyTitle, 1);
+    m_shortcutsReset = new QPushButton(tr("Tout rétablir"));
+    m_shortcutsReset->setToolTip(tr("Rétablir tous les raccourcis d'origine"));
+    keyHead->addWidget(m_shortcutsReset, 0, Qt::AlignTop);
+    kv->addLayout(keyHead);
+    m_shortcutStatus = makeLabel(QString(), "faint");
+    m_shortcutStatus->setObjectName(QStringLiteral("ShortcutStatus"));
+    m_shortcutStatus->setWordWrap(true);
+    m_shortcutStatus->hide();
+    kv->addSpacing(8);
+    kv->addWidget(m_shortcutStatus);
+    connect(m_shortcutsReset, &QPushButton::clicked, this, [this] {
+        Shortcuts::resetAll(m_ctx.settings);
+        m_shortcutStatus->hide();
+    });
+
+    std::optional<Shortcuts::Group> group;
+    for (const Shortcuts::Action& a : Shortcuts::actions()) {
+        if (group != a.group) {
+            group = a.group;
+            kv->addSpacing(14);
+            kv->addWidget(makeLabel(Shortcuts::groupLabel(a.group).toUpper(), "caption"));
+            kv->addSpacing(4);
+        }
+        auto* row = new QWidget;
+        auto* h = new QHBoxLayout(row);
+        h->setContentsMargins(0, 3, 0, 3);
+        h->addWidget(makeLabel(a.label), 1);
+        auto* edit = new QKeySequenceEdit;
+        edit->setObjectName(QStringLiteral("key:") + a.id);
+        edit->setAccessibleName(tr("Raccourci : %1").arg(a.label));
+        edit->setClearButtonEnabled(true);
+        edit->setFixedWidth(m_ctx.theme.px(170));
+        auto* reset = new QPushButton(tr("Par défaut"));
+        reset->setToolTip(a.defaultKey.isEmpty()
+                              ? tr("Aucun raccourci d'origine")
+                              : tr("Revenir à %1").arg(a.defaultKey.toString(QKeySequence::NativeText)));
+        h->addWidget(edit);
+        h->addWidget(reset);
+        kv->addWidget(row);
+        m_keyEdits.insert(a.id, edit);
+        m_keyResets.insert(a.id, reset);
+        const QString id = a.id;
+        connect(edit, &QKeySequenceEdit::editingFinished, this, [this, id] { commitShortcut(id); });
+        // La croix vide le champ sans « fin de saisie » : le raccourci est retiré tout de suite.
+        connect(edit, &QKeySequenceEdit::keySequenceChanged, this, [this, id](const QKeySequence& seq) {
+            if (seq.isEmpty())
+                commitShortcut(id);
+        });
+        connect(reset, &QPushButton::clicked, this, [this, id] {
+            Shortcuts::reset(m_ctx.settings, id);
+            m_shortcutStatus->hide();
+        });
+    }
+    scaffold->body()->addWidget(keyCard);
+    scaffold->body()->addStretch(1);
+
+    syncNavigation();
+    syncShortcuts();
+    connect(&m_ctx.settings, &SettingsService::changed, this, [this](const QString& key) {
+        if (key == Navigation::kSettingKey)
+            syncNavigation();
+        else if (key.startsWith(QLatin1String("shortcuts/")))
+            syncShortcuts();
+    });
+    connect(&m_ctx.theme, &ThemeManager::themeChanged, this, [this] { syncNavigation(); });
+    return scaffold;
+}
+
+void SettingsPage::syncNavigation()
+{
+    const Navigation::Layout layout = Navigation::layout(m_ctx.settings);
+    const QString selected = m_navList->currentItem() ? m_navList->currentItem()->data(Qt::UserRole).toString() : QString();
+    const QSignalBlocker block(m_navList);
+    m_navList->clear();
+    const QColor iconColor = m_ctx.theme.palette().text2;
+    for (const QString& id : layout.order) {
+        const Navigation::Entry* e = Navigation::find(id);
+        QIcon icon = Icons::get(e->icon, iconColor, 18);
+        icon.addPixmap(Icons::get(e->icon, m_navList->palette().color(QPalette::HighlightedText), 18).pixmap(18, 18),
+                       QIcon::Selected);
+        auto* item = new QListWidgetItem(icon, e->label);
+        item->setData(Qt::UserRole, id);
+        Qt::ItemFlags flags = Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled;
+        if (Navigation::canHide(id)) {
+            flags |= Qt::ItemIsUserCheckable;
+            item->setCheckState(layout.hidden.contains(id) ? Qt::Unchecked : Qt::Checked);
+        } else {
+            item->setToolTip(tr("Toujours affiché : c'est ici qu'on rétablit la navigation."));
+        }
+        item->setFlags(flags);
+        m_navList->addItem(item);
+        if (id == selected)
+            m_navList->setCurrentItem(item);
+    }
+    m_navReset->setEnabled(!Navigation::isDefault(m_ctx.settings));
+    const int row = m_navList->currentRow();
+    m_navUp->setEnabled(row > 0);
+    m_navDown->setEnabled(row >= 0 && row < m_navList->count() - 1);
+}
+
+void SettingsPage::saveNavigation()
+{
+    Navigation::Layout layout;
+    for (int i = 0; i < m_navList->count(); ++i) {
+        const QListWidgetItem* item = m_navList->item(i);
+        const QString id = item->data(Qt::UserRole).toString();
+        layout.order << id;
+        if ((item->flags() & Qt::ItemIsUserCheckable) && item->checkState() == Qt::Unchecked)
+            layout.hidden.insert(id);
+    }
+    Navigation::setLayout(m_ctx.settings, layout);
+}
+
+QKeySequenceEdit* SettingsPage::shortcutEdit(const QString& id) const { return m_keyEdits.value(id); }
+
+void SettingsPage::commitShortcut(const QString& id)
+{
+    QKeySequenceEdit* edit = m_keyEdits.value(id);
+    if (!edit)
+        return;
+    QKeySequence seq = edit->keySequence();
+    if (seq.count() > 1)
+        seq = QKeySequence(seq[0]);  // une seule combinaison par raccourci
+    const QString reason = Shortcuts::validate(m_ctx.settings, id, seq);
+    if (!reason.isEmpty()) {
+        m_shortcutStatus->setText(reason);
+        m_shortcutStatus->setProperty("status", QStringLiteral("error"));
+        m_shortcutStatus->style()->unpolish(m_shortcutStatus);
+        m_shortcutStatus->style()->polish(m_shortcutStatus);
+        m_shortcutStatus->show();
+        const QSignalBlocker block(edit);
+        edit->setKeySequence(Shortcuts::key(m_ctx.settings, id));
+        return;
+    }
+    m_shortcutStatus->hide();
+    Shortcuts::setKey(m_ctx.settings, id, seq);
+    syncShortcuts();
+}
+
+void SettingsPage::syncShortcuts()
+{
+    for (auto it = m_keyEdits.cbegin(); it != m_keyEdits.cend(); ++it) {
+        const QSignalBlocker block(it.value());
+        it.value()->setKeySequence(Shortcuts::key(m_ctx.settings, it.key()));
+        m_keyResets.value(it.key())->setEnabled(Shortcuts::isCustomized(m_ctx.settings, it.key()));
+    }
+    bool any = false;
+    for (const Shortcuts::Action& a : Shortcuts::actions())
+        any = any || Shortcuts::isCustomized(m_ctx.settings, a.id);
+    m_shortcutsReset->setEnabled(any);
 }
 
 QWidget* SettingsPage::buildAbout()

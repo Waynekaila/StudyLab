@@ -1,4 +1,5 @@
 #include "ui/reader/ReaderTab.h"
+#include "ui/shell/Shortcuts.h"
 
 #include "ui/reader/ReadingClock.h"
 
@@ -280,8 +281,9 @@ void ReaderTab::initAnnotations()
 
     auto* undo = new QShortcut(QKeySequence::Undo, this, this, [this] { (void)undoDelete(); });
     undo->setContext(Qt::WidgetWithChildrenShortcut);
-    auto* bookmark = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_D), this, this, &ReaderTab::toggleBookmark);
+    auto* bookmark = Shortcuts::create(m_settings, QStringLiteral("reader.bookmark"), this);
     bookmark->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(bookmark, &QShortcut::activated, this, &ReaderTab::toggleBookmark);
     auto* del = new QShortcut(QKeySequence::Delete, this, this, [this] {
         if (m_popup->isVisible() && m_popup->mode() == AnnotationPopup::Mode::Edit)
             deleteAnnotation(m_popupAnnotation);

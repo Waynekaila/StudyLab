@@ -1,12 +1,16 @@
 #pragma once
 
+#include "ui/shell/Navigation.h"
+
 #include <QFrame>
+#include <QHash>
 #include <QList>
 
 class QButtonGroup;
 class QLabel;
 class QPushButton;
 class QToolButton;
+class QVBoxLayout;
 
 namespace studylab::ui {
 
@@ -16,13 +20,13 @@ class ThemeManager;
 class Sidebar : public QFrame {
     Q_OBJECT
 public:
-    struct Entry {
-        QString id;
-        QString icon;
-        QString label;
-    };
+    using Entry = Navigation::Entry;
 
     Sidebar(ThemeManager& theme, const QList<Entry>& entries, QWidget* parent = nullptr);
+
+    /// Remplace les entrées affichées (ordre et entrées masquées choisis dans les paramètres).
+    void setEntries(const QList<Entry>& entries);
+    QStringList entryIds() const;
 
     void setCurrent(const QString& id);
     QString current() const;
@@ -38,12 +42,16 @@ signals:
 
 private:
     void refreshIcons();
+    void rebuild();
 
     ThemeManager& m_theme;
     QList<Entry> m_entries;
     QList<QToolButton*> m_buttons;
     QList<QLabel*> m_badges;
+    QHash<QString, int> m_badgeCounts;
+    QString m_current;
     QButtonGroup* m_group;
+    QVBoxLayout* m_navLayout;
     QLabel* m_logo;
     QPushButton* m_search;
     QLabel* m_footerIcon;

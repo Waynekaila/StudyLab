@@ -1,4 +1,5 @@
 #include "ui/reader/EpubReaderTab.h"
+#include "ui/shell/Shortcuts.h"
 
 #include "ui/reader/ReadingClock.h"
 
@@ -290,18 +291,28 @@ EpubReaderTab::EpubReaderTab(AppContext& ctx, qint64 documentId, QWidget* parent
     initAnnotations();
     connect(&theme, &ThemeManager::themeChanged, this, &EpubReaderTab::refreshIcons);
 
-    auto* find = new QShortcut(QKeySequence::Find, this, this, &EpubReaderTab::showSearch);
+    auto* find = Shortcuts::create(m_settings, QStringLiteral("reader.find"), this);
     find->setContext(Qt::WidgetWithChildrenShortcut);
-    auto* back = new QShortcut(QKeySequence::Back, this, this, [this] {
+    connect(find, &QShortcut::activated, this, &EpubReaderTab::showSearch);
+    auto* back = Shortcuts::create(m_settings, QStringLiteral("reader.back"), this);
+    back->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(back, &QShortcut::activated, this, [this] {
         if (m_view)
             m_view->back();
     });
-    back->setContext(Qt::WidgetWithChildrenShortcut);
-    auto* fwd = new QShortcut(QKeySequence::Forward, this, this, [this] {
+    auto* fwd = Shortcuts::create(m_settings, QStringLiteral("reader.forward"), this);
+    fwd->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(fwd, &QShortcut::activated, this, [this] {
         if (m_view)
             m_view->forward();
     });
-    fwd->setContext(Qt::WidgetWithChildrenShortcut);
+    Shortcuts::onChanged(m_settings, this, [this] {
+        m_back->setToolTip(Shortcuts::withKey(m_settings, tr("Précédent"), QStringLiteral("reader.back")));
+        m_forward->setToolTip(Shortcuts::withKey(m_settings, tr("Suivant"), QStringLiteral("reader.forward")));
+        m_searchButton->setToolTip(Shortcuts::withKey(m_settings, tr("Rechercher dans le livre"), QStringLiteral("reader.find")));
+        m_fullButton->setToolTip(Shortcuts::withKey(m_settings, tr("Plein écran"), QStringLiteral("app.fullScreen")));
+        updateBookmarkButton();
+    });
     auto* bigger = new QShortcut(QKeySequence::ZoomIn, this, this, [this] {
         EpubSettings s = m_display;
         s.fontSize = std::min(200, s.fontSize + 10);
@@ -983,7 +994,8 @@ void EpubReaderTab::updateBookmarkButton()
                                    [this](const AnnotationRecord& r) { return r.id == m_visibleBookmark; });
     const QSignalBlocker block(m_bookmarkButton);
     m_bookmarkButton->setChecked(on);
-    m_bookmarkButton->setToolTip(on ? tr("Retirer le signet (Ctrl+D)") : tr("Signet ici (Ctrl+D)"));
+    m_bookmarkButton->setToolTip(
+        Shortcuts::withKey(m_settings, on ? tr("Retirer le signet") : tr("Signet ici"), QStringLiteral("reader.bookmark")));
 }
 
 void EpubReaderTab::revealAnnotation(qint64 id)

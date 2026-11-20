@@ -1,4 +1,5 @@
 #include "ui/notes/NotesPage.h"
+#include "ui/shell/Shortcuts.h"
 
 #include "core/domain/Document.h"
 
@@ -208,10 +209,12 @@ NotesPage::NotesPage(AppContext& ctx, QWidget* parent) : QWidget(parent), m_ctx(
         m_newButton->setIcon(Icons::get(QStringLiteral("plus"), m_ctx.theme.palette().text2, 18));
     });
 
-    auto* newShortcut = new QShortcut(QKeySequence::New, this, this, [this] { newNote(NoteType::Personal); });
+    auto* newShortcut = Shortcuts::create(m_ctx.settings, QStringLiteral("notes.new"), this);
     newShortcut->setContext(Qt::WidgetWithChildrenShortcut);
-    auto* saveShortcut = new QShortcut(QKeySequence::Save, this, this, [this] { saveNow(); });
+    connect(newShortcut, &QShortcut::activated, this, [this] { newNote(NoteType::Personal); });
+    auto* saveShortcut = Shortcuts::create(m_ctx.settings, QStringLiteral("notes.save"), this);
     saveShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(saveShortcut, &QShortcut::activated, this, [this] { saveNow(); });
 
     const int mode = m_ctx.settings.value(kModeKey, 1).toInt();
     setMode(mode == 0 ? Mode::Source : mode == 2 ? Mode::Preview : Mode::Split);
@@ -249,7 +252,9 @@ void NotesPage::buildNav()
     m_newButton->setObjectName(QStringLiteral("NewNoteButton"));
     m_newButton->setProperty("readerTool", true);
     m_newButton->setIcon(Icons::get(QStringLiteral("plus"), theme.palette().text2, 18));
-    m_newButton->setToolTip(tr("Nouvelle note (Ctrl+N)"));
+    Shortcuts::onChanged(m_ctx.settings, m_newButton, [this] {
+        m_newButton->setToolTip(Shortcuts::withKey(m_ctx.settings, tr("Nouvelle note"), QStringLiteral("notes.new")));
+    });
     m_newButton->setAccessibleName(tr("Nouvelle note"));
     m_newButton->setPopupMode(QToolButton::InstantPopup);
     auto* menu = new QMenu(m_newButton);
