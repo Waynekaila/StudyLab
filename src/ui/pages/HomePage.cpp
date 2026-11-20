@@ -563,7 +563,7 @@ void HomePage::refreshResume()
     QStringList byline;
     if (!d->authors.isEmpty())
         byline << d->authors.join(QStringLiteral(", "));
-    if (d->format == DocumentFormat::Pdf && pos && pos->locator.contains(QStringLiteral("page")) && d->pageCount > 0) {
+    if (isPaged(d->format) && pos && pos->locator.contains(QStringLiteral("page")) && d->pageCount > 0) {
         const int page = pos->locator.value(QStringLiteral("page")).toInt();
         m_resumePosition->setText(tr("Page %1 sur %2 · %3 %").arg(page + 1).arg(d->pageCount).arg(percent)
                                   + QStringLiteral(" · ") + tr("ouvert %1").arg(relativeTime(d->lastOpenedAt)));
@@ -612,7 +612,7 @@ void HomePage::refreshReading()
                 caption << d.authors.first();
             const auto pos = m_ctx.library.readingPosition(d.id);
             const double progress = pos ? pos->progress : d.progress;
-            if (d.format == DocumentFormat::Pdf && pos && pos->locator.contains(QStringLiteral("page")) && d.pageCount > 0)
+            if (isPaged(d.format) && pos && pos->locator.contains(QStringLiteral("page")) && d.pageCount > 0)
                 caption << tr("p. %1 / %2").arg(pos->locator.value(QStringLiteral("page")).toInt() + 1).arg(d.pageCount);
             else
                 caption << tr("%1 %").arg(int(progress * 100 + 0.5));

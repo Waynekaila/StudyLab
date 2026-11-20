@@ -258,7 +258,9 @@ void DocumentDetailPanel::render()
     addField(tr("Langue"), lang.isEmpty() ? r.language : lang.left(1).toUpper() + lang.mid(1));
     QString format = documentFormatLabel(r.format);
     if (r.pageCount > 0)
-        format += QStringLiteral(" · ") + (r.format == DocumentFormat::Pdf
+        format += QStringLiteral(" · ") + (r.format == DocumentFormat::Image
+                                               ? countLabel(r.pageCount, tr("image"), tr("images"))
+                                               : r.format == DocumentFormat::Pdf
                                                ? countLabel(r.pageCount, tr("page"), tr("pages"))
                                                : r.format == DocumentFormat::Epub
                                                ? countLabel(r.pageCount, tr("chapitre"), tr("chapitres"))

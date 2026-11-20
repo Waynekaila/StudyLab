@@ -32,6 +32,12 @@
   soulignements, barrés, zones et notes avec leur commentaire, commentaires de page ou de passage en notes. Le
   fichier de la bibliothèque n'est jamais modifié ; la copie ajoute une révision au PDF d'origine sans réécrire ses
   octets. Lecteur d'objets PDF intégré (tables de références classiques ou en flux, flux d'objets, réparation).
+- **Documents Word et images** (itération V2-6, première partie) : un `.docx` s'importe et s'ouvre dans le lecteur
+  EPUB (titres et sommaire, gras, italique, souligné, barré, exposants et indices, listes imbriquées, tableaux avec
+  cellules fusionnées, liens, images, citations, notes de bas de page ; titre, auteurs et langue des propriétés ;
+  modifications suivies montrées acceptées). Une image (PNG, JPEG, GIF, BMP, WebP, TIFF de plusieurs pages) s'ouvre
+  dans le lecteur PDF, une page par image, à sa taille réelle : zones, notes, signets, zoom, miniatures et OCR
+  (texte reconnu et cherchable) comme pour un scan. Le parcours d'un dossier prend les `.docx` mais pas les images.
 
 ## 0.2.0 — V1 « Relier ses connaissances » (2026-11-20)
 

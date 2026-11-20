@@ -57,13 +57,18 @@ QString documentFormatKey(DocumentFormat f)
         return QStringLiteral("txt");
     case DocumentFormat::Markdown:
         return QStringLiteral("md");
+    case DocumentFormat::Docx:
+        return QStringLiteral("docx");
+    case DocumentFormat::Image:
+        return QStringLiteral("image");
     }
     return QStringLiteral("pdf");
 }
 
 QList<DocumentFormat> allDocumentFormats()
 {
-    return {DocumentFormat::Pdf, DocumentFormat::Epub, DocumentFormat::Txt, DocumentFormat::Markdown};
+    return {DocumentFormat::Pdf,      DocumentFormat::Epub, DocumentFormat::Txt,
+            DocumentFormat::Markdown, DocumentFormat::Docx, DocumentFormat::Image};
 }
 
 std::optional<DocumentFormat> documentFormatFromKey(const QString& key)
@@ -76,6 +81,10 @@ std::optional<DocumentFormat> documentFormatFromKey(const QString& key)
         return DocumentFormat::Txt;
     if (key == QLatin1String("md"))
         return DocumentFormat::Markdown;
+    if (key == QLatin1String("docx"))
+        return DocumentFormat::Docx;
+    if (key == QLatin1String("image"))
+        return DocumentFormat::Image;
     return std::nullopt;
 }
 
@@ -90,6 +99,10 @@ QString documentFormatLabel(DocumentFormat f)
         return QStringLiteral("TXT");
     case DocumentFormat::Markdown:
         return QStringLiteral("Markdown");
+    case DocumentFormat::Docx:
+        return QStringLiteral("DOCX");
+    case DocumentFormat::Image:
+        return QStringLiteral("Image");
     }
     return QStringLiteral("PDF");
 }

@@ -9,7 +9,7 @@
 namespace studylab {
 
 enum class ReadingStatus { ToRead, Reading, Paused, Finished, ToReread, Archived };
-enum class DocumentFormat { Pdf, Epub, Txt, Markdown };
+enum class DocumentFormat { Pdf, Epub, Txt, Markdown, Docx, Image };
 enum class StorageMode { Managed, Linked };
 
 QString readingStatusKey(ReadingStatus s);            ///< Valeur stockée : "to_read", "reading"…
@@ -17,12 +17,15 @@ std::optional<ReadingStatus> readingStatusFromKey(const QString& key);
 QString readingStatusLabel(ReadingStatus s);          ///< Libellé affiché : « À lire », « En cours »…
 QList<ReadingStatus> allReadingStatuses();
 
-QString documentFormatKey(DocumentFormat f);          ///< "pdf", "epub", "txt", "md"
+QString documentFormatKey(DocumentFormat f);          ///< "pdf", "epub", "txt", "md", "docx", "image"
 std::optional<DocumentFormat> documentFormatFromKey(const QString& key);
-QString documentFormatLabel(DocumentFormat f);        ///< "PDF", "EPUB", "TXT", "Markdown"
+QString documentFormatLabel(DocumentFormat f);        ///< "PDF", "EPUB", "TXT", "Markdown", "DOCX", "Image"
 QList<DocumentFormat> allDocumentFormats();
-/// Texte recomposable (EPUB, TXT, Markdown) : lu par le lecteur EPUB, repéré par section et CFI.
-inline bool isReflowable(DocumentFormat f) { return f != DocumentFormat::Pdf; }
+/// Document à pages fixes (PDF, image) : lu par le lecteur PDF, repéré par page et rectangles. Une image est
+/// affichée à travers un PDF d'une page par image, construit à la demande (LibraryService::readableFile).
+inline bool isPaged(DocumentFormat f) { return f == DocumentFormat::Pdf || f == DocumentFormat::Image; }
+/// Texte recomposable (EPUB, TXT, Markdown, DOCX) : lu par le lecteur EPUB, repéré par section et CFI.
+inline bool isReflowable(DocumentFormat f) { return !isPaged(f); }
 
 /// Document de la bibliothèque, tel que stocké dans la table « documents » (+ auteurs et tags).
 struct DocumentRecord {

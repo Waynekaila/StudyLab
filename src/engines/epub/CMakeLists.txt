@@ -3,6 +3,8 @@
 add_library(studylab_epub STATIC
     EpubPackage.h EpubPackage.cpp
     EpubTextExtractor.h EpubTextExtractor.cpp
+    BookWriter.h BookWriter.cpp
+    DocxBook.h DocxBook.cpp
     TextBook.h TextBook.cpp)
 target_link_libraries(studylab_epub
     PUBLIC studylab_engines_document Qt6::Gui

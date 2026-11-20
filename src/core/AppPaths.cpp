@@ -23,6 +23,7 @@ QString AppPaths::libraryDir() const { return m_dataDir + QStringLiteral("/libra
 QString AppPaths::coversDir() const { return m_dataDir + QStringLiteral("/covers"); }
 QString AppPaths::attachmentsDir() const { return m_dataDir + QStringLiteral("/attachments"); }
 QString AppPaths::backupsDir() const { return m_dataDir + QStringLiteral("/backups"); }
+QString AppPaths::cacheDir() const { return m_dataDir + QStringLiteral("/cache"); }
 QString AppPaths::runningMarkerFile() const { return m_dataDir + QStringLiteral("/.running"); }
 
 bool AppPaths::ensureCreated() const

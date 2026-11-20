@@ -4,11 +4,15 @@
 
 #include <QBuffer>
 #include <QFont>
+#include <QFile>
 #include <QFontDatabase>
 #include <QImage>
+#include <QImageWriter>
 #include <QPageSize>
 #include <QPainter>
 #include <QPdfWriter>
+
+#include <algorithm>
 
 namespace studylab::test {
 
@@ -168,6 +172,157 @@ bool writeEpub(const QString& path, const EpubSpec& spec)
                             .arg(spec.epub3 ? QStringLiteral("3.0") : QStringLiteral("2.0"), meta, manifest, spine,
                                  !spec.epub3 && !spec.tocTitles.isEmpty() ? QStringLiteral(" toc=\"ncx\"") : QString());
     zip.addFile(QStringLiteral("OEBPS/content.opf"), opf.toUtf8());
+    zip.close();
+    return zip.status() == QZipWriter::NoError;
+}
+
+bool writeImage(const QString& path, const QString& text, int width, int height, int dpi)
+{
+    QImage img(width, height, QImage::Format_RGB32);
+    img.fill(QColor(250, 248, 240));
+    {
+        QPainter p(&img);
+        QFont font = fixtureFont();
+        font.setPixelSize(std::max(12, height / 12));
+        p.setFont(font);
+        p.setPen(Qt::black);
+        p.drawText(img.rect().adjusted(width / 12, height / 12, -width / 12, -height / 12),
+                   Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap, text);
+    }
+    img.setDotsPerMeterX(qRound(dpi / 0.0254));
+    img.setDotsPerMeterY(qRound(dpi / 0.0254));
+    QImageWriter writer(path);
+    return writer.write(img);
+}
+
+bool writeDocx(const QString& path, const QString& bodyText)
+{
+    const QString ns = QStringLiteral(
+        "xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" "
+        "xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" "
+        "xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" "
+        "xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" "
+        "xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"");
+    const auto para = [](const QString& style, const QString& runs, const QString& extraPr = {}) {
+        QString pr;
+        if (!style.isEmpty() || !extraPr.isEmpty())
+            pr = QStringLiteral("<w:pPr>%1%2</w:pPr>")
+                     .arg(style.isEmpty() ? QString() : QStringLiteral("<w:pStyle w:val=\"%1\"/>").arg(style), extraPr);
+        return QStringLiteral("<w:p>%1%2</w:p>").arg(pr, runs);
+    };
+    const auto run = [](const QString& text, const QString& rpr = {}) {
+        return QStringLiteral("<w:r>%1<w:t xml:space=\"preserve\">%2</w:t></w:r>")
+            .arg(rpr.isEmpty() ? QString() : QStringLiteral("<w:rPr>%1</w:rPr>").arg(rpr), text);
+    };
+    const auto item = [&](const QString& text, int num, int lvl) {
+        return para(QStringLiteral("ListParagraph"), run(text),
+                    QStringLiteral("<w:numPr><w:ilvl w:val=\"%1\"/><w:numId w:val=\"%2\"/></w:numPr>").arg(lvl).arg(num));
+    };
+    const auto cell = [](const QString& text, const QString& tcPr = {}) {
+        return QStringLiteral("<w:tc>%1<w:p><w:r><w:t>%2</w:t></w:r></w:p></w:tc>")
+            .arg(tcPr.isEmpty() ? QString() : QStringLiteral("<w:tcPr>%1</w:tcPr>").arg(tcPr), text);
+    };
+
+    QString body;
+    body += para(QStringLiteral("Title"), run(QStringLiteral("Physique des fluides")));
+    body += para({}, run(QStringLiteral("Texte ")) + run(QStringLiteral("gras"), QStringLiteral("<w:b/>")) + run(QStringLiteral(", ")) +
+                         run(QStringLiteral("italique"), QStringLiteral("<w:i/>")) + run(QStringLiteral(", ")) +
+                         run(QStringLiteral("souligné"), QStringLiteral("<w:u w:val=\"single\"/>")) + run(QStringLiteral(", ")) +
+                         run(QStringLiteral("barré"), QStringLiteral("<w:strike/>")) + run(QStringLiteral(", m")) +
+                         run(QStringLiteral("2"), QStringLiteral("<w:vertAlign w:val=\"superscript\"/>")) + run(QStringLiteral(", H")) +
+                         run(QStringLiteral("2"), QStringLiteral("<w:vertAlign w:val=\"subscript\"/>")) + run(QStringLiteral("O, pas gras"), QStringLiteral("<w:b w:val=\"0\"/>")) +
+                         run(QStringLiteral(" et ")) +
+                         QStringLiteral("<w:hyperlink r:id=\"rIdLink\"><w:r><w:t>un lien</w:t></w:r></w:hyperlink>") +
+                         run(QStringLiteral(" &amp; &lt;fin&gt;.")));
+    body += para(QStringLiteral("Heading1"), run(QStringLiteral("Statique")));
+    body += para({}, run(bodyText) + QStringLiteral("<w:r><w:footnoteReference w:id=\"1\"/></w:r>") +
+                         QStringLiteral("<w:del w:id=\"9\"><w:r><w:delText>supprimé</w:delText></w:r></w:del>") +
+                         QStringLiteral("<w:ins w:id=\"10\"><w:r><w:t xml:space=\"preserve\"> Ajouté.</w:t></w:r></w:ins>"));
+    body += item(QStringLiteral("Pascal"), 1, 0);
+    body += item(QStringLiteral("Premier point"), 1, 1);
+    body += item(QStringLiteral("Second point"), 1, 1);
+    body += item(QStringLiteral("Archimède"), 1, 0);
+    body += para(QStringLiteral("Heading2"), run(QStringLiteral("Unités")));
+    body += QStringLiteral("<w:tbl><w:tblPr/><w:tr>%1%2</w:tr><w:tr>%3%4</w:tr><w:tr>%5</w:tr></w:tbl>")
+                .arg(cell(QStringLiteral("Grandeur"), QStringLiteral("<w:vMerge w:val=\"restart\"/>")), cell(QStringLiteral("Pa")),
+                     cell(QString(), QStringLiteral("<w:vMerge/>")), cell(QStringLiteral("bar")),
+                     cell(QStringLiteral("Deux colonnes"), QStringLiteral("<w:gridSpan w:val=\"2\"/>")));
+    body += para(QStringLiteral("Heading1"), run(QStringLiteral("Dynamique")));
+    body += para(QStringLiteral("Quote"), run(QStringLiteral("Tout corps plongé dans un fluide…")));
+    body += para({}, QStringLiteral("<w:r><w:drawing><wp:inline><wp:docPr id=\"1\" name=\"Image 1\" descr=\"Schéma du tube\"/>"
+                                    "<a:graphic><a:graphicData><pic:pic><pic:blipFill><a:blip r:embed=\"rIdImg\"/></pic:blipFill>"
+                                    "</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>"));
+    body += item(QStringLiteral("Étape un"), 2, 0);
+    body += item(QStringLiteral("Étape deux"), 2, 0);
+    body += para({}, run(QStringLiteral("Bernoulli")) + QStringLiteral("<w:r><w:br/></w:r>") + run(QStringLiteral("et Venturi.")));
+
+    const QString document = QStringLiteral("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
+                                            "<w:document %1><w:body>%2<w:sectPr/></w:body></w:document>")
+                                 .arg(ns, body);
+    const QString styles = QStringLiteral(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<w:styles %1>"
+        "<w:style w:type=\"paragraph\" w:styleId=\"Normal\"><w:name w:val=\"Normal\"/></w:style>"
+        "<w:style w:type=\"paragraph\" w:styleId=\"Title\"><w:name w:val=\"Title\"/></w:style>"
+        "<w:style w:type=\"paragraph\" w:styleId=\"Heading1\"><w:name w:val=\"heading 1\"/><w:pPr><w:outlineLvl w:val=\"0\"/></w:pPr></w:style>"
+        "<w:style w:type=\"paragraph\" w:styleId=\"Heading2\"><w:name w:val=\"heading 2\"/><w:basedOn w:val=\"Heading1\"/></w:style>"
+        "<w:style w:type=\"paragraph\" w:styleId=\"Quote\"><w:name w:val=\"Quote\"/></w:style>"
+        "<w:style w:type=\"paragraph\" w:styleId=\"ListParagraph\"><w:name w:val=\"List Paragraph\"/></w:style>"
+        "</w:styles>").arg(ns);
+    const QString numbering = QStringLiteral(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<w:numbering %1>"
+        "<w:abstractNum w:abstractNumId=\"0\"><w:lvl w:ilvl=\"0\"><w:numFmt w:val=\"bullet\"/></w:lvl>"
+        "<w:lvl w:ilvl=\"1\"><w:numFmt w:val=\"decimal\"/></w:lvl></w:abstractNum>"
+        "<w:abstractNum w:abstractNumId=\"1\"><w:lvl w:ilvl=\"0\"><w:numFmt w:val=\"decimal\"/></w:lvl></w:abstractNum>"
+        "<w:num w:numId=\"1\"><w:abstractNumId w:val=\"0\"/></w:num>"
+        "<w:num w:numId=\"2\"><w:abstractNumId w:val=\"1\"/></w:num>"
+        "</w:numbering>").arg(ns);
+    const QString footnotes = QStringLiteral(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<w:footnotes %1>"
+        "<w:footnote w:type=\"separator\" w:id=\"-1\"><w:p><w:r><w:separator/></w:r></w:p></w:footnote>"
+        "<w:footnote w:id=\"1\"><w:p><w:r><w:t>Blaise Pascal, 1648.</w:t></w:r></w:p></w:footnote>"
+        "</w:footnotes>").arg(ns);
+    const QByteArray rels =
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
+        "<Relationship Id=\"rIdLink\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink\" "
+        "Target=\"https://fr.wikipedia.org/wiki/Pression\" TargetMode=\"External\"/>"
+        "<Relationship Id=\"rIdImg\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" "
+        "Target=\"media/image1.png\"/>"
+        "</Relationships>";
+    const QByteArray core =
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<cp:coreProperties xmlns:cp=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\" "
+        "xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
+        "<dc:title>Physique des fluides</dc:title><dc:creator>Ada Lovelace; Blaise Pascal</dc:creator>"
+        "<dc:language>fr-FR</dc:language></cp:coreProperties>";
+    const QByteArray contentTypes =
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">"
+        "<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>"
+        "<Default Extension=\"xml\" ContentType=\"application/xml\"/><Default Extension=\"png\" ContentType=\"image/png\"/>"
+        "<Override PartName=\"/word/document.xml\" "
+        "ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/></Types>";
+
+    QImage img(80, 40, QImage::Format_RGB32);
+    img.fill(QColor(30, 120, 200));
+    QByteArray png;
+    QBuffer buf(&png);
+    buf.open(QIODevice::WriteOnly);
+    img.save(&buf, "PNG");
+
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly))
+        return false;
+    QZipWriter zip(&file);
+    zip.setCompressionPolicy(QZipWriter::AutoCompress);
+    zip.addFile(QStringLiteral("[Content_Types].xml"), contentTypes);
+    zip.addFile(QStringLiteral("docProps/core.xml"), core);
+    zip.addFile(QStringLiteral("word/document.xml"), document.toUtf8());
+    zip.addFile(QStringLiteral("word/styles.xml"), styles.toUtf8());
+    zip.addFile(QStringLiteral("word/numbering.xml"), numbering.toUtf8());
+    zip.addFile(QStringLiteral("word/footnotes.xml"), footnotes.toUtf8());
+    zip.addFile(QStringLiteral("word/_rels/document.xml.rels"), rels);
+    zip.addFile(QStringLiteral("word/media/image1.png"), png);
     zip.close();
     return zip.status() == QZipWriter::NoError;
 }

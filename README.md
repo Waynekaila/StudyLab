@@ -13,7 +13,7 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | 1 · Conception | Vision, architecture, choix des bibliothèques, schéma SQLite, maquettes, plan | ✅ Terminée — voir [`docs/design/`](docs/design/README.md) |
 | 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | ✅ Terminée — **version 0.1.0** (7 itérations) |
 | 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | ✅ Terminée — **version 0.2.0** (7 itérations) |
-| 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | 🚧 En cours — V2-1 à V2-5 faites (cartes, FSRS, fiches de révision, tableau de bord et Activité, annotations PDF échangées) |
+| 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | 🚧 En cours — V2-1 à V2-5 faites et V2-6 en cours (cartes, FSRS, fiches de révision, tableau de bord et Activité, annotations PDF échangées, documents Word et images) |
 | 5 · Finalisation | Optimisation, packaging, documentation | — |
 
 ### Ce qui fonctionne aujourd'hui (version 0.2 : MVP et V1)
@@ -77,6 +77,12 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 - **Textes et fichiers Markdown** (V1) : un `.txt` ou un `.md` s'importe dans la bibliothèque comme un livre et
   s'ouvre dans le lecteur EPUB : sommaire tiré des titres, mise en forme (listes, tableaux, code, citations, images
   locales), surlignages, commentaires, recherche et export comme pour un EPUB. Front matter `title:` / `author:` repris.
+- **Documents Word** (V2) : un `.docx` s'ouvre de la même façon, en lecture seule : titres et sommaire, mise en
+  forme, listes, tableaux, liens, images, citations et notes de bas de page. La mise en page (colonnes, en-têtes,
+  pieds de page), les commentaires Word et les objets incorporés ne sont pas repris.
+- **Images** (V2) : une photo de tableau, un schéma ou un scan (PNG, JPEG, GIF, BMP, WebP, TIFF multipage)
+  s'importe comme un document de pages et s'ouvre dans le lecteur PDF : zones et notes sur l'image, zoom,
+  miniatures, et OCR pour retrouver le texte dans la recherche.
 - **Export PDF et HTML des notes** (V1) : clic droit sur une note, un dossier de notes ou une matière › « Exporter en
   PDF… » ou « Exporter en HTML… ». Rendu identique à l'aperçu (formules, images, citations et bibliographie), sur fond
   clair ; PDF A4 avec une note par page ; page HTML autonome (styles, polices des formules et images incluses).

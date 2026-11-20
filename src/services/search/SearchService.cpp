@@ -215,7 +215,7 @@ Result<SearchResults> SearchService::search(const QString& text, int perGroup)
             h.unit = int(s.columnInt64(2));
             h.documentTitle = s.columnText(3);
             h.format = formatOf(s.columnText(4));
-            h.location = h.format == DocumentFormat::Pdf
+            h.location = isPaged(h.format)
                              ? QCoreApplication::translate("SearchService", "p. %1").arg(h.unit + 1)
                              : QCoreApplication::translate("SearchService", "section %1").arg(h.unit + 1);
             h.snippet = s.columnText(5).simplified();

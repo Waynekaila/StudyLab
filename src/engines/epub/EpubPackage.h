@@ -36,7 +36,7 @@ struct EpubNavPoint {
 class EpubPackage {
 public:
     /// Ouvre et vérifie le paquet (type MIME, container.xml, OPF, absence de DRM). Un fichier .txt ou .md est
-    /// d'abord mis en forme de livre, en mémoire (TextBook).
+    /// d'abord mis en forme de livre, en mémoire (TextBook) ; un .docx aussi (DocxBook).
     static Result<std::unique_ptr<EpubPackage>> open(const QString& path);
     ~EpubPackage();
     EpubPackage(const EpubPackage&) = delete;

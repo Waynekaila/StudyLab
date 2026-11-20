@@ -214,6 +214,57 @@ private slots:
         QCOMPARE(textIndexed(id), 2);
         QCOMPARE(repo.unitsWithText(id).value().size(), 2);
     }
+
+    void imagesAndWordDocuments()
+    {
+        // Image : texte vide à l'indexation, puis OCR direct de l'image. Word : texte indexé sans OCR.
+        const QString image = QStringLiteral("tableau.png");
+        QVERIFY(writeImage(QDir(libraryDir()).filePath(image), QStringLiteral("Le nombre de Reynolds caractérise l'écoulement."),
+                           1600, 600, 150));
+        DocumentRecord d;
+        d.title = QStringLiteral("Tableau");
+        d.format = DocumentFormat::Image;
+        d.filePath = image;
+        d.fileHash = QStringLiteral("abc1");
+        d.pageCount = 1;
+        DocumentRepository docs(*m_db);
+        QVERIFY(docs.insert(d).ok());
+        QVERIFY(writeDocx(QDir(libraryDir()).filePath(QStringLiteral("fluides.docx"))));
+        DocumentRecord w;
+        w.title = QStringLiteral("Physique des fluides");
+        w.format = DocumentFormat::Docx;
+        w.filePath = QStringLiteral("fluides.docx");
+        w.fileHash = QStringLiteral("abc2");
+        w.pageCount = 3;
+        QVERIFY(docs.insert(w).ok());
+        indexNativeText();
+        QCOMPARE(textIndexed(d.id), 1);  // en attente d'OCR
+        QCOMPARE(textIndexed(w.id), 1);
+        SearchService search(*m_db);
+        auto hits = search.search(QStringLiteral("pression surface"));
+        QVERIFY(hits.ok());
+        QCOMPARE(hits.value().passages.size(), 1);
+        QCOMPARE(hits.value().passages.first().documentId, w.id);
+        QCOMPARE(hits.value().passages.first().unit, 1);  // section « Statique »
+
+        PageTextRepository repo(*m_db);
+        auto pending = repo.ocrPending();
+        QVERIFY(pending.ok());
+        QCOMPARE(pending.value().size(), 1);
+        QCOMPARE(pending.value().first().id, d.id);
+        if (!TesseractOcr::isAvailable())
+            QSKIP("Tesseract absent : OCR des images non vérifié");
+        OcrIndexer ocr(*m_db, libraryDir());
+        QSignalSpy done(&ocr, &OcrIndexer::finished);
+        ocr.setEnabled(true);
+        ocr.schedule(0);
+        QVERIFY(done.wait(120000));
+        QCOMPARE(textIndexed(d.id), 2);
+        QVERIFY2(repo.text(d.id, 0).value().contains(QStringLiteral("Reynolds")), qPrintable(repo.text(d.id, 0).value()));
+        hits = search.search(QStringLiteral("reynolds"));
+        QCOMPARE(hits.value().passages.size(), 1);
+        QCOMPARE(hits.value().passages.first().documentId, d.id);
+    }
 };
 
 QTEST_MAIN(TstOcr)

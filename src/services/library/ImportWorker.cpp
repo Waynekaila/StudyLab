@@ -1,5 +1,7 @@
 #include "services/library/ImportWorker.h"
 
+#include "engines/pdf/ImagePages.h"
+
 #include "core/Uuid.h"
 #include "engines/epub/EpubPackage.h"
 #include "engines/pdf/PdfMetadataReader.h"
@@ -72,9 +74,12 @@ QStringList expandPaths(const QStringList& inputs)
     return out;
 }
 
-QString managedRelativePath(const QString& sha256, DocumentFormat format)
+QString managedRelativePath(const QString& sha256, DocumentFormat format, const QString& sourceSuffix)
 {
-    return sha256.left(2) + QLatin1Char('/') + sha256 + QLatin1Char('.') + documentFormatKey(format);
+    // Une image garde son extension (png, jpg…) : les modules d'image s'en servent et l'utilisateur la reconnaît.
+    const QString ext = format == DocumentFormat::Image && !sourceSuffix.isEmpty() ? sourceSuffix.toLower()
+                                                                                    : documentFormatKey(format);
+    return sha256.left(2) + QLatin1Char('/') + sha256 + QLatin1Char('.') + ext;
 }
 
 ImportCandidate prepare(const QString& path, const AppPaths& paths, StorageMode mode,
@@ -97,7 +102,7 @@ ImportCandidate prepare(const QString& path, const AppPaths& paths, StorageMode 
     }
     const auto format = FileInspector::detectFormat(path);
     if (!format) {
-        c.error = QStringLiteral("Format non pris en charge (PDF, EPUB, TXT et Markdown).");
+        c.error = QStringLiteral("Format non pris en charge (PDF, EPUB, DOCX, TXT, Markdown et images).");
         return c;
     }
     auto hash = FileInspector::sha256(path);
@@ -114,6 +119,13 @@ ImportCandidate prepare(const QString& path, const AppPaths& paths, StorageMode 
     DocumentMetadata md;
     if (*format == DocumentFormat::Pdf) {
         auto r = PdfMetadataReader::read(path);
+        if (!r) {
+            c.error = r.error().message;
+            return c;
+        }
+        md = std::move(r.value());
+    } else if (*format == DocumentFormat::Image) {
+        auto r = ImagePages::metadata(path);
         if (!r) {
             c.error = r.error().message;
             return c;
@@ -152,7 +164,7 @@ ImportCandidate prepare(const QString& path, const AppPaths& paths, StorageMode 
             c.error = QStringLiteral("Espace disque insuffisant pour copier ce fichier.");
             return c;
         }
-        r.filePath = managedRelativePath(r.fileHash, r.format);
+        r.filePath = managedRelativePath(r.fileHash, r.format, fi.suffix());
         if (auto copied = copyAtomically(path, QDir(paths.libraryDir()).filePath(r.filePath)); !copied) {
             c.error = copied.error().message;
             return c;

@@ -1,5 +1,7 @@
 #include "services/search/TextIndexer.h"
 
+#include "engines/pdf/ImagePages.h"
+
 #include "core/Log.h"
 #include "engines/epub/EpubTextExtractor.h"
 #include "engines/pdf/PdfTextExtractor.h"
@@ -59,8 +61,16 @@ Result<QStringList> TextIndexer::extract(const QString& path, const QString& for
 {
     if (format == QLatin1String("pdf"))
         return PdfTextExtractor::extract(path, cancel);
-    if (format == QLatin1String("epub") || format == QLatin1String("txt") || format == QLatin1String("md"))
-        return EpubTextExtractor::extract(path, cancel);  // TXT / Markdown : mêmes sections que le lecteur
+    if (format == QLatin1String("epub") || format == QLatin1String("txt") || format == QLatin1String("md") ||
+        format == QLatin1String("docx"))
+        return EpubTextExtractor::extract(path, cancel);  // TXT / Markdown / DOCX : mêmes sections que le lecteur
+    if (format == QLatin1String("image")) {
+        // Pas de texte : une page vide par image, que l'OCR remplira.
+        const int count = ImagePages::pageCount(path);
+        if (count <= 0)
+            return Error::make(Error::Code::Io, QStringLiteral("Image illisible : %1").arg(path));
+        return QStringList(count, QString());
+    }
     return Error::make(Error::Code::InvalidArgument, QStringLiteral("Format non pris en charge : %1").arg(format));
 }
 
