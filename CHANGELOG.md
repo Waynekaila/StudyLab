@@ -12,6 +12,10 @@
   difficulté par carte, rétention visée réglable), au choix de SM-2 pour chaque paquet ; les cartes déjà revues
   passent de l'un à l'autre sans perdre leur échéance. Réglages du paquet : nom, matière, limites quotidiennes,
   étapes d'apprentissage et après un oubli (« 1 10 », « 10 1h »), intervalle maximal. Historique d'une carte.
+- **Fiches de révision** (itération V2-3) : brouillon de note généré pour une matière (sous-matières comprises)
+  depuis ses passages annotés, ses notes « Concept », les formules de ses notes et commentaires, ses questions non
+  résolues et les cartes de ses paquets ; chaque élément renvoie à son origine. Rubriques au choix, fiche rattachée
+  à la matière, bandeau « brouillon à relire » et « Marquer comme relue » (annulable) dans Mes notes.
 
 ## 0.2.0 — V1 « Relier ses connaissances » (2026-11-20)
 

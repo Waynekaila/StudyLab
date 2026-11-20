@@ -6,6 +6,12 @@
 #include "ui/reader/MarkdownView.h"
 #include "ui/study/CardEditorDialog.h"
 #include "ui/study/DeckSettingsDialog.h"
+#include "ui/study/RevisionSheetDialog.h"
+#include "services/annotations/AnnotationService.h"
+#include "services/comments/CommentService.h"
+#include "services/library/LibraryService.h"
+#include "services/notes/NoteService.h"
+#include "services/organize/OrganizeService.h"
 #include "ui/theme/Icons.h"
 #include "ui/theme/ThemeManager.h"
 
@@ -332,6 +338,13 @@ void RevisionsPage::buildNav()
     tv->addWidget(m_chart);
     tv->addWidget(makeLabel(tr("7 derniers jours"), "faint", today));
     v->addWidget(today);
+
+    m_sheet = new QPushButton(Icons::get(QStringLiteral("note"), theme.palette().text2, 16),
+                              tr("Générer une fiche de révision"), nav);
+    m_sheet->setObjectName(QStringLiteral("GenerateSheet"));
+    m_sheet->setToolTip(tr("Brouillon de note tiré des annotations et des notes d'une matière, à relire"));
+    connect(m_sheet, &QPushButton::clicked, this, [this] { openSheetDialog(); });
+    v->addWidget(m_sheet);
     layout()->addWidget(nav);
 }
 
@@ -844,6 +857,100 @@ CardHistoryDialog* RevisionsPage::showHistory(qint64 cardId)
     dlg->setAttribute(Qt::WA_DeleteOnClose);
     dlg->open();
     return dlg;
+}
+
+RevisionSheetDialog* RevisionsPage::openSheetDialog()
+{
+    qint64 subject = 0;
+    if (auto summary = m_study.deckSummary(m_deckId))
+        subject = summary.value().deck.subjectId;
+    auto* dlg = new RevisionSheetDialog(m_ctx, subject, this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    connect(dlg, &QDialog::accepted, this, [this, dlg] {
+        if (generateSheet(dlg->subjectId(), dlg->options()) == 0)
+            QMessageBox::warning(this, tr("Fiche de révision"), tr("La fiche n'a pas pu être créée."));
+    });
+    dlg->open();
+    return dlg;
+}
+
+NoteDrafts::SheetMaterial RevisionsPage::sheetMaterial(qint64 subjectId)
+{
+    NoteDrafts::SheetMaterial m;
+    m.date = m_study.now().toLocalTime().date();
+    auto subjects = m_ctx.organize.subjects();
+    if (!subjects)
+        return m;
+    m.subject = m_ctx.organize.subjectPath(subjectId, subjects.value());
+    if (auto docs = m_ctx.organize.subjectItems(subjectId, OrganizeService::Entity::Document)) {
+        for (qint64 id : docs.value()) {
+            auto doc = m_ctx.library.document(id);
+            if (!doc)
+                continue;
+            NoteDrafts::SheetDocument sd;
+            sd.doc = doc.value();
+            if (auto a = m_ctx.annotations.list(id))
+                sd.annotations = a.value();
+            if (auto c = m_ctx.comments.list(id))
+                sd.comments = c.value();
+            m.documents << sd;
+        }
+        std::sort(m.documents.begin(), m.documents.end(), [](const auto& a, const auto& b) {
+            return QString::localeAwareCompare(a.doc.title, b.doc.title) < 0;
+        });
+    }
+    if (auto notes = m_ctx.organize.subjectItems(subjectId, OrganizeService::Entity::Note)) {
+        for (qint64 id : notes.value()) {
+            if (auto n = m_ctx.notes.find(id))
+                m.notes << n.value();
+        }
+        std::sort(m.notes.begin(), m.notes.end(), [](const NoteRecord& a, const NoteRecord& b) {
+            return QString::localeAwareCompare(a.title, b.title) < 0;
+        });
+    }
+    // Questions des cartes des paquets de la matière (et de ses sous-matières) ; trous masqués.
+    const QList<qint64> scope = m_ctx.organize.withDescendants(subjectId, subjects.value());
+    static const QRegularExpression cloze(QStringLiteral("\\{\\{c\\d+::.*?\\}\\}"));
+    if (auto decks = m_study.decks()) {
+        for (const DeckSummary& d : decks.value()) {
+            if (!scope.contains(d.deck.subjectId))
+                continue;
+            auto cards = m_study.cards(d.deck.id);
+            if (!cards)
+                continue;
+            for (const db::CardRow& row : cards.value()) {
+                const Card& c = row.card;
+                if (c.suspended || c.type == CardType::Reversed || m.cardQuestions.size() >= 40)
+                    continue;
+                QString q = c.front;
+                if (c.type == CardType::Cloze)
+                    q.replace(cloze, QStringLiteral("[…]"));
+                if (!m.cardQuestions.contains(q.simplified()))
+                    m.cardQuestions << q.simplified();
+            }
+        }
+    }
+    return m;
+}
+
+qint64 RevisionsPage::generateSheet(qint64 subjectId, const NoteDrafts::SheetOptions& options)
+{
+    if (subjectId <= 0)
+        return 0;
+    const NoteDrafts::SheetMaterial material = sheetMaterial(subjectId);
+    if (material.subject.isEmpty())
+        return 0;
+    const NoteDraft draft = NoteDrafts::revisionSheet(material, options);
+    QList<NoteSourceRef> sources;
+    for (const NoteDrafts::SheetDocument& sd : material.documents)
+        sources << NoteSourceRef{QStringLiteral("document"), sd.doc.id};
+    auto note = m_ctx.notes.createDerived(draft.title, draft.type, draft.folder, draft.body, sources);
+    if (!note)
+        return 0;
+    // La fiche appartient à la matière : elle apparaît sur sa page et dans ses collections.
+    (void)m_ctx.organize.attach(subjectId, OrganizeService::Entity::Note, note.value().id);
+    emit noteCreated(note.value().id);
+    return note.value().id;
 }
 
 bool RevisionsPage::setCardSuspended(qint64 cardId, bool suspended)

@@ -146,6 +146,7 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
     addPage(QStringLiteral("revisions"), revisions);
     connect(revisions, &RevisionsPage::openDocumentRequested, this, openDoc);
     connect(revisions, &RevisionsPage::openNoteRequested, this, openNote);
+    connect(revisions, &RevisionsPage::noteCreated, this, openNote);
     connect(revisions, &RevisionsPage::openItemRequested, this, [this, reader](qint64 doc, bool comment, qint64 item) {
         navigateTo(QStringLiteral("reader"));
         reader->openItem(doc, comment, item);

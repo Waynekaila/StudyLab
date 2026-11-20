@@ -2,6 +2,7 @@
 
 #include "core/domain/Card.h"
 #include "data/repositories/StudyRepository.h"
+#include "services/notes/NoteDrafts.h"
 #include "ui/shell/AppContext.h"
 
 #include <QElapsedTimer>
@@ -26,6 +27,7 @@ namespace studylab::ui {
 class CardEditorDialog;
 class CardHistoryDialog;
 class DeckSettingsDialog;
+class RevisionSheetDialog;
 class DayChart;
 class MarkdownView;
 
@@ -55,6 +57,14 @@ public:
     bool setCardSuspended(qint64 cardId, bool suspended);
     bool removeCard(qint64 cardId);
 
+    // Fiches de révision (V2-3)
+    /// Fenêtre « Générer une fiche de révision » (non bloquante), matière du paquet affiché proposée.
+    RevisionSheetDialog* openSheetDialog();
+    /// Ce que la fiche de la matière reprendrait (documents, passages, notes, questions des cartes).
+    NoteDrafts::SheetMaterial sheetMaterial(qint64 subjectId);
+    /// Crée le brouillon de fiche et émet noteCreated ; 0 en cas d'échec.
+    qint64 generateSheet(qint64 subjectId, const NoteDrafts::SheetOptions& options = {});
+
     // Séance
     /// Commence la séance du paquet affiché ; false s'il n'y a rien à voir.
     bool startSession();
@@ -70,6 +80,7 @@ public:
     QListWidget* deckList() const { return m_deckList; }
     QPushButton* startButton() const { return m_start; }
     QPushButton* addCardButton() const { return m_addCard; }
+    QPushButton* sheetButton() const { return m_sheet; }
     QPushButton* settingsButton() const { return m_settings; }
     QLabel* deckInfo() const { return m_deckInfo; }
     QTreeWidget* cardList() const { return m_cards; }
@@ -92,6 +103,8 @@ signals:
     void openItemRequested(qint64 documentId, bool comment, qint64 itemId);
     void openDocumentRequested(qint64 documentId);
     void openNoteRequested(qint64 noteId);
+    /// Fiche de révision générée : l'ouvrir dans l'espace de notes.
+    void noteCreated(qint64 noteId);
 
 protected:
     void showEvent(QShowEvent* event) override;
@@ -143,6 +156,7 @@ private:
     QPushButton* m_start = nullptr;
     QPushButton* m_addCard = nullptr;
     QPushButton* m_settings = nullptr;
+    QPushButton* m_sheet = nullptr;
     QLabel* m_cardsEmpty = nullptr;
     QTreeWidget* m_cards = nullptr;
     QLabel* m_sessionDeck = nullptr;

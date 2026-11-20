@@ -3,6 +3,7 @@
 #include "core/domain/Document.h"
 
 #include "core/domain/Comment.h"
+#include "services/notes/NoteDrafts.h"
 #include "services/notes/NoteService.h"
 #include "services/organize/OrganizeService.h"
 #include "services/settings/SettingsService.h"
@@ -416,6 +417,25 @@ void NotesPage::buildEditor()
     v->addWidget(bar);
     v->addWidget(makeSeparator(m_editorPane));
 
+    // Fiche de révision générée (V2-3) : brouillon à relire avant de la considérer comme sienne.
+    m_draftBanner = new QFrame(m_editorPane);
+    m_draftBanner->setObjectName(QStringLiteral("DraftBanner"));
+    auto* dh = new QHBoxLayout(m_draftBanner);
+    dh->setContentsMargins(28, 8, 20, 8);
+    dh->setSpacing(10);
+    auto* draftText = makeLabel(tr("Fiche générée automatiquement : brouillon à relire. Reformulez, gardez l'essentiel, "
+                                   "puis marquez-la comme relue."),
+                                nullptr, m_draftBanner);
+    draftText->setObjectName(QStringLiteral("DraftBannerText"));
+    draftText->setWordWrap(true);
+    dh->addWidget(draftText, 1);
+    m_draftDone = new QPushButton(tr("Marquer comme relue"), m_draftBanner);
+    m_draftDone->setObjectName(QStringLiteral("MarkSheetReviewed"));
+    connect(m_draftDone, &QPushButton::clicked, this, &NotesPage::markSheetReviewed);
+    dh->addWidget(m_draftDone);
+    m_draftBanner->hide();
+    v->addWidget(m_draftBanner);
+
     m_split = new QSplitter(Qt::Horizontal, m_editorPane);
     m_split->setObjectName(QStringLiteral("NoteSplit"));
     m_split->setChildrenCollapsible(false);
@@ -609,6 +629,7 @@ void NotesPage::loadNote(const NoteRecord& note)
     m_editor->setPlainText(note.body);
     m_typeButton->setText(noteTypeLabel(note.type));
     m_typeButton->setIcon(Icons::get(noteTypeIcon(note.type), m_ctx.theme.palette().primaryStrong, 16));
+    m_draftBanner->setVisible(NoteDrafts::isDraftSheet(note.body));
     m_loading = false;
     m_dirty = false;
     setSaveState(tr("Enregistré"));
@@ -696,6 +717,20 @@ qint64 NotesPage::followLink(const QString& target)
     return created.value().id;
 }
 
+bool NotesPage::markSheetReviewed()
+{
+    if (m_currentId <= 0 || !NoteDrafts::isDraftSheet(m_editor->toPlainText()))
+        return false;
+    // Remplacement par le curseur : « Annuler » (Ctrl + Z) rétablit le brouillon.
+    QTextCursor cursor(m_editor->document());
+    cursor.select(QTextCursor::Document);
+    cursor.insertText(NoteDrafts::markSheetReviewed(m_editor->toPlainText()));
+    markDirty();
+    const bool ok = saveNow();
+    refreshPreview();
+    return ok;
+}
+
 bool NotesPage::saveNow()
 {
     m_saveTimer.stop();
@@ -712,6 +747,7 @@ bool NotesPage::saveNow()
     }
     m_dirty = false;
     m_current = saved.value();
+    m_draftBanner->setVisible(NoteDrafts::isDraftSheet(body));
     // Titre rendu unique (« … 2 ») ou vidé : affiché tel qu'enregistré, sauf pendant la frappe.
     if (!m_title->hasFocus() && m_title->text() != saved.value().title)
         m_title->setText(saved.value().title);

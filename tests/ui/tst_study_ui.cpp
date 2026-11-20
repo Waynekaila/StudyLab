@@ -20,6 +20,7 @@
 #include "ui/shell/Sidebar.h"
 #include "ui/study/CardEditorDialog.h"
 #include "ui/study/DeckSettingsDialog.h"
+#include "ui/study/RevisionSheetDialog.h"
 #include "ui/study/RevisionsPage.h"
 #include "ui/theme/ThemeManager.h"
 
@@ -374,6 +375,79 @@ private slots:
         ui::DeckSettingsDialog* shown = page.openDeckSettings(deck);
         maybeScreenshot(*shown, QStringLiteral("v2-2-reglages-paquet"));
         shown->reject();
+    }
+
+    void revisionSheetFromSubject()
+    {
+        Env env;
+        const qint64 doc = env.import(m_pdf);
+        QVERIFY(doc > 0);
+        const qint64 subject = env.organize->createSubject(QStringLiteral("Thermodynamique")).value().id;
+        QVERIFY(env.organize->attach(subject, OrganizeService::Entity::Document, doc));
+        PdfLocator l;
+        l.page = 1;
+        l.rects = {QRectF(0.1, 0.2, 0.7, 0.02)};
+        l.exact = QStringLiteral("Le rendement de Carnot ne dépend que des températures des sources.");
+        AnnotationRecord a;
+        a.documentId = doc;
+        a.unitIndex = 1;
+        a.selectedText = l.exact;
+        a.locator = l.toJson();
+        a.sortKey = annotationSortKey(1, 0.2);
+        const qint64 annotation = env.annotations->create(a).value().id;
+        QVERIFY(env.annotations->setNote(annotation, QStringLiteral("$$\\eta = 1 - \\frac{T_F}{T_C}$$")));
+        auto concept_ = env.notes->create(QStringLiteral("Entropie"), NoteType::Concept, {},
+                                          QStringLiteral("Grandeur d'état qui mesure le désordre d'un système."));
+        QVERIFY(concept_);
+        QVERIFY(env.organize->attach(subject, OrganizeService::Entity::Note, concept_.value().id));
+
+        ui::MainWindow window(*env.ctx);
+        window.resize(1440, 900);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        StudyService& study = *window.study();
+        Deck deck = study.createDeck(QStringLiteral("Cycles")).value();
+        deck.subjectId = subject;
+        QVERIFY(study.updateDeck(deck));
+        QVERIFY(study.addCards(deck.id, CardType::Cloze, QStringLiteral("Le cycle de {{c1::Carnot}} est réversible."),
+                               QString()));
+        window.navigateTo(QStringLiteral("revisions"));
+        auto* page = qobject_cast<ui::RevisionsPage*>(window.page(QStringLiteral("revisions")));
+        QVERIFY(page->showDeck(deck.id));
+        QVERIFY(page->sheetButton()->isVisible());
+
+        // Fenêtre : matière du paquet proposée, aperçu des contenus.
+        ui::RevisionSheetDialog* dlg = page->openSheetDialog();
+        QCOMPARE(dlg->subjectId(), subject);
+        QCOMPARE(dlg->summary()->text(), QStringLiteral("Matière et sous-matières : 1 document, 1 annotation, 1 note."));
+        QVERIFY(dlg->generateButton()->isEnabled());
+        dlg->generateButton()->click();
+
+        // Brouillon ouvert dans Mes notes, rattaché à la matière, bandeau « à relire ».
+        QTRY_COMPARE(window.currentPage(), QStringLiteral("notes"));
+        auto* notes = qobject_cast<ui::NotesPage*>(window.page(QStringLiteral("notes")));
+        const qint64 sheet = notes->currentNoteId();
+        QVERIFY(sheet > 0);
+        const NoteRecord record = env.notes->find(sheet).value();
+        QCOMPARE(record.type, NoteType::Revision);
+        QCOMPARE(record.title, QStringLiteral("Fiche de révision · Thermodynamique"));
+        QCOMPARE(record.folder, QStringLiteral("Fiches de révision"));
+        QVERIFY(record.body.contains(QStringLiteral("- **[[Entropie]]** : Grandeur d'état")));
+        QVERIFY(record.body.contains(QStringLiteral("- « Le rendement de Carnot ne dépend que des températures des sources. » ([p. 2]")));
+        QVERIFY(record.body.contains(QStringLiteral("$$\n\\eta = 1 - \\frac{T_F}{T_C}\n$$")));
+        QVERIFY(record.body.contains(QStringLiteral("- [ ] Le cycle de […] est réversible.")));
+        QVERIFY(env.organize->subjectItems(subject, OrganizeService::Entity::Note).value().contains(sheet));
+        QCOMPARE(env.notes->sources(sheet).value().size(), 1);
+        QVERIFY(notes->draftBanner()->isVisible());
+        maybeScreenshot(window, QStringLiteral("v2-3-fiche-revision"));
+
+        // Relue : le bandeau disparaît, le texte garde tout sauf le statut.
+        QVERIFY(notes->markSheetReviewed());
+        QVERIFY(!notes->draftBanner()->isVisible());
+        const NoteRecord reviewed = env.notes->find(sheet).value();
+        QVERIFY(!NoteDrafts::isDraftSheet(reviewed.body));
+        QVERIFY(reviewed.body.contains(QStringLiteral("## Définitions")));
+        QVERIFY(!notes->markSheetReviewed());
     }
 
     void cardsFromReadingAndNotes()
