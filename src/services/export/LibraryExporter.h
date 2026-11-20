@@ -47,6 +47,7 @@ struct LibraryExportResult {
 ///     Bibliothèque/<Auteur> - <Titre> (<année>)/…   comme l'export d'un document
 ///     Notes/<dossier>/<nom>.md                        notes (front matter, [[liens]] et #tags conservés)
 ///     _attachments/                                   images des notes
+///     Références.bib                                  références bibliographiques citées par [[@clé]]
 class LibraryExporter {
 public:
     struct Options {
@@ -56,6 +57,9 @@ public:
         /// Notes à joindre : toutes pour la bibliothèque entière, celles tirées des documents pour une sélection.
         QList<NoteRecord> notes;
         QString attachmentsDir;  ///< dossier des images collées dans les notes
+        /// Références bibliographiques en BibTeX (« Références.bib » ; les notes les citent par [[@clé]]).
+        QString bibtex;
+        int references = 0;
     };
     /// Appelée après chaque document ; renvoyer false annule l'export.
     using Progress = std::function<bool(int done, int total)>;

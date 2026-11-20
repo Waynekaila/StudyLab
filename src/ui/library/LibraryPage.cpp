@@ -1,5 +1,7 @@
 #include "ui/library/LibraryPage.h"
 
+#include "services/references/ReferenceService.h"
+
 #include "services/export/LibraryExporter.h"
 #include "services/library/LibraryService.h"
 #include "services/notes/NoteService.h"
@@ -96,6 +98,7 @@ LibraryPage::LibraryPage(AppContext& ctx, QWidget* parent)
             emit openDocumentRequested(r->id);
     });
     connect(m_detail, &DocumentDetailPanel::readRequested, this, &LibraryPage::openDocumentRequested);
+    connect(m_detail, &DocumentDetailPanel::referenceRequested, this, &LibraryPage::referenceRequested);
     connect(m_detail, &DocumentDetailPanel::removed, this, [this] {
         m_selectedId = 0;
         m_detail->hide();
@@ -657,6 +660,28 @@ void LibraryPage::exportDocuments(const QList<qint64>& ids, bool wholeLibrary)
     if (notes)
         opt.notes = notes.value();
     opt.attachmentsDir = m_ctx.notes.attachmentsDir();
+    // Références : toutes pour la bibliothèque entière ; sinon celles des documents exportés et celles que
+    // citent les notes jointes.
+    {
+        ReferenceService refs(m_ctx.db, m_ctx.notes);
+        QList<qint64> refIds;
+        if (auto all = refs.list(); all && !all.value().isEmpty()) {
+            QSet<QString> cited;
+            for (const NoteRecord& n : std::as_const(opt.notes))
+                for (const QString& k : citedKeys(n.body))
+                    cited.insert(k.toLower());
+            for (const Reference& r : all.value()) {
+                if (wholeLibrary || ids.contains(r.documentId) || cited.contains(r.citekey.toLower()))
+                    refIds << r.id;
+            }
+            if (!refIds.isEmpty()) {
+                if (auto bib = refs.bibtex(refIds); bib) {
+                    opt.bibtex = bib.value();
+                    opt.references = int(refIds.size());
+                }
+            }
+        }
+    }
     QPointer<LibraryPage> self(this);
     auto cancel = m_exportCancel;
     (void)QtConcurrent::run([self, parent, docs = collected.value(), opt, cancel] {

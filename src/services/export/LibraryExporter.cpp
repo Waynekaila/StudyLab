@@ -259,6 +259,11 @@ QString LibraryExporter::readme(const QList<DocumentExportData>& docs, const QSt
     if (notes > 0)
         md << tr("5. Vos notes sont dans `Notes/`, rangées par dossier, avec leurs [[liens]] et #tags ; "
                  "leurs images dans `_attachments/`. Un [[lien]] vers un document mène à sa fiche.");
+    if (options.references > 0)
+        md << QString()
+           << tr("`Références.bib` contient %1 au format BibTeX (Zotero, JabRef, Pandoc) ; les notes les citent par "
+                 "`[[@clé]]`, la syntaxe du module Citations d'Obsidian.")
+                  .arg(options.references == 1 ? tr("1 référence") : tr("%1 références").arg(options.references));
     md << QString() << tr("`annotations.csv` (UTF-8, séparateur virgule) s'ouvre dans un tableur.");
     md << QString() << QStringLiteral("## ") + tr("Documents") << QString();
     for (int i = 0; i < docs.size(); ++i) {
@@ -315,6 +320,10 @@ Result<LibraryExportResult> LibraryExporter::write(const QString& parentDir, con
         writeNotes(result, options);
     // Index et CSV décrivent ce qui a réellement été écrit
     const QByteArray bom("\xEF\xBB\xBF");  // Excel reconnaît l'UTF-8 grâce à la marque d'ordre
+    if (!options.bibtex.isEmpty()) {
+        if (auto r = writeUtf8(result.folder + QStringLiteral("/Références.bib"), options.bibtex.toUtf8()); !r)
+            return r.error();
+    }
     if (auto r = writeUtf8(result.folder + QStringLiteral("/annotations.csv"),
                            bom + csv.join(QStringLiteral("\r\n")).toUtf8() + "\r\n");
         !r)

@@ -14,6 +14,9 @@
 #include "ui/reader/ReaderPage.h"
 #include "ui/pages/HomePage.h"
 #include "ui/pages/SettingsPage.h"
+#include "ui/references/ReferencesPage.h"
+
+#include <QLineEdit>
 #include "ui/shell/SearchPalette.h"
 #include "ui/shell/Sidebar.h"
 #include "ui/theme/ThemeManager.h"
@@ -54,6 +57,7 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
                                 {QStringLiteral("subjects"), QStringLiteral("folder"), tr("Matières")},
                                 {QStringLiteral("collections"), QStringLiteral("layers"), tr("Collections")},
                                 {QStringLiteral("graph"), QStringLiteral("graph"), tr("Graphe")},
+                                {QStringLiteral("references"), QStringLiteral("quote"), tr("Références")},
                                 {QStringLiteral("settings"), QStringLiteral("settings"), tr("Paramètres")},
                             },
                             root);
@@ -129,6 +133,19 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
         notes->followLink(title);
     });
     connect(graph, &GraphPage::notesRequested, this, [this] { navigateTo(QStringLiteral("notes")); });
+    auto* references = new ReferencesPage(ctx, m_stack);
+    addPage(QStringLiteral("references"), references);
+    connect(references, &ReferencesPage::openDocumentRequested, this, openDoc);
+    connect(references, &ReferencesPage::openNoteRequested, this, openNote);
+    connect(notes, &NotesPage::citationActivated, this, [this, references](const QString& key) {
+        navigateTo(QStringLiteral("references"));
+        if (!references->showCitekey(key))
+            references->filterField()->setText(key);
+    });
+    connect(library, &LibraryPage::referenceRequested, this, [this, references](qint64 id) {
+        navigateTo(QStringLiteral("references"));
+        references->showForDocument(id);
+    });
     connect(notes, &NotesPage::appLinkActivated, this, [this](const QString& link) {
         auto opened = openLink(link);
         if (!opened)

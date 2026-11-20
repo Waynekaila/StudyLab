@@ -98,6 +98,17 @@ function wikiLinkPlugin (md) {
   md.renderer.rules.wikilink = (tokens, idx) => {
     const m = tokens[idx].meta
     const esc = md.utils.escapeHtml
+    if (noteMode && m.target.startsWith('@')) {
+      // Citation [[@clé]], [[@clé#p. 12]], [[@clé|texte]] : auteur-date, entrée complète en info-bulle.
+      const hash = m.target.indexOf('#')
+      const key = (hash >= 0 ? m.target.slice(1, hash) : m.target.slice(1)).trim()
+      const locator = hash >= 0 ? m.target.slice(hash + 1).trim() : ''
+      const c = noteState.citations[key.toLowerCase()]
+      const custom = m.raw.includes('|') ? m.label : ''
+      if (!c) return `<a class="wikilink citation unresolved" href="#" title="${esc('@' + key + ' · ' + noteState.citationMissingLabel)}" data-target="${esc(m.target)}">${esc(custom || '@' + key)}</a>`
+      const text = custom || `(${c.label}${locator ? ', ' + locator : ''})`
+      return `<a class="wikilink citation" href="#" title="${esc(c.entry)}" data-target="${esc(m.target)}">${esc(text)}</a>`
+    }
     if (noteMode && !m.target.startsWith('@')) {
       const unresolved = noteState.unresolved.includes(m.target)
       const doc = !unresolved && noteState.documents.includes(m.target)
@@ -110,7 +121,7 @@ function wikiLinkPlugin (md) {
 
 // Mode note : état fourni par l'application à chaque rendu.
 let noteMode = false
-let noteState = { unresolved: [], documents: [], images: {}, lineOffset: 0, unresolvedLabel: '', documentLabel: '' }
+let noteState = { unresolved: [], documents: [], images: {}, citations: {}, bibliography: [], lineOffset: 0, unresolvedLabel: '', documentLabel: '', citationMissingLabel: '', bibliographyTitle: '' }
 
 const md = window.markdownit({ html: false, linkify: true, breaks: true, typographer: false })
   .use(mathPlugin).use(wikiLinkPlugin)
@@ -238,12 +249,14 @@ window.StudyLab = {
   // note : {title, body (sans front matter), lineOffset, chips: [texte], unresolved: [cible], images: {chemin: data:}}
   setNote (note, emptyText) {
     noteMode = true
-    noteState = Object.assign({ unresolved: [], documents: [], images: {}, lineOffset: 0, unresolvedLabel: '', documentLabel: '' }, note)
+    noteState = Object.assign({ unresolved: [], documents: [], images: {}, citations: {}, bibliography: [], lineOffset: 0, unresolvedLabel: '', documentLabel: '', citationMissingLabel: '', bibliographyTitle: '' }, note)
     document.body.classList.add('preview', 'note')
     const root = document.getElementById('root')
     const chips = (note.chips || []).map(c => `<span class="chip">${esc(c)}</span>`).join('')
     const head = (chips ? `<div class="chips">${chips}</div>` : '') + `<h1 class="note-title">${esc(note.title)}</h1>`
-    const body = note.body && note.body.trim() ? render(note.body) : `<p class="empty-note">${esc(emptyText || '')}</p>`
+    let body = note.body && note.body.trim() ? render(note.body) : `<p class="empty-note">${esc(emptyText || '')}</p>`
+    // Bibliographie des références citées, dans l'ordre alphabétique (entrées déjà mises en forme par l'application).
+    if (noteState.bibliography.length) body += `<section class="bibliography"><h2>${esc(noteState.bibliographyTitle)}</h2><ul>${noteState.bibliography.map(e => `<li>${e}</li>`).join('')}</ul></section>`
     const y = window.scrollY
     root.innerHTML = `<article class="md note">${head}${body}</article>`
     window.scrollTo(0, y)
@@ -258,7 +271,8 @@ window.StudyLab = {
     else window.scrollTo({ top: 0, behavior: 'smooth' })
     return !!target
   },
-  wikiLinks: () => [...document.querySelectorAll('a.wikilink')].map(a => ({ target: a.dataset.target, unresolved: a.classList.contains('unresolved'), document: a.classList.contains('document') })),
+  wikiLinks: () => [...document.querySelectorAll('a.wikilink')].map(a => ({ target: a.dataset.target, text: a.textContent, unresolved: a.classList.contains('unresolved'), document: a.classList.contains('document'), citation: a.classList.contains('citation') })),
+  bibliography: () => [...document.querySelectorAll('.bibliography li')].map(li => li.textContent),
   appLinks: () => [...document.querySelectorAll('a[href^="studylab:"]')].map(a => a.getAttribute('href')),
   clickHref: href => { const a = [...document.querySelectorAll('a[href]')].find(el => el.getAttribute('href') === href); if (a) a.click(); return !!a },
   clickWiki: target => { const a = [...document.querySelectorAll('a.wikilink')].find(el => el.dataset.target === target); if (a) a.click(); return !!a },

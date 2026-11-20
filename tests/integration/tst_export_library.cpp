@@ -151,6 +151,8 @@ private slots:
         opt.date = QDate(2026, 11, 20);
         opt.notes = {note};
         opt.attachmentsDir = attachments.path();
+        opt.bibtex = QStringLiteral("@book{cengel2019,\n  title = {Thermodynamique}\n}\n");
+        opt.references = 1;
         QTemporaryDir out;
         auto result = LibraryExporter::write(out.path(), {}, opt);
         QVERIFY(result);
@@ -163,6 +165,9 @@ private slots:
         const QString readme = readAll(folder + QStringLiteral("/README.md"));
         QVERIFY2(readme.contains(QStringLiteral("1 note.")), qPrintable(readme));
         QVERIFY(readme.contains(QStringLiteral("`Notes/`")));
+        // Références citées par [[@clé]] : fichier BibTeX à la racine.
+        QCOMPARE(readAll(folder + QStringLiteral("/Références.bib")), opt.bibtex);
+        QVERIFY(readme.contains(QStringLiteral("`Références.bib` contient 1 référence")));
     }
 
     void chapterIndexReadsPdfOutlineAndEpubToc()

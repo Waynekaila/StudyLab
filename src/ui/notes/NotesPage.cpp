@@ -1,5 +1,7 @@
 #include "ui/notes/NotesPage.h"
 
+#include "core/domain/Document.h"
+
 #include "core/domain/Comment.h"
 #include "services/notes/NoteService.h"
 #include "services/organize/OrganizeService.h"
@@ -41,6 +43,8 @@
 #include <QToolButton>
 #include <QTreeWidget>
 #include <QVBoxLayout>
+
+#include <algorithm>
 
 namespace studylab::ui {
 
@@ -118,7 +122,7 @@ void clearLayout(QVBoxLayout* layout)
 
 }  // namespace
 
-NotesPage::NotesPage(AppContext& ctx, QWidget* parent) : QWidget(parent), m_ctx(ctx)
+NotesPage::NotesPage(AppContext& ctx, QWidget* parent) : QWidget(parent), m_ctx(ctx), m_refs(ctx.db, ctx.notes)
 {
     setObjectName(QStringLiteral("NotesPage"));
     auto* root = new QHBoxLayout(this);
@@ -421,7 +425,8 @@ void NotesPage::buildEditor()
             markDirty();
     });
     connect(m_editor, &NoteEditor::imageInserted, this, &NotesPage::insertImage);
-    m_editor->setLinkCompletions([this] { return m_ctx.notes.linkCompletions(); });
+    // Après « [[ » : notes et documents, puis « @clé » des références.
+    m_editor->setLinkCompletions([this] { return m_ctx.notes.linkCompletions() + m_refs.completions(); });
     m_editor->installEventFilter(this);
     sv->addWidget(m_editor, 1);
     m_split->addWidget(source);
@@ -619,6 +624,12 @@ qint64 NotesPage::newNote(NoteType type, const QString& title)
 
 qint64 NotesPage::followLink(const QString& target)
 {
+    if (target.trimmed().startsWith(u'@')) {
+        // Citation : la fiche de la référence (ou la liste, si la clé est inconnue).
+        saveNow();
+        emit citationActivated(target.trimmed().mid(1).section(u'#', 0, 0).trimmed());
+        return 0;
+    }
     const NoteLinkTarget resolved = m_ctx.notes.resolveTarget(target);
     if (resolved.kind == NoteLinkTarget::Kind::Note) {
         openNote(resolved.id);
@@ -1035,6 +1046,20 @@ QJsonObject NotesPage::previewPayload() const
             documents.append(it.key());
     }
 
+    // Citations [[@clé]] : libellé auteur-date, entrée complète ; bibliographie en fin d'aperçu.
+    QJsonObject citations;
+    QJsonArray bibliography;
+    const QHash<QString, Reference> cited = m_refs.resolveKeys(citedKeys(text));
+    QList<Reference> citedRefs = cited.values();
+    std::sort(citedRefs.begin(), citedRefs.end(), [](const Reference& a, const Reference& b) {
+        return foldForSort(formatBibliography(a)) < foldForSort(formatBibliography(b));
+    });
+    for (const Reference& r : std::as_const(citedRefs)) {
+        citations.insert(r.citekey.toLower(), QJsonObject{{QStringLiteral("label"), formatCitation(r)},
+                                                          {QStringLiteral("entry"), formatBibliography(r)}});
+        bibliography.append(formatBibliography(r, true));
+    }
+
     QJsonObject images;
     static const QRegularExpression img(QStringLiteral("!\\[[^\\]]*\\]\\((attachments/[\\w.-]+)\\)"));
     auto it = img.globalMatch(text);
@@ -1055,6 +1080,10 @@ QJsonObject NotesPage::previewPayload() const
         {QStringLiteral("documents"), documents},
         {QStringLiteral("documentLabel"), tr("document de la bibliothèque")},
         {QStringLiteral("images"), images},
+        {QStringLiteral("citations"), citations},
+        {QStringLiteral("citationMissingLabel"), tr("référence introuvable")},
+        {QStringLiteral("bibliography"), bibliography},
+        {QStringLiteral("bibliographyTitle"), tr("Références")},
     };
 }
 

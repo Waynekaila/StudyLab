@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/domain/Note.h"
+#include "services/references/ReferenceService.h"
 #include "ui/shell/AppContext.h"
 
 #include <QHash>
@@ -87,6 +88,8 @@ signals:
     void openItemRequested(qint64 documentId, bool comment, qint64 itemId);
     /// Lien « studylab://open?… » cliqué dans l'aperçu.
     void appLinkActivated(const QString& link);
+    /// Citation [[@clé]] cliquée dans l'aperçu.
+    void citationActivated(const QString& citekey);
 
 protected:
     void hideEvent(QHideEvent* event) override;
@@ -117,6 +120,7 @@ private:
     QString imageData(const QString& relPath) const;
 
     AppContext& m_ctx;
+    mutable ReferenceService m_refs;  // lectures depuis previewPayload() const
     qint64 m_currentId = 0;
     NoteRecord m_current;
     bool m_dirty = false;

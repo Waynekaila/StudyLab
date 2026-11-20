@@ -299,6 +299,11 @@ QProgressBar { background: %{sunken}; border: none; border-radius: 3px; }
 QProgressBar::chunk { background: %{primary}; border-radius: 3px; }
 QMessageBox { background: %{surface}; }
 QFrame#NotesNav { background: %{surface2}; border: none; border-right: 1px solid %{borderSoft}; }
+QListWidget#ReferenceList { background: transparent; border: none; outline: none; }
+QListWidget#ReferenceList::item { padding: %{p6} %{p8}; border-radius: 6px; color: %{text}; margin: 1px 0; }
+QListWidget#ReferenceList::item:hover { background: %{sunken}; }
+QListWidget#ReferenceList::item:selected { background: %{primarySoft}; color: %{primaryStrong}; }
+QLabel#ReferenceEntry { background: %{surface2}; border: 1px solid %{borderSoft}; border-radius: 8px; padding: %{p10} %{p12}; }
 QToolButton#GraphZoomIn, QToolButton#GraphZoomOut, QToolButton#GraphFit, QToolButton#GraphShowAll {
     background: %{surface}; color: %{text2}; border: 1px solid %{border}; border-radius: 8px; padding: %{p6};
 }

@@ -22,6 +22,10 @@
   fois par document, reprise au démarrage, césures recollées) ; Ctrl + K trouve aussi les notes et les passages des
   documents (deux au plus par document), et un passage ouvre le document à la page ou à la section, terme cherché
   en évidence ; état de l'index et « Réindexer » dans Paramètres › Données.
+- **Références bibliographiques** (itération V1-6) : import BibTeX / BibLaTeX (`@string`, accents LaTeX) et
+  CSL-JSON, saisie, fiche tirée d'un document (« Citer »), rattachement au document par DOI, ISBN ou titre ;
+  citations `[[@clé]]` dans les notes (auteur-date, page, autocomplétion, bibliographie en fin d'aperçu) ; changer
+  une clé met à jour les notes ; export BibTeX ou CSL-JSON et `Références.bib` dans l'export Obsidian.
 - **Export de la bibliothèque** : les notes sont jointes (toutes pour la bibliothèque entière, celles tirées des
   documents pour une sélection) dans `Notes/<dossier>/`, avec leurs images dans `_attachments/` ; la fiche de
   chaque document a son titre en alias, pour que `[[Titre]]` y mène dans Obsidian.
