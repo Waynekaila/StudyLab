@@ -80,6 +80,7 @@ public:
     void setSettings(const EpubSettings& settings);
     void goTo(const QString& target);  ///< CFI ou lien du sommaire
     void goToFraction(double fraction);
+    void goToSection(int index);  ///< élément du spine
     void next();
     void previous();
     void back();

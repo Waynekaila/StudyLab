@@ -18,6 +18,10 @@
   par les `[[liens]]` et la provenance des notes de lecture, couleur de la matière ; filtres par type et matière, liens
   non résolus, profondeur du voisinage, étiquettes, regroupement par matière ; fiche du nœud (Ouvrir, Centrer,
   Isoler, « Créer la note » pour un lien non résolu) ; disposition force-dirigée calculée en arrière-plan.
+- **Recherche plein texte** (itération V1-5) : texte des PDF et des EPUB extrait et indexé en tâche de fond (une
+  fois par document, reprise au démarrage, césures recollées) ; Ctrl + K trouve aussi les notes et les passages des
+  documents (deux au plus par document), et un passage ouvre le document à la page ou à la section, terme cherché
+  en évidence ; état de l'index et « Réindexer » dans Paramètres › Données.
 - **Export de la bibliothèque** : les notes sont jointes (toutes pour la bibliothèque entière, celles tirées des
   documents pour une sélection) dans `Notes/<dossier>/`, avec leurs images dans `_attachments/` ; la fiche de
   chaque document a son titre en alias, pour que `[[Titre]]` y mène dans Obsidian.

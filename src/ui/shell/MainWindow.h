@@ -7,6 +7,10 @@
 
 #include "core/Result.h"
 
+namespace studylab {
+class TextIndexer;
+}
+
 namespace studylab::ui {
 
 class FadeStackedWidget;
@@ -26,6 +30,7 @@ public:
     /// « Rechercher partout » (Ctrl+K).
     void showSearch();
     SearchPalette* searchPalette() const { return m_search; }
+    TextIndexer* textIndexer() const { return m_indexer; }
     Sidebar* sidebar() const { return m_sidebar; }
 
     /// Ouvre un lien « studylab://open?… » (export Markdown) au bon passage.
@@ -42,6 +47,7 @@ protected:
 
 private:
     void addPage(const QString& id, QWidget* page);
+    TextIndexer* m_indexer = nullptr;
 
     AppContext& m_ctx;
     Sidebar* m_sidebar = nullptr;

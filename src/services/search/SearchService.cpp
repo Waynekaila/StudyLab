@@ -1,12 +1,15 @@
 #include "services/search/SearchService.h"
 
 #include "core/domain/Comment.h"
+#include "core/domain/Note.h"
 #include "data/repositories/DocumentRepository.h"
 #include "data/sqlite/Database.h"
 #include "data/sqlite/Statement.h"
 
 #include <QCoreApplication>
+#include <QHash>
 #include <QJsonDocument>
+#include <QRegularExpression>
 
 namespace studylab {
 
@@ -15,6 +18,19 @@ namespace {
 QString marks()
 {
     return QStringLiteral("'%1', '%2', '…', 14").arg(QChar(SearchHit::kMarkStart)).arg(QChar(SearchHit::kMarkEnd));
+}
+
+/// Extrait d'une note sans balisage Markdown gênant (front matter, titres, crochets de liens).
+QString cleanNoteSnippet(const QString& snippet)
+{
+    static const QRegularExpression frontMatter(QStringLiteral("^\\s*---[\\s\\S]*?\\n---\\s*"));
+    static const QRegularExpression inlineMarks(QStringLiteral("(\\[\\[|\\]\\]|\\*\\*|__|==)"));
+    static const QRegularExpression headings(QStringLiteral("(^|\\n)#+\\s*"));
+    QString s = snippet;
+    s.remove(frontMatter);
+    s.remove(inlineMarks);
+    s.replace(headings, QStringLiteral(" "));
+    return s.simplified();
 }
 
 DocumentFormat formatOf(const QString& key)
@@ -140,6 +156,68 @@ Result<SearchResults> SearchService::search(const QString& text, int perGroup)
             h.location = commentLocation(c);
             h.snippet = s.columnText(9).simplified();
             out.comments << h;
+        }
+    }
+
+    // Notes (hors corbeille) : titre, extrait du texte.
+    {
+        auto stmt = m_db.prepare(QStringLiteral(
+            "SELECT n.id, n.title, n.note_type, snippet(fts_notes, 1, %1) "
+            "FROM fts_notes f JOIN notes n ON n.id = f.rowid "
+            "WHERE fts_notes MATCH ?1 AND n.deleted_at IS NULL ORDER BY f.rank LIMIT ?2").arg(marks()));
+        if (!stmt)
+            return stmt.error();
+        stmt.value().bind(1, fts).bind(2, perGroup);
+        while (true) {
+            auto row = stmt.value().step();
+            if (!row)
+                return row.error();
+            if (!row.value())
+                break;
+            const auto& s = stmt.value();
+            SearchHit h;
+            h.kind = SearchHit::Kind::Note;
+            h.itemId = s.columnInt64(0);
+            h.documentTitle = s.columnText(1);
+            h.location = noteTypeLabel(noteTypeFromKey(s.columnText(2)).value_or(NoteType::Personal));
+            h.snippet = cleanNoteSnippet(s.columnText(3));
+            out.notes << h;
+        }
+    }
+
+    // Texte intégral : au plus deux passages par document, pour que plusieurs documents apparaissent.
+    {
+        auto stmt = m_db.prepare(QStringLiteral(
+            "SELECT p.rowid, p.document_id, p.unit_index, d.title, d.format, snippet(fts_page_text, 0, %1) "
+            "FROM fts_page_text f JOIN page_text p ON p.rowid = f.rowid JOIN documents d ON d.id = p.document_id "
+            "WHERE fts_page_text MATCH ?1 AND d.deleted_at IS NULL ORDER BY f.rank LIMIT ?2").arg(marks()));
+        if (!stmt)
+            return stmt.error();
+        stmt.value().bind(1, fts).bind(2, perGroup * 8);
+        QHash<qint64, int> perDocument;
+        while (out.passages.size() < perGroup) {
+            auto row = stmt.value().step();
+            if (!row)
+                return row.error();
+            if (!row.value())
+                break;
+            const auto& s = stmt.value();
+            const qint64 doc = s.columnInt64(1);
+            if (perDocument.value(doc) >= 2)
+                continue;
+            perDocument[doc] += 1;
+            SearchHit h;
+            h.kind = SearchHit::Kind::Passage;
+            h.itemId = s.columnInt64(0);
+            h.documentId = doc;
+            h.unit = int(s.columnInt64(2));
+            h.documentTitle = s.columnText(3);
+            h.format = formatOf(s.columnText(4));
+            h.location = h.format == DocumentFormat::Pdf
+                             ? QCoreApplication::translate("SearchService", "p. %1").arg(h.unit + 1)
+                             : QCoreApplication::translate("SearchService", "section %1").arg(h.unit + 1);
+            h.snippet = s.columnText(5).simplified();
+            out.passages << h;
         }
     }
     return out;

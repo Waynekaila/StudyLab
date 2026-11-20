@@ -2,6 +2,8 @@
 
 #include "core/AppLink.h"
 
+#include "services/library/LibraryService.h"
+#include "services/search/TextIndexer.h"
 #include "services/settings/SettingsService.h"
 #include "ui/components/FadeStackedWidget.h"
 #include "ui/graph/GraphPage.h"
@@ -132,13 +134,27 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
         if (!opened)
             QMessageBox::warning(this, tr("Ouvrir le passage"), opened.error().message);
     });
-    addPage(QStringLiteral("settings"), new SettingsPage(ctx, m_stack));
+    // Texte intégral : extrait en tâche de fond, peu après le démarrage et à chaque import.
+    m_indexer = new TextIndexer(ctx.db, ctx.paths.libraryDir(), this);
+    connect(&ctx.library, &LibraryService::documentsChanged, m_indexer, [this] { m_indexer->schedule(); });
+    m_indexer->schedule(3000);
+    auto* settingsPage = new SettingsPage(ctx, m_stack);
+    settingsPage->setTextIndexer(m_indexer);
+    addPage(QStringLiteral("settings"), settingsPage);
 
     // Rechercher partout
     m_search = new SearchPalette(ctx.search, ctx.theme, this);
-    connect(m_search, &SearchPalette::hitActivated, this, [this, reader](const SearchHit& hit) {
+    m_search->setTextIndexer(m_indexer);
+    connect(m_search, &SearchPalette::hitActivated, this, [this, reader, notes](const SearchHit& hit) {
+        if (hit.kind == SearchHit::Kind::Note) {
+            navigateTo(QStringLiteral("notes"));
+            notes->openNote(hit.itemId);
+            return;
+        }
         navigateTo(QStringLiteral("reader"));
-        if (hit.kind == SearchHit::Kind::Document)
+        if (hit.kind == SearchHit::Kind::Passage)
+            reader->openPassage(hit.documentId, hit.unit, SearchPalette::highlightTerm(m_search->results().query));
+        else if (hit.kind == SearchHit::Kind::Document)
             reader->openDocument(hit.documentId);
         else
             reader->openItem(hit.documentId, hit.kind == SearchHit::Kind::Comment, hit.itemId);

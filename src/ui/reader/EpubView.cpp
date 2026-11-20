@@ -193,6 +193,7 @@ void EpubView::setSettings(const EpubSettings& settings)
 
 void EpubView::goTo(const QString& target) { call(QStringLiteral("goTo"), target); }
 void EpubView::goToFraction(double fraction) { call(QStringLiteral("goToFraction"), fraction); }
+void EpubView::goToSection(int index) { call(QStringLiteral("goTo"), index); }
 void EpubView::next() { call(QStringLiteral("next")); }
 void EpubView::previous() { call(QStringLiteral("prev")); }
 void EpubView::back() { call(QStringLiteral("back")); }

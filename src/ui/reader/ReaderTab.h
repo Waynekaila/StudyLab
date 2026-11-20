@@ -75,6 +75,9 @@ public:
     const QList<CommentRecord>& comments() const { return m_commentRecords; }
     /// Affiche une annotation ou un commentaire dès que le document est prêt (résultat de recherche).
     void revealItem(bool comment, qint64 id);
+    /// Va à la page (PDF) ou à la section (EPUB) et y met en évidence `query` dans la barre de recherche
+    /// (résultat de la recherche plein texte). Différé jusqu'à ce que le document soit prêt.
+    void revealPassage(int unit, const QString& query);
     CommentsPane* commentsPane() const { return m_comments; }
     QSplitter* sidePanel() const { return m_sidePanel; }
 
@@ -122,6 +125,8 @@ protected:
     virtual bool isReady() const { return isLoaded(); }
     /// À appeler quand le document devient prêt : applique revealItem() en attente.
     void flushPendingReveal();
+    /// Implémentation de revealPassage(), document prêt.
+    virtual void showPassage(int unit, const QString& query) = 0;
     void submitComment(qint64 editingId, const CommentTarget& target, CommentKind kind, const QString& body);
     void showCommentMenu(qint64 id, QPoint globalPos);
     /// Pastilles de couleur et bouton du volet, ajoutés à la barre d'outils.
@@ -164,6 +169,7 @@ protected:
     CommentsPane* m_comments = nullptr;
     QSplitter* m_sidePanel = nullptr;
     std::optional<std::pair<bool, qint64>> m_pendingReveal;
+    std::optional<std::pair<int, QString>> m_pendingPassage;
     AnnotationColor m_color = AnnotationColor::Yellow;
     NoteEditor m_noteEditor;
     AnnotationsPane* m_pane = nullptr;

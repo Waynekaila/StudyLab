@@ -132,6 +132,13 @@ void ReaderPage::openItem(qint64 documentId, bool comment, qint64 itemId)
         tab->revealItem(comment, itemId);
 }
 
+void ReaderPage::openPassage(qint64 documentId, int unit, const QString& query)
+{
+    openDocument(documentId);
+    if (ReaderTab* tab = tabFor(documentId))
+        tab->revealPassage(unit, query);
+}
+
 void ReaderPage::openDocument(qint64 documentId)
 {
     if (auto* existing = tabFor(documentId)) {

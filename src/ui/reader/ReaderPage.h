@@ -23,6 +23,8 @@ public:
     void openDocument(qint64 documentId);
     /// Ouvre le document et affiche l'annotation ou le commentaire (résultat de recherche).
     void openItem(qint64 documentId, bool comment, qint64 itemId);
+    /// Ouvre le document à la page ou la section d'un résultat plein texte, `query` mis en évidence.
+    void openPassage(qint64 documentId, int unit, const QString& query);
     void closeTab(int index);
     int tabCount() const;
     ReaderTab* currentTab() const;

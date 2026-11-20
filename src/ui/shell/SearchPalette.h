@@ -9,12 +9,16 @@ class QLabel;
 class QLineEdit;
 class QListWidget;
 
+namespace studylab {
+class TextIndexer;
+}
+
 namespace studylab::ui {
 
 class ThemeManager;
 
-/// « Rechercher partout » (Ctrl+K) : panneau flottant au-dessus de la fenêtre. Recherche minimale du
-/// MVP dans les métadonnées des documents, les annotations et les commentaires, résultats groupés.
+/// « Rechercher partout » (Ctrl+K) : panneau flottant au-dessus de la fenêtre. Métadonnées des documents,
+/// notes, annotations, commentaires et texte intégral des documents, résultats groupés.
 /// Entrée ouvre le résultat sélectionné ; Échap ferme.
 class SearchPalette : public QFrame {
     Q_OBJECT
@@ -24,6 +28,10 @@ public:
     /// Affiche le panneau en haut de la fenêtre, champ sélectionné.
     void popup();
     void search(const QString& text);
+    /// État de l'indexation du texte intégral, affiché sous les résultats.
+    void setTextIndexer(TextIndexer* indexer);
+    /// Terme à mettre en évidence dans le document d'un passage : le mot le plus long de la requête.
+    static QString highlightTerm(const QString& query);
     const SearchResults& results() const { return m_results; }
 
     QLineEdit* input() const { return m_input; }
@@ -43,7 +51,10 @@ private:
     void moveSelection(int delta);
     QString snippetHtml(const QString& snippet) const;
 
+    QString indexHint() const;
+
     SearchService& m_search;
+    TextIndexer* m_indexer = nullptr;
     ThemeManager& m_theme;
     QLineEdit* m_input;
     QListWidget* m_list;

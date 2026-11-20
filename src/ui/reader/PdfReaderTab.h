@@ -102,6 +102,7 @@ private:
     std::optional<CommentTarget> selectionTarget() const override;
     CommentTarget positionTarget() const override;
     void revealLocator(const QJsonObject& locator) override;
+    void showPassage(int unit, const QString& query) override;
     void showEditPopup(qint64 id) override;
     void updateBookmarkButton() override;
     void buildChapters();
