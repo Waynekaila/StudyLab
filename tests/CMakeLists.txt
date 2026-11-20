@@ -67,3 +67,5 @@ studylab_add_test(tst_references_ui SOURCES ui/tst_references_ui.cpp ../src/app/
 target_include_directories(tst_references_ui PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
 target_compile_definitions(tst_references_ui PRIVATE STUDYLAB_TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/data")
 set_tests_properties(tst_references_ui PROPERTIES TIMEOUT 300)
+studylab_add_test(tst_vault_import SOURCES integration/tst_vault_import.cpp
+    LIBS studylab_notes studylab_references studylab_export)

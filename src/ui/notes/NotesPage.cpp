@@ -16,9 +16,11 @@
 #include "ui/theme/Icons.h"
 #include "ui/theme/ThemeManager.h"
 
+#include <QApplication>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
+#include <QFileDialog>
 #include <QFontDatabase>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -39,6 +41,7 @@
 #include <QShortcut>
 #include <QSplitter>
 #include <QStackedWidget>
+#include <QStandardPaths>
 #include <QTextBlock>
 #include <QToolButton>
 #include <QTreeWidget>
@@ -154,6 +157,8 @@ NotesPage::NotesPage(AppContext& ctx, QWidget* parent) : QWidget(parent), m_ctx(
 
     NoteService& notes = m_ctx.notes;
     connect(&notes, &NoteService::noteAdded, this, [this] {
+        if (m_importing)
+            return;  // import d'un coffre : une seule mise à jour à la fin
         refreshTree();
         refreshTags();
     });
@@ -247,6 +252,11 @@ void NotesPage::buildNav()
         QAction* a = menu->addAction(Icons::get(noteTypeIcon(t), theme.palette().text2, 16), noteTypeLabel(t));
         connect(a, &QAction::triggered, this, [this, t] { newNote(t); });
     }
+    menu->addSeparator();
+    QAction* importAction = menu->addAction(Icons::get(QStringLiteral("folder"), theme.palette().text2, 16),
+                                            tr("Importer un coffre Obsidian ou un dossier Markdown…"));
+    importAction->setObjectName(QStringLiteral("ImportVaultAction"));
+    connect(importAction, &QAction::triggered, this, &NotesPage::chooseVault);
     m_newButton->setMenu(menu);
     head->addWidget(m_newButton);
     v->addLayout(head);
@@ -290,6 +300,12 @@ void NotesPage::buildNav()
         m_collapsedFolders.remove(item->data(0, kFolderRole).toString());
     });
     v->addWidget(m_tree, 1);
+
+    m_importStatus = makeLabel(QString(), "faint", m_nav);
+    m_importStatus->setObjectName(QStringLiteral("VaultImportStatus"));
+    m_importStatus->setWordWrap(true);
+    m_importStatus->hide();
+    v->addWidget(m_importStatus);
 
     m_tagsTitle = makeLabel(tr("TAGS"), "caption", m_nav);
     v->addWidget(m_tagsTitle);
@@ -338,9 +354,14 @@ void NotesPage::buildEditor()
     create->setObjectName(QStringLiteral("EmptyNewNote"));
     create->setProperty("variant", QStringLiteral("primary"));
     connect(create, &QPushButton::clicked, this, [this] { newNote(NoteType::Personal); });
+    auto* importVaultBtn = new QPushButton(tr("Importer un coffre Obsidian…"), m_emptyState);
+    importVaultBtn->setObjectName(QStringLiteral("EmptyImportVault"));
+    importVaultBtn->setToolTip(tr("Coffre Obsidian, dossier de fichiers Markdown ou export StudyLab"));
+    connect(importVaultBtn, &QPushButton::clicked, this, &NotesPage::chooseVault);
     auto* row = new QHBoxLayout;
     row->addStretch(1);
     row->addWidget(create);
+    row->addWidget(importVaultBtn);
     row->addStretch(1);
     ev->addLayout(row);
     ev->addStretch(3);
@@ -708,6 +729,78 @@ QList<qint64> NotesPage::visibleNoteIds() const
     for (int i = 0; i < m_tree->topLevelItemCount(); ++i)
         walk(m_tree->topLevelItem(i));
     return out;
+}
+
+void NotesPage::chooseVault()
+{
+    const QString dir = QFileDialog::getExistingDirectory(
+        this, tr("Importer un coffre Obsidian ou un dossier Markdown"),
+        QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
+    if (!dir.isEmpty())
+        importVault(dir);
+}
+
+bool NotesPage::importVault(const QString& path)
+{
+    saveNow();
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    const QString name = QDir(path).dirName();
+    auto scan = VaultImporter::scan(path);
+    if (scan && !scan.value().studylabExport)
+        scan = VaultImporter::scan(path, name);  // notes rangées dans un dossier au nom du coffre
+    if (!scan) {
+        QApplication::restoreOverrideCursor();
+        m_importStatus->setText(scan.error().message);
+        m_importStatus->setToolTip({});
+        m_importStatus->show();
+        return false;
+    }
+    const VaultScan& vault = scan.value();
+    m_importing = true;
+    auto report = m_ctx.notes.importNotes(vault.notes);
+    m_importing = false;
+    int references = 0;
+    QStringList warnings = vault.warnings;
+    for (const QString& bib : vault.bibFiles) {
+        if (auto r = m_refs.importFile(bib)) {
+            references += r.value().added;
+            warnings << r.value().warnings;
+        } else {
+            warnings << QStringLiteral("%1 : %2").arg(QDir(path).relativeFilePath(bib), r.error().message);
+        }
+    }
+    QApplication::restoreOverrideCursor();
+    if (!report) {
+        m_importStatus->setText(tr("Import impossible : %1").arg(report.error().message));
+        m_importStatus->setToolTip({});
+        m_importStatus->show();
+        return false;
+    }
+    const NoteImportReport& r = report.value();
+    warnings << r.warnings;
+    QStringList parts;
+    parts << tr("« %1 » : %2 importée(s)").arg(name, countLabel(r.imported, tr("note"), tr("notes")));
+    if (r.duplicates > 0)
+        parts << tr("%1 déjà présente(s)").arg(r.duplicates);
+    if (r.renamed > 0)
+        parts << tr("%1 renommée(s)").arg(r.renamed);
+    if (r.images > 0)
+        parts << countLabel(r.images, tr("image"), tr("images"));
+    if (references > 0)
+        parts << countLabel(references, tr("référence"), tr("références"));
+    if (!warnings.isEmpty())
+        parts << countLabel(warnings.size(), tr("avertissement"), tr("avertissements"));
+    m_importStatus->setText(parts.join(QStringLiteral(", ")) + u'.');
+    m_importStatus->setToolTip(warnings.mid(0, 30).join(u'\n'));
+    m_importStatus->show();
+    if (!r.noteIds.isEmpty()) {
+        if (!vault.studylabExport)
+            m_collapsedFolders.remove(NoteService::normalizeFolder(name));
+        openNote(r.noteIds.first());
+    }
+    refreshTree();
+    refreshTags();
+    return true;
 }
 
 void NotesPage::refreshTree()

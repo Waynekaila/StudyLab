@@ -26,6 +26,12 @@
   CSL-JSON, saisie, fiche tirée d'un document (« Citer »), rattachement au document par DOI, ISBN ou titre ;
   citations `[[@clé]]` dans les notes (auteur-date, page, autocomplétion, bibliographie en fin d'aperçu) ; changer
   une clé met à jour les notes ; export BibTeX ou CSL-JSON et `Références.bib` dans l'export Obsidian.
+- **Import d'un coffre Obsidian ou d'un dossier Markdown** (itération V1-6b) : « + › Importer un coffre… » dans
+  Mes notes. Une note par fichier `.md` (titre = nom du fichier), dossiers du coffre conservés sous un dossier à son
+  nom, front matter gardé (`type:` donne le type de note), images `![[…]]` et `![…](…)` copiées dans la base,
+  `[[liens]]` résolus une fois tout importé, fichiers `.bib` importés comme références ; dossiers cachés
+  (`.obsidian`, `.trash`) ignorés. Un export StudyLab se réimporte tel quel (mêmes dossiers, types et uuid) ; les
+  notes déjà présentes (même uuid, ou même titre, dossier et texte) ne sont pas dupliquées.
 - **Export de la bibliothèque** : les notes sont jointes (toutes pour la bibliothèque entière, celles tirées des
   documents pour une sélection) dans `Notes/<dossier>/`, avec leurs images dans `_attachments/` ; la fiche de
   chaque document a son titre en alias, pour que `[[Titre]]` y mène dans Obsidian.

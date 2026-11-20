@@ -7,7 +7,9 @@
 
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QRegularExpression>
+#include <QSet>
 #include <QSaveFile>
 
 namespace studylab {
@@ -503,6 +505,121 @@ Result<NoteRecord> NoteService::createDerived(const QString& title, NoteType typ
         emit linksChanged();
     }
     return stored;
+}
+
+Result<NoteImportReport> NoteService::importNotes(const QList<NoteImport>& notes)
+{
+    NoteImportReport report;
+    auto existing = m_repo.list();
+    if (!existing)
+        return existing.error();
+    // Doublon de contenu : même titre (sans casse), même dossier, même texte.
+    // Les images comptent pour leur place, pas leur fichier (jeton à l'import, attachments/<uuid> en base).
+    static const QRegularExpression image(QStringLiteral("\\]\\((?:attachments/[\\w.-]+|\\x{2063}studylab-image-\\d+\\x{2063})\\)"));
+    auto contentKey = [](const QString& title, const QString& folder, const QString& body) {
+        QString text = body.trimmed();
+        text.replace(image, QStringLiteral("](image)"));
+        return title.simplified().toLower() + QChar(1) + folder.toLower() + QChar(1) + text;
+    };
+    QSet<QString> seen;
+    for (const NoteRecord& n : existing.value())
+        seen.insert(contentKey(n.title, n.folder, n.body));
+
+    db::Transaction tx(m_db);
+    if (!tx.isActive())
+        return tx.beginError();
+    QList<NoteRecord> added;
+    for (const NoteImport& in : notes) {
+        QString t = in.title.simplified();
+        if (t.isEmpty())
+            t = tr("Sans titre");
+        const QString folder = normalizeFolder(in.folder);
+        if (!in.uuid.isEmpty()) {
+            if (auto live = m_repo.findByUuid(in.uuid)) {
+                ++report.duplicates;
+                continue;
+            }
+        }
+        if (seen.contains(contentKey(t, folder, in.body))) {
+            ++report.duplicates;
+            continue;
+        }
+        auto slug = uniqueSlug(t, 0);
+        if (!slug)
+            return slug.error();
+        NoteRecord note;
+        note.title = slug.value() == noteSlug(t) ? t : slug.value();
+        if (note.title != t)
+            ++report.renamed;
+        note.slug = slug.value();
+        note.type = in.type;
+        note.folder = folder;
+        note.body = in.body;
+        if (!in.uuid.isEmpty()) {
+            auto taken = m_repo.uuidTaken(in.uuid);
+            if (!taken)
+                return taken.error();
+            if (!taken.value())
+                note.uuid = in.uuid;
+        }
+        note.frontMatter = parseFrontMatter(note.body).values;
+        if (auto r = m_repo.insert(note); !r)
+            return r.error();
+        if (!in.images.isEmpty()) {
+            for (const auto& [token, file] : in.images) {
+                QFile f(file);
+                if (!f.open(QIODevice::ReadOnly)) {
+                    report.warnings << tr("%1 : image illisible « %2 ».").arg(in.sourcePath, QFileInfo(file).fileName());
+                    continue;
+                }
+                auto rel = addImage(note.id, f.readAll(), QFileInfo(file).suffix());
+                if (!rel) {
+                    report.warnings << QStringLiteral("%1 : %2").arg(in.sourcePath, rel.error().message);
+                    continue;
+                }
+                note.body.replace(token, rel.value());
+                ++report.images;
+            }
+            note.frontMatter = parseFrontMatter(note.body).values;
+            if (auto r = m_repo.update(note); !r)
+                return r.error();
+        }
+        if (auto r = m_repo.setAliases(note.id, noteAliases(note.body)); !r)
+            return r.error();
+        seen.insert(contentKey(note.title, note.folder, note.body));
+        added << note;
+    }
+    // Liens : tables calculées une fois, toutes les notes importées comprises.
+    if (!added.isEmpty()) {
+        const QHash<QString, qint64> keys = keyMap();
+        const QHash<QString, qint64> docs = documentMap();
+        for (const NoteRecord& note : std::as_const(added)) {
+            QList<db::NoteLinkRow> rows;
+            for (const QString& target : noteTargets(note.body)) {
+                const NoteLinkTarget t = pick(target, keys, docs);
+                db::NoteLinkRow row;
+                row.targetText = target;
+                row.targetType = typeKey(t);
+                row.targetNoteId = t.id;
+                rows << row;
+            }
+            if (auto r = m_repo.replaceWikiLinks(note.id, rows); !r)
+                return r.error();
+        }
+        if (auto r = relinkAll(); !r)
+            return r.error();
+    }
+    if (auto r = tx.commit(); !r)
+        return r.error();
+    for (const NoteRecord& note : std::as_const(added)) {
+        report.noteIds << note.id;
+        if (auto stored = m_repo.findById(note.id))
+            emit noteAdded(stored.value());
+    }
+    report.imported = int(added.size());
+    if (!added.isEmpty())
+        emit linksChanged();
+    return report;
 }
 
 Result<QList<NoteSource>> NoteService::sources(qint64 id) { return m_repo.sources(id); }

@@ -3,6 +3,7 @@
 #include "core/Result.h"
 #include "core/domain/Note.h"
 #include "data/repositories/NoteRepository.h"
+#include "services/notes/VaultImporter.h"
 
 #include <QHash>
 #include <QObject>
@@ -43,6 +44,16 @@ using NoteSource = db::NoteSourceRow;
 /// Référence à une source au moment de la création : (« annotation » | « comment » | « document », id).
 using NoteSourceRef = QPair<QString, qint64>;
 
+/// Bilan d'un import de notes (coffre Obsidian, dossier Markdown, export StudyLab).
+struct NoteImportReport {
+    int imported = 0;
+    int duplicates = 0;          ///< déjà présentes (même uuid, ou même titre, dossier et texte)
+    int renamed = 0;             ///< titre déjà pris : suffixe « 2 », « 3 »…
+    int images = 0;              ///< images copiées dans attachments/
+    QStringList warnings;
+    QList<qint64> noteIds;       ///< notes créées, dans l'ordre
+};
+
 /// Espace de notes : création depuis un modèle, enregistrement (front matter, alias, liens [[…]]),
 /// dossiers virtuels, corbeille, rétroliens et liens non résolus, images collées, notes tirées de la lecture.
 ///
@@ -76,6 +87,9 @@ public:
     Result<NoteRecord> createDerived(const QString& title, NoteType type, const QString& folder, const QString& body,
                                      const QList<NoteSourceRef>& sources);
     Result<QList<NoteSource>> sources(qint64 id);
+    /// Importe des notes lues par VaultImporter, en une transaction : doublons écartés, uuid du front matter
+    /// conservé s'il est libre, images copiées dans attachments/, [[liens]] résolus une fois toutes les notes créées.
+    Result<NoteImportReport> importNotes(const QList<NoteImport>& notes);
     /// Notes tirées des documents (export d'une sélection de la bibliothèque).
     Result<QList<NoteRecord>> derivedFrom(const QList<qint64>& documentIds);
 
