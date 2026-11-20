@@ -5,6 +5,8 @@
 #include <QList>
 #include <QString>
 
+#include <optional>
+
 namespace studylab {
 
 /// Type d'une carte mémoire (07-versions V2) : basique (recto → verso), inversée (verso → recto), texte à trous
@@ -35,6 +37,10 @@ struct Deck {
     QString scheduler = QStringLiteral("sm2");
     int newPerDay = 20;            ///< config_json « newPerDay »
     int reviewsPerDay = 200;       ///< config_json « reviewsPerDay »
+    QList<int> learningSteps{1, 10};   ///< minutes (« learningSteps »)
+    QList<int> relearningSteps{10};    ///< minutes (« relearningSteps »)
+    double retention = 0.9;        ///< FSRS : probabilité de se souvenir visée à l'échéance (« retention »)
+    int maxIntervalDays = 36500;   ///< « maxInterval »
     QString createdAt;
 
     QJsonObject configJson() const;
@@ -66,10 +72,17 @@ struct ScheduleState {
     int reps = 0;
     int lapses = 0;
     int step = 0;           ///< étape d'apprentissage
+    double stability = 0;   ///< FSRS, en jours ; 0 : inconnue (carte jamais revue sous FSRS)
+    double difficulty = 0;  ///< FSRS, de 1 à 10 ; 0 : inconnue
 
     QJsonObject toJson() const;
     bool operator==(const ScheduleState&) const = default;
 };
+
+/// Étapes « 1 10 » ou « 1m, 10m, 1h » en minutes ; nullopt si un élément est illisible ou hors de 1 min à 1 jour.
+std::optional<QList<int>> parseSteps(const QString& text);
+/// « 1 10 » ; une étape d'au moins une heure s'écrit en heures (« 1h »).
+QString stepsText(const QList<int>& minutes);
 
 /// Numéros des trous d'un texte ({{c1::…}}, {{c2::…}}), triés, sans doublon.
 QList<int> clozeNumbers(const QString& text);

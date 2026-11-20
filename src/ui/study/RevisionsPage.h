@@ -24,6 +24,8 @@ class StudyService;
 namespace studylab::ui {
 
 class CardEditorDialog;
+class CardHistoryDialog;
+class DeckSettingsDialog;
 class DayChart;
 class MarkdownView;
 
@@ -47,6 +49,9 @@ public:
     /// Fenêtre de saisie (non bloquante) d'une carte pour le paquet affiché, ou modification d'une carte.
     CardEditorDialog* addCard();
     CardEditorDialog* editCard(qint64 cardId);
+    /// Réglages du paquet (non bloquant) ; historique d'une carte.
+    DeckSettingsDialog* openDeckSettings(qint64 deckId);
+    CardHistoryDialog* showHistory(qint64 cardId);
     bool setCardSuspended(qint64 cardId, bool suspended);
     bool removeCard(qint64 cardId);
 
@@ -65,6 +70,8 @@ public:
     QListWidget* deckList() const { return m_deckList; }
     QPushButton* startButton() const { return m_start; }
     QPushButton* addCardButton() const { return m_addCard; }
+    QPushButton* settingsButton() const { return m_settings; }
+    QLabel* deckInfo() const { return m_deckInfo; }
     QTreeWidget* cardList() const { return m_cards; }
     QLabel* deckTitle() const { return m_deckName; }
     QLabel* tileValue(int index) const { return m_tiles.value(index); }
@@ -135,6 +142,7 @@ private:
     QList<QLabel*> m_tiles;
     QPushButton* m_start = nullptr;
     QPushButton* m_addCard = nullptr;
+    QPushButton* m_settings = nullptr;
     QLabel* m_cardsEmpty = nullptr;
     QTreeWidget* m_cards = nullptr;
     QLabel* m_sessionDeck = nullptr;

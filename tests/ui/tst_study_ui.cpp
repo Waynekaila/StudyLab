@@ -19,6 +19,7 @@
 #include "ui/shell/MainWindow.h"
 #include "ui/shell/Sidebar.h"
 #include "ui/study/CardEditorDialog.h"
+#include "ui/study/DeckSettingsDialog.h"
 #include "ui/study/RevisionsPage.h"
 #include "ui/theme/ThemeManager.h"
 
@@ -29,6 +30,8 @@
 #include <QListWidget>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QSpinBox>
+#include <QLineEdit>
 #include <QSettings>
 #include <QSignalSpy>
 #include <QStackedWidget>
@@ -297,6 +300,80 @@ private slots:
         QTest::keyClick(page.sessionPage(), Qt::Key_Escape);
         QVERIFY(!page.inSession());
         QCOMPARE(page.center()->currentWidget(), page.overviewPage());
+    }
+
+    void deckSettingsAndHistory()
+    {
+        Env env;
+        auto subject = env.organize->createSubject(QStringLiteral("Thermodynamique"));
+        QVERIFY(subject);
+        StudyService study(*env.db);
+        QDateTime now = QDateTime(QDate(2026, 11, 20), QTime(10, 0)).toUTC();
+        study.setClock([&now] { return now; });
+        const qint64 deck = study.createDeck(QStringLiteral("Cycles")).value().id;
+        const qint64 card = study.addCards(deck, CardType::Basic, QStringLiteral("Rendement de Carnot ?"),
+                                           QStringLiteral("$1 - T_F/T_C$"))
+                                .value()
+                                .first()
+                                .id;
+        ui::RevisionsPage page(*env.ctx, study);
+        page.resize(1300, 860);
+        page.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&page));
+        QVERIFY(page.deckInfo()->text().endsWith(QStringLiteral("SM-2")));
+        QVERIFY(page.settingsButton()->isVisible());
+
+        // Réglages : FSRS à 85 %, une étape d'apprentissage, matière.
+        ui::DeckSettingsDialog* dlg = page.openDeckSettings(deck);
+        QVERIFY(dlg);
+        QVERIFY(!dlg->retentionBox()->isEnabled());
+        dlg->schedulerBox()->setCurrentIndex(1);
+        QVERIFY(dlg->retentionBox()->isEnabled());
+        dlg->retentionBox()->setValue(85);
+        dlg->subjectBox()->setCurrentIndex(dlg->subjectBox()->findText(QStringLiteral("Thermodynamique")));
+        dlg->learningStepsField()->setText(QStringLiteral("abc"));
+        QVERIFY(!dlg->save());
+        QVERIFY(dlg->errorLabel()->isVisibleTo(dlg));
+        dlg->learningStepsField()->setText(QStringLiteral("5m"));
+        dlg->relearningStepsField()->clear();
+        dlg->newPerDayBox()->setValue(3);
+        QVERIFY(dlg->save());
+        dlg->accept();
+        const Deck saved = study.deckSummary(deck).value().deck;
+        QCOMPARE(saved.scheduler, QStringLiteral("fsrs"));
+        QCOMPARE(saved.retention, 0.85);
+        QCOMPARE(saved.learningSteps, (QList<int>{5}));
+        QVERIFY(saved.relearningSteps.isEmpty());
+        QCOMPARE(saved.newPerDay, 3);
+        QCOMPARE(saved.subjectId, subject.value().id);
+        QTRY_VERIFY(page.deckInfo()->text().contains(QStringLiteral("FSRS, rétention visée 85 %")));
+
+        // Séance sous FSRS : « Bien » diplôme la carte (une seule étape).
+        QVERIFY(page.startSession());
+        QVERIFY(page.revealAnswer());
+        QCOMPARE(page.rateInterval(0)->text(), QStringLiteral("5 min · 1"));
+        QCOMPARE(page.rateInterval(2)->text(), QStringLiteral("5 j · 3"));  // stabilité 3,2 j, rappel visé 85 %
+        QVERIFY(page.rate(Rating::Again));
+        now = now.addSecs(300);
+        QVERIFY(page.revealAnswer());
+        QVERIFY(page.rate(Rating::Good));
+        QVERIFY(!page.inSession());
+
+        // Historique : deux réponses, stabilité et rappel estimé.
+        ui::CardHistoryDialog* history = page.showHistory(card);
+        QCOMPARE(history->list()->topLevelItemCount(), 2);
+        QCOMPARE(history->list()->topLevelItem(0)->text(1), QStringLiteral("À revoir"));
+        QCOMPARE(history->list()->topLevelItem(0)->text(2), QStringLiteral("5 min"));
+        QCOMPARE(history->list()->topLevelItem(1)->text(1), QStringLiteral("Bien"));
+        const QString summary = history->summary()->text();
+        QVERIFY2(summary.startsWith(QStringLiteral("2 réponses · prochaine révision le")), qPrintable(summary));
+        QVERIFY2(summary.contains(QStringLiteral("difficulté")) && summary.contains(QStringLiteral("rappel estimé aujourd'hui 100 %")),
+                 qPrintable(summary));
+        maybeScreenshot(*history, QStringLiteral("v2-2-historique"));
+        history->reject();
+        ui::DeckSettingsDialog* shown = page.openDeckSettings(deck);
+        maybeScreenshot(*shown, QStringLiteral("v2-2-reglages-paquet"));
+        shown->reject();
     }
 
     void cardsFromReadingAndNotes()

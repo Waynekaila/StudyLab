@@ -5,6 +5,7 @@
 #include "ui/pages/PageScaffold.h"
 #include "ui/reader/MarkdownView.h"
 #include "ui/study/CardEditorDialog.h"
+#include "ui/study/DeckSettingsDialog.h"
 #include "ui/theme/Icons.h"
 #include "ui/theme/ThemeManager.h"
 
@@ -375,9 +376,15 @@ void RevisionsPage::buildOverview()
                                 tr("Ajouter une carte"), m_overview);
     m_addCard->setObjectName(QStringLiteral("AddCard"));
     connect(m_addCard, &QPushButton::clicked, this, [this] { addCard(); });
+    m_settings = new QPushButton(Icons::get(QStringLiteral("settings"), m_ctx.theme.palette().text2, 16),
+                                 tr("Réglages du paquet"), m_overview);
+    m_settings->setObjectName(QStringLiteral("DeckSettings"));
+    m_settings->setProperty("variant", QStringLiteral("ghost"));
+    connect(m_settings, &QPushButton::clicked, this, [this] { openDeckSettings(m_deckId); });
     actions->addWidget(m_start);
     actions->addWidget(m_addCard);
     actions->addStretch(1);
+    actions->addWidget(m_settings);
     body->addLayout(actions);
 
     body->addSpacing(8);
@@ -624,6 +631,9 @@ void RevisionsPage::fillOverview()
     if (s.counts.suspended > 0)
         info += QStringLiteral(" · ") + countLabel(s.counts.suspended, tr("suspendue"), tr("suspendues"));
     info += QStringLiteral(" · ") + tr("jusqu'à %1 nouvelles par jour").arg(s.deck.newPerDay);
+    info += QStringLiteral(" · ") + (s.deck.scheduler == QLatin1String("fsrs")
+                                         ? tr("FSRS, rétention visée %1 %").arg(qRound(s.deck.retention * 100))
+                                         : tr("SM-2"));
     m_deckInfo->setText(info);
     m_tiles[0]->setText(QString::number(s.newToday));
     m_tiles[1]->setText(QString::number(s.learning));
@@ -723,6 +733,8 @@ void RevisionsPage::showDeckMenu(const QPoint& pos)
     }
     const qint64 id = item->data(kIdRole).toLongLong();
     const QString name = item->text();
+    menu.addAction(Icons::get(QStringLiteral("settings"), m_ctx.theme.palette().text2, 16), tr("Réglages…"), this,
+                   [this, id] { openDeckSettings(id); });
     menu.addAction(tr("Renommer…"), this, [this, id, name] {
         bool ok = false;
         const QString n = QInputDialog::getText(this, tr("Renommer le paquet"), tr("Nom du paquet :"),
@@ -758,6 +770,8 @@ void RevisionsPage::showCardMenu(const QPoint& pos)
     menu.addAction(tr("Modifier…"), this, [this, id] { editCard(id); });
     menu.addAction(suspended ? tr("Reprendre") : tr("Suspendre"), this,
                    [this, id, suspended] { setCardSuspended(id, !suspended); });
+    menu.addAction(Icons::get(QStringLiteral("activity"), pal.text2, 16), tr("Historique…"), this,
+                   [this, id] { showHistory(id); });
     if (row.value().card.sourceType != CardSource::None)
         menu.addAction(Icons::get(QStringLiteral("external"), pal.text2, 16), tr("Voir l'origine"), this, [this, id] {
             if (auto r = m_study.card(id)) {
@@ -809,6 +823,25 @@ CardEditorDialog* RevisionsPage::editCard(qint64 cardId)
             m_session->setFocus();
         }
     });
+    dlg->open();
+    return dlg;
+}
+
+DeckSettingsDialog* RevisionsPage::openDeckSettings(qint64 deckId)
+{
+    auto summary = m_study.deckSummary(deckId);
+    if (!summary)
+        return nullptr;
+    auto* dlg = new DeckSettingsDialog(m_ctx, m_study, summary.value().deck, this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    dlg->open();
+    return dlg;
+}
+
+CardHistoryDialog* RevisionsPage::showHistory(qint64 cardId)
+{
+    auto* dlg = new CardHistoryDialog(m_ctx, m_study, cardId, this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
     dlg->open();
     return dlg;
 }

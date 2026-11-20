@@ -87,7 +87,10 @@ public:
     /// Cartes à voir aujourd'hui, tous paquets confondus (badge de la navigation).
     int dueTotal();
 
-    const Scheduler& schedulerFor(const Deck& deck) const;
+    /// Planificateur du paquet (SM-2 ou FSRS) avec ses réglages.
+    static std::unique_ptr<Scheduler> schedulerFor(const Deck& deck);
+    /// Journal des réponses d'une carte, du plus ancien au plus récent.
+    Result<QList<db::ReviewEntry>> history(qint64 cardId);
 
 signals:
     /// Paquets, cartes ou révisions modifiés.
@@ -98,7 +101,6 @@ private:
 
     mutable db::StudyRepository m_repo;
     Clock m_clock;
-    std::unique_ptr<Sm2Scheduler> m_sm2;
 };
 
 /// « < 1 min », « 10 min », « 3 h », « 4 j », « 2,5 mois », « 1,2 an » (boutons de réponse).

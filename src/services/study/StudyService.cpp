@@ -15,7 +15,7 @@ QString iso(const QDateTime& dt) { return dt.toUTC().toString(QStringLiteral("yy
 }  // namespace
 
 StudyService::StudyService(db::Database& db, QObject* parent)
-    : QObject(parent), m_repo(db), m_sm2(std::make_unique<Sm2Scheduler>())
+    : QObject(parent), m_repo(db)
 {
 }
 
@@ -35,10 +35,24 @@ QDateTime StudyService::dayStart(const QDateTime& utc)
     return start.toUTC();
 }
 
-const Scheduler& StudyService::schedulerFor(const Deck&) const
+std::unique_ptr<Scheduler> StudyService::schedulerFor(const Deck& deck)
 {
-    return *m_sm2;  // FSRS : V2-2
+    if (deck.scheduler == QLatin1String("fsrs")) {
+        FsrsScheduler::Config c;
+        c.learningMinutes = deck.learningSteps;
+        c.relearningMinutes = deck.relearningSteps;
+        c.retention = deck.retention;
+        c.maxDays = deck.maxIntervalDays;
+        return std::make_unique<FsrsScheduler>(c);
+    }
+    Sm2Scheduler::Config c;
+    c.learningMinutes = deck.learningSteps;
+    c.relearningMinutes = deck.relearningSteps;
+    c.maxDays = deck.maxIntervalDays;
+    return std::make_unique<Sm2Scheduler>(c);
 }
+
+Result<QList<db::ReviewEntry>> StudyService::history(qint64 cardId) { return m_repo.reviews(cardId); }
 
 DeckSummary StudyService::summarize(const Deck& deck, const db::DeckCounts& counts) const
 {
@@ -99,6 +113,11 @@ Result<Deck> StudyService::updateDeck(const Deck& deck)
     d.name = d.name.simplified();
     if (d.name.isEmpty())
         return Error::make(Error::Code::InvalidArgument, tr("Le paquet doit avoir un nom."));
+    if (d.scheduler != QLatin1String("sm2") && d.scheduler != QLatin1String("fsrs"))
+        return Error::make(Error::Code::InvalidArgument, tr("Planificateur inconnu : %1").arg(d.scheduler));
+    if (d.learningSteps.isEmpty())
+        return Error::make(Error::Code::InvalidArgument, tr("Il faut au moins une étape d'apprentissage."));
+    d.applyConfig(d.configJson());  // bornes (rétention, limites, intervalle maximal)
     if (auto r = m_repo.updateDeck(d); !r)
         return r.error();
     emit changed();
@@ -248,7 +267,7 @@ Result<ScheduleState> StudyService::answer(qint64 cardId, Rating rating, qint64 
         return deck.error();
     const QDateTime t = now();
     const ScheduleState before = row.value().state;
-    const ScheduleState after = schedulerFor(deck.value()).next(before, rating, t);
+    const ScheduleState after = schedulerFor(deck.value())->next(before, rating, t);
     if (auto r = m_repo.recordReview(cardId, before, after, rating, elapsedMs, iso(t)); !r)
         return r.error();
     emit changed();
@@ -258,7 +277,7 @@ Result<ScheduleState> StudyService::answer(qint64 cardId, Rating rating, qint64 
 QList<qint64> StudyService::preview(const db::CardRow& row) const
 {
     auto deck = m_repo.deck(row.card.deckId);
-    return schedulerFor(deck ? deck.value() : Deck{}).previewSeconds(row.state, now());
+    return schedulerFor(deck ? deck.value() : Deck{})->previewSeconds(row.state, now());
 }
 
 Result<DayStats> StudyService::stats(qint64 deckId)

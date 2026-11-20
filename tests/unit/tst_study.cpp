@@ -105,6 +105,134 @@ private slots:
         QCOMPARE(sm2.next(s, Rating::Good, m_now).intervalDays, 36500.0);
     }
 
+    void fsrsFormulas()
+    {
+        FsrsScheduler fsrs;
+        QCOMPARE(fsrs.config().w.size(), 19);
+        QCOMPARE(FsrsScheduler::retrievability(10, 10), 0.9);
+        QVERIFY(qAbs(fsrs.initialDifficulty(Rating::Again) - 7.1949) < 1e-4);
+        QVERIFY(qAbs(fsrs.initialDifficulty(Rating::Good) - 5.2824) < 1e-4);
+        QVERIFY(qAbs(fsrs.initialDifficulty(Rating::Easy) - 3.2245) < 1e-4);
+        QCOMPARE(fsrs.initialStability(Rating::Good), 3.173);
+        // Rétention visée : 0,9 → l'intervalle vaut la stabilité ; 0,8 → plus long ; 0,95 → plus court.
+        QCOMPARE(fsrs.interval(10), 10.0);
+        FsrsScheduler::Config loose;
+        loose.retention = 0.8;
+        QCOMPARE(FsrsScheduler(loose).interval(10), 24.0);
+        FsrsScheduler::Config strict;
+        strict.retention = 0.95;
+        QCOMPARE(FsrsScheduler(strict).interval(10), 5.0);
+        // La difficulté reste dans [1, 10].
+        double d = 9.9;
+        for (int i = 0; i < 20; ++i)
+            d = fsrs.nextDifficulty(d, Rating::Again);
+        QVERIFY(d <= 10 && d > 9);
+    }
+
+    void fsrsSchedule()
+    {
+        FsrsScheduler fsrs;
+        ScheduleState s;
+        // Nouvelle carte : mêmes étapes que SM-2, « Facile » sort directement à 16 jours (stabilité initiale).
+        QCOMPARE(fsrs.previewSeconds(s, m_now), (QList<qint64>{60, 360, 600, 16 * 86400}));
+        s = fsrs.next(s, Rating::Good, m_now);
+        QCOMPARE(s.state, CardState::Learning);
+        QCOMPARE(s.stability, 3.173);
+        QVERIFY(qAbs(s.difficulty - 5.2824) < 1e-4);
+        s = fsrs.next(s, Rating::Good, m_now.addSecs(600));
+        QCOMPARE(s.state, CardState::Review);
+        QVERIFY(qAbs(s.stability - 4.4669) < 1e-3);  // révision du jour même : stabilité à court terme
+        QCOMPARE(s.intervalDays, 4.0);
+
+        // À l'échéance : Difficile 7 j, Bien 14 j, Facile 34 j.
+        const QDateTime due = s.due;
+        QCOMPARE(fsrs.previewSeconds(s, due), (QList<qint64>{600, 7 * 86400, 14 * 86400, 34 * 86400}));
+        const ScheduleState good = fsrs.next(s, Rating::Good, due);
+        QVERIFY(good.stability > s.stability);
+        QVERIFY(good.difficulty < s.difficulty + 1e-9);
+        // Oubli : stabilité réduite, réapprentissage, puis un jour.
+        ScheduleState lapse = fsrs.next(s, Rating::Again, due);
+        QCOMPARE(lapse.state, CardState::Relearning);
+        QCOMPARE(lapse.lapses, 1);
+        QVERIFY(qAbs(lapse.stability - 1.2976) < 1e-3);
+        QVERIFY(lapse.difficulty > s.difficulty);
+        lapse = fsrs.next(lapse, Rating::Good, due.addSecs(600));
+        QCOMPARE(lapse.state, CardState::Review);
+        QCOMPARE(lapse.intervalDays, 2.0);
+
+        // Carte révisée sous SM-2 puis passée à FSRS : stabilité tirée de l'intervalle.
+        ScheduleState old;
+        old.state = CardState::Review;
+        old.intervalDays = 10;
+        old.ease = 2.5;
+        old.due = m_now;
+        const ScheduleState converted = fsrs.next(old, Rating::Good, m_now);
+        QCOMPARE(converted.state, CardState::Review);
+        QVERIFY(converted.stability > 10);
+        QVERIFY(converted.difficulty > 5 && converted.difficulty < 7);
+    }
+
+    void stepsParsing()
+    {
+        QCOMPARE(parseSteps(QStringLiteral("1 10")), std::optional<QList<int>>(QList<int>{1, 10}));
+        QCOMPARE(parseSteps(QStringLiteral("1m, 10m; 1h")), std::optional<QList<int>>(QList<int>{1, 10, 60}));
+        QCOMPARE(parseSteps(QStringLiteral("1.5h 1j")), std::optional<QList<int>>(QList<int>{90, 1440}));
+        QCOMPARE(parseSteps(QString()), std::optional<QList<int>>(QList<int>{}));
+        QVERIFY(!parseSteps(QStringLiteral("10 x")));
+        QVERIFY(!parseSteps(QStringLiteral("2j")));  // plus d'un jour : c'est un intervalle, pas une étape
+        QCOMPARE(stepsText({1, 10, 60, 90}), QStringLiteral("1 10 1h 90"));
+    }
+
+    void deckSettingsAndHistory()
+    {
+        auto study = service();
+        Deck deck = study->createDeck(QStringLiteral("Mécanique")).value();
+        const qint64 card = study->addCards(deck.id, CardType::Basic, QStringLiteral("F = ?"), QStringLiteral("m a"))
+                                .value()
+                                .first()
+                                .id;
+        deck.scheduler = QStringLiteral("fsrs");
+        deck.newPerDay = 5;
+        deck.learningSteps = {5};
+        deck.relearningSteps = {};
+        deck.retention = 1.5;  // ramenée à 0,99
+        QVERIFY(study->updateDeck(deck));
+        const Deck saved = study->deckSummary(deck.id).value().deck;
+        QCOMPARE(saved.scheduler, QStringLiteral("fsrs"));
+        QCOMPARE(saved.newPerDay, 5);
+        QCOMPARE(saved.learningSteps, (QList<int>{5}));
+        QVERIFY(saved.relearningSteps.isEmpty());
+        QCOMPARE(saved.retention, 0.99);
+        deck.learningSteps = {};
+        QVERIFY(!study->updateDeck(deck));
+        deck.learningSteps = {5};
+        deck.scheduler = QStringLiteral("anki");
+        QVERIFY(!study->updateDeck(deck));
+
+        // Une seule étape (5 min) : « À revoir » la ramène à 5 min, « Bien » la diplôme (1 jour à 99 % de
+        // rétention visée) ; la stabilité est enregistrée.
+        const auto row = study->card(card).value();
+        QCOMPARE(study->preview(row).at(0), 5 * 60);
+        QCOMPARE(study->preview(row).at(2), 86400);
+        QVERIFY(study->answer(card, Rating::Again));
+        m_now = m_now.addSecs(300);
+        const ScheduleState after = study->answer(card, Rating::Good).value();
+        QCOMPARE(after.state, CardState::Review);
+        const auto reloaded = study->card(card).value();
+        QCOMPARE(reloaded.state.state, CardState::Review);
+        QVERIFY(reloaded.state.stability > 0);
+        QCOMPARE(reloaded.state.stability, after.stability);
+        QCOMPARE(reloaded.state.difficulty, after.difficulty);
+
+        const auto history = study->history(card).value();
+        QCOMPARE(history.size(), 2);
+        QCOMPARE(history.at(0).rating, Rating::Again);
+        QCOMPARE(history.at(1).rating, Rating::Good);
+        QCOMPARE(history.at(1).after.value(QStringLiteral("state")).toString(), QStringLiteral("review"));
+        QVERIFY(history.at(1).after.value(QStringLiteral("stability")).toDouble() > 0);
+        QCOMPARE(history.at(1).at, m_now);
+    }
+
     void dayBoundary()
     {
         // La journée de révision commence à 4 h : 2 h du matin compte pour la veille.

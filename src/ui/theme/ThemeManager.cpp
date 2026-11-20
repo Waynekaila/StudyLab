@@ -219,6 +219,7 @@ QPlainTextEdit, QSpinBox {
     selection-background-color: %{primary}; selection-color: %{onPrimary};
 }
 QPlainTextEdit:focus, QSpinBox:focus { border: 1px solid %{primary}; }
+QSpinBox { min-height: %{h20}; }
 QDialog { background: %{bg}; }
 QMenu { background: %{surface}; border: 1px solid %{border}; border-radius: 8px; padding: 4px; }
 QMenu::item { padding: %{p6} %{p12}; border-radius: 6px; }
