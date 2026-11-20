@@ -80,6 +80,8 @@ ReferencesPage::ReferencesPage(AppContext& ctx, QWidget* parent)
             refresh();
     };
     connect(&m_ctx.library, &LibraryService::documentsChanged, this, stale);
+    // Un import de coffre (page Notes) peut ajouter des références depuis ses fichiers .bib.
+    connect(&m_ctx.notes, &NoteService::linksChanged, this, stale);
     connect(&m_ctx.notes, &NoteService::noteChanged, this, [this] {
         if (m_current.id > 0 && isVisible())
             renderCiting();

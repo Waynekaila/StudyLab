@@ -68,6 +68,8 @@ public:
     Result<int> count();
     /// Le slug est-il pris par une autre note (corbeille comprise : il reste réservé) ?
     Result<bool> slugTaken(const QString& slug, qint64 exceptId = 0);
+    /// uuid déjà porté par une note, corbeille comprise.
+    Result<bool> uuidTaken(const QString& uuid);
 
     Result<void> remove(qint64 id);
     Result<void> restore(qint64 id);

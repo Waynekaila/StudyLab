@@ -179,6 +179,18 @@ Result<int> NoteRepository::count()
     return int(n.value());
 }
 
+Result<bool> NoteRepository::uuidTaken(const QString& uuid)
+{
+    auto stmt = m_db.prepare(QStringLiteral("SELECT count(*) FROM notes WHERE uuid = ?1"));
+    if (!stmt)
+        return stmt.error();
+    stmt.value().bind(1, uuid);
+    auto row = stmt.value().step();
+    if (!row)
+        return row.error();
+    return stmt.value().columnInt64(0) > 0;
+}
+
 Result<bool> NoteRepository::slugTaken(const QString& slug, qint64 exceptId)
 {
     // Comparaison sans casse : deux fichiers « Carnot.md » et « carnot.md » se confondent sous Windows.

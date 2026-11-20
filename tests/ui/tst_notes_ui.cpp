@@ -27,6 +27,9 @@
 #include <QCompleter>
 #include <QClipboard>
 #include <QDeadlineTimer>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QImage>
 #include <QLabel>
 #include <QLineEdit>
@@ -434,6 +437,58 @@ private slots:
         QTest::keyClick(completer->popup(), Qt::Key_Return);
         QVERIFY(!completer->popup()->isVisible());
         QVERIFY(notes->editor()->toPlainText().endsWith(QStringLiteral("Voir [[Reflexions sur la puissance motrice du feu]]")));
+    }
+
+    void importObsidianVault()
+    {
+        Env env;
+        const QString vault = env.dir.filePath(QStringLiteral("Mon coffre"));
+        auto write = [](const QString& path, const QByteArray& data) {
+            QDir().mkpath(QFileInfo(path).absolutePath());
+            QFile f(path);
+            if (f.open(QIODevice::WriteOnly))
+                f.write(data);
+        };
+        write(vault + QStringLiteral("/.obsidian/app.json"), "{}");
+        write(vault + QStringLiteral("/Thermo/Entropie.md"),
+              QStringLiteral("---\ntype: concept\ntags: [thermo]\n---\n\n# Entropie\n\nVoir [[Carnot]].\n").toUtf8());
+        write(vault + QStringLiteral("/Thermo/Carnot.md"),
+              QStringLiteral("Cycle idéal.\n\n![[absent.png]]\n").toUtf8());
+        write(vault + QStringLiteral("/refs.bib"), "@book{cengel2019, title = {Thermodynamique}, year = {2019}}\n");
+
+        ui::NotesPage page(*env.ctx);
+        page.resize(1200, 800);
+        page.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&page));
+        QVERIFY(!page.importStatusLabel()->isVisible());
+
+        QVERIFY(page.importVault(vault));
+        QCOMPARE(page.visibleNoteIds().size(), 2);
+        QVERIFY(page.currentNoteId() > 0);
+        const QString status = page.importStatusLabel()->text();
+        QVERIFY(page.importStatusLabel()->isVisible());
+        QVERIFY2(status.contains(QStringLiteral("2 notes")) && status.contains(QStringLiteral("1 référence"))
+                     && status.contains(QStringLiteral("1 avertissement")),
+                 qPrintable(status));
+        QVERIFY(page.importStatusLabel()->toolTip().contains(QStringLiteral("absent.png")));
+        // Notes rangées dans un dossier au nom du coffre, sous-dossiers conservés.
+        QTreeWidgetItem* top = page.tree()->topLevelItem(0);
+        QCOMPARE(top->text(0), QStringLiteral("Mon coffre"));
+        QCOMPARE(top->child(0)->text(0), QStringLiteral("Thermo"));
+        QCOMPARE(env.notes->find(env.notes->resolve(QStringLiteral("Entropie")).value()).value().type, NoteType::Concept);
+
+        const QString dir = qEnvironmentVariable("STUDYLAB_SCREENSHOT_DIR");
+        if (!dir.isEmpty()) {
+            QDir().mkpath(dir);
+            page.grab().save(dir + QStringLiteral("/v1-6b-import-coffre.png"));
+        }
+
+        // Une seconde fois : tout est déjà là.
+        QVERIFY(page.importVault(vault));
+        QCOMPARE(page.visibleNoteIds().size(), 2);
+        QVERIFY2(page.importStatusLabel()->text().contains(QStringLiteral("2 déjà présente")),
+                 qPrintable(page.importStatusLabel()->text()));
+        QVERIFY(!page.importVault(env.dir.filePath(QStringLiteral("absent"))));
     }
 
     void screenshots_data()

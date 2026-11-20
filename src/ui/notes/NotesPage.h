@@ -48,6 +48,10 @@ public:
     qint64 followLink(const QString& target);
     /// Enregistre tout de suite le texte en attente. false si l'enregistrement a échoué.
     bool saveNow();
+    /// Importe un coffre Obsidian ou un dossier de fichiers Markdown (et ses .bib) ; le bilan s'affiche sous
+    /// l'arborescence. Les notes vont dans un dossier au nom du coffre, sauf pour un export StudyLab (restauré
+    /// tel quel). false si rien n'a pu être lu.
+    bool importVault(const QString& path);
 
     qint64 currentNoteId() const { return m_currentId; }
     Mode mode() const { return m_mode; }
@@ -68,6 +72,7 @@ public:
     QList<QPushButton*> sourceButtons() const { return m_sourceButtons; }
     QList<QToolButton*> tagButtons() const { return m_tagButtons; }
     QLabel* backlinkCountLabel() const { return m_backlinkCount; }
+    QLabel* importStatusLabel() const { return m_importStatus; }
     /// Notes visibles dans l'arborescence (après filtre), dans l'ordre d'affichage.
     QList<qint64> visibleNoteIds() const;
     /// Insère une image comme si elle venait d'être collée.
@@ -113,6 +118,7 @@ private:
     void loadNote(const NoteRecord& note);
     QString currentFolder() const;
     void showTreeMenu(const QPoint& pos);
+    void chooseVault();
     void moveNote(qint64 id);
     void renameFolder(const QString& folder);
     void jumpToLine(int line);
@@ -144,6 +150,8 @@ private:
     QTreeWidget* m_tree = nullptr;
     QLabel* m_tagsTitle = nullptr;
     QWidget* m_tagHost = nullptr;
+    QLabel* m_importStatus = nullptr;
+    bool m_importing = false;
     FlowLayout* m_tagFlow = nullptr;
     QList<QToolButton*> m_tagButtons;
     QFrame* m_undoBar = nullptr;
