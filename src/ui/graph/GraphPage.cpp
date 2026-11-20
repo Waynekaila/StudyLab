@@ -166,7 +166,7 @@ GraphPage::GraphPage(AppContext& ctx, QWidget* parent) : QWidget(parent), m_ctx(
         updateCard();
     });
     refreshIcons();
-    refresh();
+    m_dirty = true;  // calculé au premier affichage : rien à faire au démarrage si l'écran n'est pas ouvert
 }
 
 GraphPage::~GraphPage()

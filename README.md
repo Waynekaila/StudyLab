@@ -13,12 +13,12 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | 1 · Conception | Vision, architecture, choix des bibliothèques, schéma SQLite, maquettes, plan | ✅ Terminée — voir [`docs/design/`](docs/design/README.md) |
 | 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | ✅ Terminée — **version 0.1.0** (7 itérations) |
 | 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | ✅ Terminée — **version 0.2.0** (7 itérations) |
-| 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | 🚧 En cours — V2-1 à V2-6 faites (cartes, FSRS, fiches de révision, tableau de bord et Activité, annotations PDF échangées, documents Word et images, navigation et raccourcis configurables) |
-| 5 · Finalisation | Optimisation, packaging, documentation | — |
+| 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord, formats Word et images, raccourcis | ✅ Terminée — **version 1.0.0** (7 itérations) |
+| 5 · Finalisation | Profilage gros volume, packaging, guide utilisateur, documentation technique, dépannage | ✅ Faite avec la V2-7 |
 
-### Ce qui fonctionne aujourd'hui (version 0.2 : MVP et V1)
+### Ce qui fonctionne (version 1.0)
 
-- **Révisions** (V2, non publié) : cartes mémoire basiques, inversées, à trous (`{{c1::…}}`, une carte par trou)
+- **Révisions** (V2) : cartes mémoire basiques, inversées, à trous (`{{c1::…}}`, une carte par trou)
   ou formules (LaTeX), rangées en paquets ; « Créer une carte… » depuis une annotation (menu contextuel) ou une note
   (sélection), l'origine restant cliquable. Séance de révision : recto, « Afficher la réponse » (Espace), quatre
   réponses avec l'intervalle suivant (À revoir, Difficile, Bien, Facile ; touches 1 à 4), E pour modifier, S pour
@@ -26,11 +26,11 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
   paquet : matière, nouvelles et révisions par jour (20 et 200 par défaut), étapes d'apprentissage et après un
   oubli, intervalle maximal ; journée qui commence à 4 h. Historique de chaque carte (réponses, intervalles,
   stabilité, difficulté, rappel estimé). Statistiques du jour et des 7 derniers jours, pastille des cartes dues.
-- **Fiches de révision** (V2, non publié) : « Générer une fiche de révision » rassemble pour une matière les passages
+- **Fiches de révision** (V2) : « Générer une fiche de révision » rassemble pour une matière les passages
   annotés (les commentés d'abord) avec leurs liens, les définitions des notes « Concept », les formules relevées
   dans les notes et les commentaires, les questions en suspens et celles des cartes. La fiche est un **brouillon**
   dans « Fiches de révision », rattaché à la matière ; un bandeau invite à la relire puis à la marquer comme relue.
-- **Tableau de bord et Activité** (V2, non publié) : l'accueil montre la lecture à reprendre, les cartes du jour par
+- **Tableau de bord et Activité** (V2) : l'accueil montre la lecture à reprendre, les cartes du jour par
   matière, l'objectif de la semaine (pages lues, temps de lecture, comparaison avec la semaine précédente), les
   lectures en cours, la progression par matière, les dernières annotations et derniers commentaires, les favoris et
   les notes récentes. Objectifs au choix : pages par semaine, minutes de lecture et cartes par jour. L'écran
@@ -38,7 +38,7 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
   régularité sur six mois et un journal filtrable (lu, annoté, commenté, noté, révisé, importé) dont chaque ligne
   rouvre ce qu'elle désigne. Le temps n'est compté que si le document est à l'écran et qu'on s'en sert ; la mesure se
   désactive dans les paramètres et rien ne quitte l'ordinateur.
-- **Annotations PDF échangées** (V2, non publié) : un PDF déjà annoté ailleurs (Acrobat, Okular, Zotero, Xodo…)
+- **Annotations PDF échangées** (V2) : un PDF déjà annoté ailleurs (Acrobat, Okular, Zotero, Xodo…)
   affiche un bandeau qui propose d'importer ses surlignages, soulignements, barrés, notes et rectangles, avec le texte
   couvert, la couleur la plus proche et le commentaire ; un second import n'ajoute rien. Dans l'autre sens,
   « Exporter une copie annotée du PDF… » (menu « … » du lecteur) écrit une copie qui montre dans n'importe quel
@@ -181,16 +181,17 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | ![PDF annoté dans un autre logiciel : proposition d'import](docs/screenshots/v2-5-annotations-du-pdf.png) | ![Annotations importées, sans double dessin](docs/screenshots/v2-5-annotations-importees.png) |
 | ![Copie annotée enregistrée](docs/screenshots/v2-5-copie-annotee-enregistree.png) | ![Copie annotée vue par le moteur PDF](docs/screenshots/v2-5-copie-annotee-page.png) |
 
-Suite : formats supplémentaires et raccourcis configurables, puis finalisation (V2) —
-plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md). Historique : [`CHANGELOG.md`](CHANGELOG.md).
+Documentation : [guide utilisateur](docs/user-guide/README.md), [dépannage](docs/troubleshooting.md),
+[documentation technique](docs/technical/README.md) et [performances](docs/technical/performances.md),
+[conception](docs/design/README.md). Historique : [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Installer
 
 Les paquets sont produits par l'intégration continue (onglet *Actions* du dépôt, artefacts `studylab-deb` et
 `studylab-windows-installer`) :
 
-- **Debian 13** : `sudo apt install ./studylab_0.2.0_amd64.deb` (les dépendances Qt sont installées par apt).
-- **Windows 10/11** : lancer `StudyLab-0.2.0-windows-x64-setup.exe`. L'installation se fait pour l'utilisateur courant,
+- **Debian 13** : `sudo apt install ./studylab_1.0.0_amd64.deb` (les dépendances Qt sont installées par apt).
+- **Windows 10/11** : lancer `StudyLab-1.0.0-windows-x64-setup.exe`. L'installation se fait pour l'utilisateur courant,
   sans droits administrateur ; la désinstallation conserve vos données.
 - **OCR (facultatif)** : Debian `sudo apt install tesseract-ocr tesseract-ocr-fra` ; Windows, l'installateur
   « Tesseract-OCR » (UB Mannheim) dans Program Files, avec les langues voulues. StudyLab le trouve au démarrage

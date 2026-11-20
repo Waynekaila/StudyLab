@@ -53,6 +53,25 @@ Result<void> ActivityRepository::log(const QString& action, const QString& entit
         .run();
 }
 
+Result<QList<QPair<QString, QString>>> ActivityRepository::actionTimes(const QString& fromIso, const QString& toIso)
+{
+    auto stmt = m_db.prepare(QStringLiteral("SELECT at, action FROM activity WHERE at >= ?1 AND at < ?2"));
+    if (!stmt)
+        return stmt.error();
+    Statement& s = stmt.value();
+    s.bind(1, fromIso).bind(2, toIso);
+    QList<QPair<QString, QString>> out;
+    while (true) {
+        auto row = s.step();
+        if (!row)
+            return row.error();
+        if (!row.value())
+            break;
+        out.append({s.columnText(0), s.columnText(1)});
+    }
+    return out;
+}
+
 Result<QList<ActivityRow>> ActivityRepository::entries(const QString& fromIso, const QString& toIso, int limit)
 {
     auto stmt = m_db.prepare(QStringLiteral(

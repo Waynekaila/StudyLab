@@ -105,6 +105,9 @@ Pas de rafraîchissement global, pas de requête de rechargement complète.
 - Pas de WebEngine au démarrage : il est instancié paresseusement à la première ouverture d'un EPUB ou d'un aperçu Markdown (QtWebEngine coûte ~300 ms et ~100 Mo).
 - Migrations SQLite exécutées avant l'affichage, mais ce sont des opérations rapides ; l'affichage de l'accueil lit au plus 6 petites requêtes.
 - Objectif mesuré : fenêtre utilisable < 1,5 s à froid sur une machine moyenne avec 5 000 documents.
+- Mesuré en 1.0.0 par `tests/ui/tst_volume` : voir [`docs/technical/performances.md`](../technical/performances.md).
+  Seul l'écran affiché au démarrage (l'accueil) lit ses données ; les autres écrans les lisent à leur premier
+  affichage.
 
 ## 2.6 Modèle d'ancrage des annotations (exigence critique)
 

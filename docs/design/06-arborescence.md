@@ -1,5 +1,10 @@
 # 6. Arborescence du projet
 
+> Arborescence **prévue** en phase 1. L'organisation réelle des sources en 1.0.0 (dossiers `services/activity`,
+> `services/pdfinterop`, `services/references`, `services/organize`, `ui/pages`, `ui/study`… ; pas de couche
+> `viewmodels` séparée ; guide dans `docs/user-guide/`, documentation technique dans `docs/technical/`) est décrite
+> dans [`docs/technical/README.md`](../technical/README.md).
+
 ```
 StudyLab/
 ├── CMakeLists.txt                  # projet racine (C++20, options STUDYLAB_WITH_OCR, STUDYLAB_BUILD_TESTS…)

@@ -266,7 +266,7 @@ RevisionsPage::RevisionsPage(AppContext& ctx, StudyService& study, QWidget* pare
         m_deckList->viewport()->update();
         m_chart->update();
     });
-    refresh();
+    m_stale = true;  // calculé à chaque affichage (showEvent) : rien à faire au démarrage
 }
 
 void RevisionsPage::showEvent(QShowEvent* event)

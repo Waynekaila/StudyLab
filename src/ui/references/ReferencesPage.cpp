@@ -87,7 +87,7 @@ ReferencesPage::ReferencesPage(AppContext& ctx, QWidget* parent)
             renderCiting();
     });
     connect(&m_ctx.theme, &ThemeManager::themeChanged, this, [this] { renderPreview(); });
-    refresh();
+    m_stale = true;  // chargé au premier affichage
 }
 
 void ReferencesPage::showEvent(QShowEvent* event)

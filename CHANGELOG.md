@@ -1,6 +1,6 @@
 # Historique des versions
 
-## Non publié — V2 « Apprendre et consolider »
+## 1.0.0 — V2 « Apprendre et consolider » (2026-11-20)
 
 - **Cartes mémoire et révisions** (itération V2-1) : paquets ; cartes basiques, basiques et inversées, à trous
   (une carte par trou) et formules, en Markdown avec KaTeX ; création depuis l'espace Révisions, une annotation
@@ -44,6 +44,15 @@
   Ctrl+, , recherche, page, signet et historique du lecteur, nouvelle note et enregistrement, touches de la séance de
   révision). Appliqué sans redémarrage, infobulles et aide de la séance comprises ; une touche déjà prise au même
   endroit, réservée ou seule hors des révisions est refusée avec son motif.
+- **Finalisation** (itération V2-7) : banc d'essai gros volume (`tst_volume` : 3 000 documents, 60 000 pages de
+  texte, 30 000 annotations, 20 000 cartes, multipliable par 5) qui vérifie un plafond pour chaque requête et chaque
+  écran. Démarrage avec une grosse bibliothèque presque quatre fois plus rapide : les écrans Graphe, Révisions,
+  Références et Accueil ne se remplissent qu'à leur premier affichage, l'aperçu Markdown ne lance son moteur web
+  qu'une fois visible, les icônes ne sont dessinées qu'une fois. Graphe de milliers de nœuds cinq fois plus fluide
+  (pas d'index spatial, étiquettes illisibles non dessinées, texte abrégé mis en cache) ; activité sur 12 mois et
+  série en cours deux fois plus rapides, compteurs de tous les paquets en deux requêtes. Guide utilisateur
+  ([`docs/user-guide/`](docs/user-guide/README.md)), documentation technique
+  ([`docs/technical/`](docs/technical/README.md)) avec les mesures de performances, guide de dépannage complété.
 
 ## 0.2.0 — V1 « Relier ses connaissances » (2026-11-20)
 
