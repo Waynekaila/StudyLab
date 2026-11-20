@@ -4,6 +4,7 @@
 #include "services/annotations/AnnotationService.h"
 #include "services/export/MarkdownExporter.h"
 #include "services/library/LibraryService.h"
+#include "services/search/SearchService.h"
 #include "services/settings/SettingsService.h"
 #include "ui/reader/AnnotationPopup.h"
 #include "ui/reader/AnnotationStyle.h"
@@ -156,14 +157,23 @@ PdfReaderTab::PdfReaderTab(AppContext& ctx, qint64 documentId, QWidget* parent)
     m_saveTimer.setSingleShot(true);
     m_saveTimer.setInterval(800);
     connect(&m_saveTimer, &QTimer::timeout, this, &PdfReaderTab::savePosition);
+    m_ocrReload.setSingleShot(true);
+    m_ocrReload.setInterval(1500);
+    connect(&m_ocrReload, &QTimer::timeout, this, &PdfReaderTab::loadOcrText);
     m_searchDebounce.setSingleShot(true);
     m_searchDebounce.setInterval(250);
     connect(&m_searchDebounce, &QTimer::timeout, this, [this] {
+        // Un « suivant » demandé avant la fin de la saisie (passage ouvert depuis la recherche) reste en attente.
+        const bool pending = m_findPending;
         if (m_searchModel)
             m_searchModel->setSearchString(m_searchEdit->text().trimmed());
+        m_view->setOcrSearchString(m_searchEdit->text().trimmed());
         m_view->setCurrentSearchResult(-1);
-        m_findPending = false;
-        updateSearchCount();
+        m_findPending = pending;
+        if (pending && m_view->searchResultCount() > 0)
+            findNext();
+        else
+            updateSearchCount();
     });
 
     connect(m_view, &PdfView::currentPageChanged, this, [this] {
@@ -295,8 +305,15 @@ QWidget* PdfReaderTab::buildToolbar()
         m_view->setFocus();
     });
     m_pageTotal = makeLabel(QString(), "muted");
+    // R16 : le texte reconnu est signalé, il peut contenir des erreurs.
+    m_ocrBadge = makeLabel(tr("Texte OCR"), "faint");
+    m_ocrBadge->setObjectName(QStringLiteral("OcrBadge"));
+    m_ocrBadge->setToolTip(tr("Le texte de cette page numérisée a été reconnu automatiquement (OCR) : "
+                              "il peut contenir des erreurs."));
+    m_ocrBadge->hide();
     h->addWidget(m_pageEdit);
     h->addWidget(m_pageTotal);
+    h->addWidget(m_ocrBadge);
     h->addSpacing(12);
 
     m_zoomOut = toolButton(tr("Zoom arrière (Ctrl+−)"), bar);
@@ -449,6 +466,7 @@ QWidget* PdfReaderTab::buildSearchBar()
         if (m_searchDebounce.isActive()) {
             m_searchDebounce.stop();
             m_searchModel->setSearchString(m_searchEdit->text().trimmed());
+            m_view->setOcrSearchString(m_searchEdit->text().trimmed());
         }
         findNext();
     });
@@ -556,12 +574,14 @@ Result<void> PdfReaderTab::ensureLoaded()
 
     m_queue = std::make_unique<PdfRenderQueue>(m_doc.get());
     m_view->setDocument(m_doc.get(), m_queue.get());
+    if (auto ocr = m_ctx.search.ocrPages(m_documentId))
+        m_view->setOcrPages(ocr.value());
 
     m_searchModel = new QPdfSearchModel;
     m_searchModel->setDocument(m_doc.get());
     m_view->setSearchModel(m_searchModel);
     const auto onResults = [this] {
-        if (m_findPending && m_searchModel->rowCount({}) > 0)
+        if (m_findPending && m_view->searchResultCount() > 0)
             findNext();
         else
             updateSearchCount();
@@ -647,6 +667,25 @@ void PdfReaderTab::updatePageIndicator()
 {
     if (!m_pageEdit->hasFocus())
         m_pageEdit->setText(QString::number(m_view->currentPage() + 1));
+    m_ocrBadge->setVisible(m_view->hasOcrText(m_view->currentPage()));
+}
+
+void PdfReaderTab::reloadOcrText()
+{
+    if (m_loaded && !m_ocrReload.isActive())
+        m_ocrReload.start();
+}
+
+void PdfReaderTab::loadOcrText()
+{
+    auto pages = m_ctx.search.ocrPages(m_documentId);
+    if (!pages)
+        return;
+    m_view->setOcrPages(pages.value());
+    if (!m_searchEdit->text().trimmed().isEmpty())
+        m_view->setOcrSearchString(m_searchEdit->text().trimmed());
+    updatePageIndicator();
+    updateSearchCount();
 }
 
 void PdfReaderTab::updateZoomCombo()
@@ -692,7 +731,7 @@ void PdfReaderTab::showSearch()
 
 void PdfReaderTab::updateSearchCount()
 {
-    const int n = m_searchModel ? m_searchModel->rowCount({}) : 0;
+    const int n = m_view->searchResultCount();
     if (m_searchEdit->text().trimmed().isEmpty())
         m_searchCount->clear();
     else if (n == 0)
@@ -705,7 +744,7 @@ void PdfReaderTab::updateSearchCount()
 
 void PdfReaderTab::findNext()
 {
-    const int n = m_searchModel ? m_searchModel->rowCount({}) : 0;
+    const int n = m_view->searchResultCount();
     // La recherche est progressive : sans résultat encore, on avancera dès le premier trouvé.
     m_findPending = n == 0 && !m_searchEdit->text().trimmed().isEmpty();
     if (n == 0)
@@ -715,7 +754,7 @@ void PdfReaderTab::findNext()
         // Premier résultat à partir de la page courante
         next = 0;
         for (int i = 0; i < n; ++i)
-            if (m_searchModel->resultAtIndex(i).page() >= m_view->currentPage()) {
+            if (m_view->searchResultPage(i) >= m_view->currentPage()) {
                 next = i;
                 break;
             }
@@ -726,7 +765,7 @@ void PdfReaderTab::findNext()
 
 void PdfReaderTab::findPrevious()
 {
-    const int n = m_searchModel ? m_searchModel->rowCount({}) : 0;
+    const int n = m_view->searchResultCount();
     if (n == 0)
         return;
     const int cur = m_view->currentSearchResult();

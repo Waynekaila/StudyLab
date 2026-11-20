@@ -1,5 +1,7 @@
 #include "ui/pages/SettingsPage.h"
 
+#include "engines/ocr/TesseractOcr.h"
+#include "services/search/OcrIndexer.h"
 #include "services/search/TextIndexer.h"
 
 #include "data/sqlite/Database.h"
@@ -19,7 +21,9 @@
 #include <QDir>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QJsonArray>
 #include <QListWidget>
+#include <QMenu>
 #include <QLocale>
 #include <QMessageBox>
 #include <QPushButton>
@@ -169,6 +173,159 @@ void SettingsPage::refreshIndexStatus()
         m_indexStatus->setText(tr("Indexation en cours : %1 sur %2.").arg(done).arg(countLabel(total, tr("document"), tr("documents"))));
 }
 
+QStringList SettingsPage::ocrLanguages(const SettingsService& settings)
+{
+    const QStringList installed = TesseractOcr::installedLanguages();
+    QStringList out;
+    for (const QJsonValue& v : settings.value(SettingKeys::OcrLanguages).toArray())
+        if (installed.contains(v.toString()) && !out.contains(v.toString()))
+            out << v.toString();
+    return out.isEmpty() ? TesseractOcr::defaultLanguages() : out;
+}
+
+QString SettingsPage::ocrLanguageName(const QString& code)
+{
+    static const QHash<QString, const char*> names = {
+        {QStringLiteral("fra"), QT_TR_NOOP("Français")},     {QStringLiteral("eng"), QT_TR_NOOP("Anglais")},
+        {QStringLiteral("deu"), QT_TR_NOOP("Allemand")},     {QStringLiteral("spa"), QT_TR_NOOP("Espagnol")},
+        {QStringLiteral("ita"), QT_TR_NOOP("Italien")},      {QStringLiteral("por"), QT_TR_NOOP("Portugais")},
+        {QStringLiteral("nld"), QT_TR_NOOP("Néerlandais")},  {QStringLiteral("lat"), QT_TR_NOOP("Latin")},
+        {QStringLiteral("grc"), QT_TR_NOOP("Grec ancien")},  {QStringLiteral("ell"), QT_TR_NOOP("Grec")},
+        {QStringLiteral("ara"), QT_TR_NOOP("Arabe")},        {QStringLiteral("rus"), QT_TR_NOOP("Russe")},
+        {QStringLiteral("jpn"), QT_TR_NOOP("Japonais")},     {QStringLiteral("chi_sim"), QT_TR_NOOP("Chinois simplifié")},
+        {QStringLiteral("chi_tra"), QT_TR_NOOP("Chinois traditionnel")}, {QStringLiteral("pol"), QT_TR_NOOP("Polonais")},
+        {QStringLiteral("tur"), QT_TR_NOOP("Turc")},         {QStringLiteral("heb"), QT_TR_NOOP("Hébreu")},
+    };
+    const auto it = names.constFind(code);
+    return it == names.constEnd() ? code : tr(*it);
+}
+
+void SettingsPage::buildOcrSection(QVBoxLayout* v)
+{
+    v->addSpacing(8);
+    v->addWidget(makeSeparator());
+    if (!TesseractOcr::isAvailable()) {
+        // Module facultatif absent : on explique comment l'obtenir, sans réglage inutilisable.
+        auto* info = makeLabel(QString(), "muted");
+        info->setObjectName(QStringLiteral("OcrUnavailable"));
+        info->setWordWrap(true);
+        info->setText(tr("%1 Pour lire le texte des PDF numérisés, installez Tesseract avec les langues voulues "
+                         "(Debian : « sudo apt install tesseract-ocr tesseract-ocr-fra » ; Windows : programme "
+                         "d'installation « Tesseract-OCR » dans Program Files), puis relancez StudyLab.")
+                          .arg(TesseractOcr::unavailableReason()));
+        auto* title = makeLabel(tr("Reconnaissance du texte (OCR)"), "h3");
+        title->setContentsMargins(0, 12, 0, 2);
+        v->addWidget(title);
+        v->addWidget(info);
+        return;
+    }
+    m_ocrSwitch = new ToggleSwitch;
+    m_ocrSwitch->setAccessibleName(tr("Reconnaissance du texte (OCR)"));
+    m_ocrSwitch->setChecked(m_ctx.settings.value(SettingKeys::OcrEnabled, true).toBool());
+    connect(m_ocrSwitch, &ToggleSwitch::toggled, this, [this](bool on) {
+        m_ctx.settings.setValue(SettingKeys::OcrEnabled, on);
+        refreshOcrStatus();
+    });
+    v->addWidget(makeSettingRow(
+        tr("Reconnaissance du texte (OCR)"),
+        tr("Les pages numérisées des PDF sont lues par Tesseract %1 en tâche de fond, à basse priorité : leur texte "
+           "devient cherchable, sélectionnable et annotable.").arg(TesseractOcr::version()),
+        m_ocrSwitch));
+
+    m_ocrLanguages = new QPushButton;
+    m_ocrLanguages->setAccessibleName(tr("Langues de l'OCR"));
+    m_ocrLanguageMenu = new QMenu(m_ocrLanguages);
+    for (const QString& code : TesseractOcr::installedLanguages()) {
+        QAction* a = m_ocrLanguageMenu->addAction(ocrLanguageName(code));
+        a->setData(code);
+        a->setCheckable(true);
+        connect(a, &QAction::toggled, this, [this] {
+            QJsonArray chosen;
+            for (QAction* act : m_ocrLanguageMenu->actions())
+                if (act->isChecked())
+                    chosen.append(act->data().toString());
+            m_ctx.settings.setValue(SettingKeys::OcrLanguages, chosen);
+            refreshOcrStatus();
+        });
+    }
+    m_ocrLanguages->setMenu(m_ocrLanguageMenu);
+    v->addWidget(makeSettingRow(tr("Langues des documents numérisés"),
+                                tr("Plusieurs langues : reconnaissance un peu plus lente. S'applique aux documents "
+                                   "suivants ; « Relire » reprend les autres."),
+                                m_ocrLanguages));
+
+    m_ocrRerun = new QPushButton(tr("Relire"));
+    m_ocrRerun->setEnabled(false);
+    connect(m_ocrRerun, &QPushButton::clicked, this, [this] {
+        if (!m_ocr)
+            return;
+        if (auto r = m_ocr->rerunAll(); !r)
+            m_ocrStatus->setText(tr("Relecture impossible : %1").arg(r.error().message));
+        refreshOcrStatus();
+    });
+    v->addWidget(makeSettingRow(tr("Relire les pages numérisées"),
+                                tr("Oublie le texte reconnu et relit tous les PDF numérisés (autres langues, "
+                                   "nouvelle version de Tesseract)."),
+                                m_ocrRerun));
+    m_ocrStatus = makeLabel(QString(), "faint");
+    m_ocrStatus->setObjectName(QStringLiteral("OcrStatus"));
+    m_ocrStatus->setWordWrap(true);
+    v->addWidget(m_ocrStatus);
+    refreshOcrStatus();
+}
+
+void SettingsPage::setOcrIndexer(OcrIndexer* ocr)
+{
+    m_ocr = ocr;
+    if (m_ocrRerun)
+        m_ocrRerun->setEnabled(ocr != nullptr);
+    if (ocr) {
+        connect(ocr, &OcrIndexer::progressChanged, this, &SettingsPage::refreshOcrStatus);
+        connect(ocr, &OcrIndexer::finished, this, &SettingsPage::refreshOcrStatus);
+    }
+    refreshOcrStatus();
+}
+
+void SettingsPage::refreshOcrStatus()
+{
+    if (!m_ocrStatus)
+        return;
+    const QStringList langs = ocrLanguages(m_ctx.settings);
+    {
+        QStringList names;
+        for (const QString& code : langs)
+            names << ocrLanguageName(code);
+        m_ocrLanguages->setText(names.join(QStringLiteral(" + ")));
+        for (QAction* a : m_ocrLanguageMenu->actions()) {
+            const QSignalBlocker block(a);
+            a->setChecked(langs.contains(a->data().toString()));
+        }
+    }
+    const bool enabled = m_ctx.settings.value(SettingKeys::OcrEnabled, true).toBool();
+    m_ocrLanguages->setEnabled(enabled);
+    if (!enabled) {
+        m_ocrStatus->setText(tr("OCR désactivé : les pages numérisées ne sont pas lues."));
+        return;
+    }
+    if (!m_ocr) {
+        m_ocrStatus->clear();
+        return;
+    }
+    const auto [done, pending] = m_ocr->progress();
+    if (m_ocr->isRunning() && m_ocr->currentTotal() > 0)
+        m_ocrStatus->setText(tr("Lecture en cours : page %1 sur %2 du document, %3 en attente.")
+                                 .arg(m_ocr->currentDone() + 1 > m_ocr->currentTotal() ? m_ocr->currentTotal()
+                                                                                       : m_ocr->currentDone() + 1)
+                                 .arg(m_ocr->currentTotal())
+                                 .arg(countLabel(std::max(0, pending - 1), tr("autre document"), tr("autres documents"))));
+    else if (pending > 0)
+        m_ocrStatus->setText(tr("%1 à lire.").arg(countLabel(pending, tr("document numérisé"), tr("documents numérisés"))));
+    else if (done > 0)
+        m_ocrStatus->setText(tr("Pages numérisées lues : %1.").arg(countLabel(done, tr("document"), tr("documents"))));
+    else
+        m_ocrStatus->setText(tr("Aucune page numérisée sans texte dans la bibliothèque."));
+}
+
 QWidget* SettingsPage::buildData()
 {
     auto* scaffold = new PageScaffold(nullptr, 820);
@@ -190,13 +347,14 @@ QWidget* SettingsPage::buildData()
             m_indexStatus->setText(tr("Réindexation impossible : %1").arg(r.error().message));
     });
     v->addWidget(makeSettingRow(tr("Texte intégral des documents"),
-                                tr("Le texte des PDF et des EPUB est extrait en tâche de fond pour la recherche "
-                                   "(Ctrl + K). Les pages numérisées sans texte ne sont pas encore lues (OCR à venir)."),
+                                tr("Le texte des PDF, des EPUB et des fichiers texte est extrait en tâche de fond pour "
+                                   "la recherche (Ctrl + K)."),
                                 m_reindexButton));
     m_indexStatus = makeLabel(QString(), "faint");
     m_indexStatus->setObjectName(QStringLiteral("IndexStatus"));
     m_indexStatus->setWordWrap(true);
     v->addWidget(m_indexStatus);
+    buildOcrSection(v);
     scaffold->body()->addWidget(card);
 
     // Sauvegardes

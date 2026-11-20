@@ -3,6 +3,8 @@
 #include "core/AppLink.h"
 
 #include "services/library/LibraryService.h"
+#include "services/search/OcrIndexer.h"
+#include "ui/reader/PdfReaderTab.h"
 #include "services/search/TextIndexer.h"
 #include "services/settings/SettingsService.h"
 #include "ui/components/FadeStackedWidget.h"
@@ -155,8 +157,26 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
     m_indexer = new TextIndexer(ctx.db, ctx.paths.libraryDir(), this);
     connect(&ctx.library, &LibraryService::documentsChanged, m_indexer, [this] { m_indexer->schedule(); });
     m_indexer->schedule(3000);
+    // OCR facultatif (Tesseract chargé à l'exécution) : pages numérisées lues après l'extraction du texte natif.
+    m_ocr = new OcrIndexer(ctx.db, ctx.paths.libraryDir(), this);
+    const auto applyOcrSettings = [this, &ctx] {
+        m_ocr->setLanguages(SettingsPage::ocrLanguages(ctx.settings));
+        m_ocr->setEnabled(ctx.settings.value(SettingKeys::OcrEnabled, true).toBool());
+        m_ocr->schedule();
+    };
+    applyOcrSettings();
+    connect(&ctx.settings, &SettingsService::changed, this, [applyOcrSettings](const QString& key) {
+        if (key == SettingKeys::OcrEnabled || key == SettingKeys::OcrLanguages)
+            applyOcrSettings();
+    });
+    connect(m_indexer, &TextIndexer::finished, m_ocr, [this] { m_ocr->schedule(); });
+    connect(m_ocr, &OcrIndexer::pageRecognized, this, [reader](qint64 documentId) {
+        if (auto* tab = qobject_cast<PdfReaderTab*>(reader->tabFor(documentId)))
+            tab->reloadOcrText();
+    });
     auto* settingsPage = new SettingsPage(ctx, m_stack);
     settingsPage->setTextIndexer(m_indexer);
+    settingsPage->setOcrIndexer(m_ocr);
     addPage(QStringLiteral("settings"), settingsPage);
 
     // Rechercher partout

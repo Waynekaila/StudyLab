@@ -9,14 +9,18 @@
 class QComboBox;
 class QLabel;
 class QListWidget;
+class QMenu;
 class QPushButton;
 class QStackedWidget;
+class QVBoxLayout;
 
 namespace studylab {
 struct BackupInfo;
 }
 
 namespace studylab {
+class OcrIndexer;
+class SettingsService;
 class TextIndexer;
 }
 
@@ -48,9 +52,20 @@ public:
     QLabel* pendingRestoreLabel() const { return m_pendingLabel; }
     QPushButton* reindexButton() const { return m_reindexButton; }
     QLabel* indexStatus() const { return m_indexStatus; }
+    ToggleSwitch* ocrSwitch() const { return m_ocrSwitch; }
+    QPushButton* ocrLanguagesButton() const { return m_ocrLanguages; }
+    QPushButton* ocrRerunButton() const { return m_ocrRerun; }
+    QLabel* ocrStatus() const { return m_ocrStatus; }
 
     /// Indexation du texte intégral (Données) : état et « Réindexer ».
     void setTextIndexer(TextIndexer* indexer);
+    /// OCR des pages numérisées (Données) : activation, langues, état, « Relire ».
+    void setOcrIndexer(OcrIndexer* ocr);
+
+    /// Langues d'OCR choisies (installées seulement) ; aucune choisie : langues par défaut.
+    static QStringList ocrLanguages(const SettingsService& settings);
+    /// Nom français d'une langue Tesseract (« fra » → « Français »), sinon le code.
+    static QString ocrLanguageName(const QString& code);
 
     /// Confirmation d'une restauration : 0 annuler, 1 au prochain démarrage, 2 redémarrer maintenant.
     /// Par défaut une boîte de dialogue ; les tests fournissent la réponse.
@@ -68,11 +83,19 @@ private:
     void restoreSelected();
 
     void refreshIndexStatus();
+    void refreshOcrStatus();
+    void buildOcrSection(QVBoxLayout* v);
 
     AppContext& m_ctx;
     TextIndexer* m_indexer = nullptr;
     QPushButton* m_reindexButton = nullptr;
     QLabel* m_indexStatus = nullptr;
+    OcrIndexer* m_ocr = nullptr;
+    ToggleSwitch* m_ocrSwitch = nullptr;
+    QPushButton* m_ocrLanguages = nullptr;
+    QMenu* m_ocrLanguageMenu = nullptr;
+    QPushButton* m_ocrRerun = nullptr;
+    QLabel* m_ocrStatus = nullptr;
     QListWidget* m_categories = nullptr;
     QStackedWidget* m_stack = nullptr;
     SegmentedControl* m_theme = nullptr;

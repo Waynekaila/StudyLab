@@ -61,6 +61,9 @@ public:
     QWidget* sidePanel() const { return m_side; }
 
     void showSearch();
+    /// Relit le texte reconnu (OCR) du document, peu après (une page vient d'être reconnue).
+    void reloadOcrText();
+    QLabel* ocrBadge() const { return m_ocrBadge; }
     void findNext();
     void findPrevious();
     /// Mode sans distraction : seule la page reste visible.
@@ -92,6 +95,7 @@ private:
     QWidget* buildSidePanel();
     QWidget* buildSearchBar();
     void updatePageIndicator();
+    void loadOcrText();
     void updateZoomCombo();
     void updateHistoryButtons();
     void updateSearchCount();
@@ -130,6 +134,8 @@ private:
     QLabel* m_searchCount = nullptr;
     QLineEdit* m_pageEdit = nullptr;
     QLabel* m_pageTotal = nullptr;
+    QLabel* m_ocrBadge = nullptr;
+    QTimer m_ocrReload;
     QComboBox* m_zoomCombo = nullptr;
     QToolButton* m_sideToggle = nullptr;
     QToolButton* m_back = nullptr;

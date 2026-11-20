@@ -72,6 +72,8 @@ void PdfView::setDocument(QPdfDocument* document, PdfRenderQueue* queue)
     m_marks.clear();
     m_marksByPage.clear();
     m_pageText.clear();
+    m_ocr.clear();
+    m_ocrHits.clear();
     m_currentPage = 0;
     if (m_doc) {
         for (int i = 0; i < m_doc->pageCount(); ++i)
@@ -452,39 +454,91 @@ void PdfView::setSearchModel(QPdfSearchModel* model)
     viewport()->update();
 }
 
+void PdfView::setOcrPages(const QHash<int, OcrPage>& pages)
+{
+    m_ocr = pages;
+    m_pageText.clear();
+    viewport()->update();
+}
+
+void PdfView::setOcrSearchString(const QString& text)
+{
+    m_ocrHits.clear();
+    const QString needle = text.trimmed();
+    if (!needle.isEmpty()) {
+        QList<int> pages = m_ocr.keys();
+        std::sort(pages.begin(), pages.end());
+        for (int page : pages) {
+            const QString hay = pageText(page);
+            for (qsizetype at = hay.indexOf(needle, 0, Qt::CaseInsensitive); at >= 0;
+                 at = hay.indexOf(needle, at + needle.size(), Qt::CaseInsensitive)) {
+                const QList<QRectF> rects = ocrRects(page, int(at), int(at + needle.size()));
+                if (!rects.isEmpty())
+                    m_ocrHits << OcrHit{page, rects};
+            }
+        }
+    }
+    m_currentResult = -1;
+    viewport()->update();
+}
+
+int PdfView::searchResultCount() const
+{
+    return (m_search ? m_search->rowCount({}) : 0) + int(m_ocrHits.size());
+}
+
+int PdfView::searchResultPage(int index) const
+{
+    const int native = m_search ? m_search->rowCount({}) : 0;
+    if (index >= 0 && index < native)
+        return m_search->resultAtIndex(index).page();
+    if (index >= native && index - native < m_ocrHits.size())
+        return m_ocrHits.at(index - native).page;
+    return -1;
+}
+
 void PdfView::setCurrentSearchResult(int index)
 {
     m_currentResult = index;
-    if (m_search && index >= 0 && index < m_search->rowCount({})) {
+    const int native = m_search ? m_search->rowCount({}) : 0;
+    int page = -1;
+    QList<QRectF> rects;
+    if (index >= 0 && index < native) {
         const QPdfLink link = m_search->resultAtIndex(index);
-        const QList<QRectF> rects = link.rectangles();
-        if (!rects.isEmpty() && link.page() >= 0 && link.page() < m_pages.size()) {
-            const QRectF docRect = pageTransform(link.page()).mapRect(rects.first());
-            const QRectF vis = visibleDocRect();
-            if (!vis.adjusted(0, 40, 0, -40).contains(docRect)) {
-                pushHistory();
-                verticalScrollBar()->setValue(qRound(docRect.center().y() - vis.height() / 3));
-                if (docRect.left() < vis.left() || docRect.right() > vis.right())
-                    horizontalScrollBar()->setValue(qRound(docRect.center().x() - vis.width() / 2));
-            }
-            updateCurrentPage();
+        page = link.page();
+        rects = link.rectangles();
+    } else if (index >= native && index - native < m_ocrHits.size()) {
+        page = m_ocrHits.at(index - native).page;
+        rects = m_ocrHits.at(index - native).rects;
+    }
+    if (!rects.isEmpty() && page >= 0 && page < m_pages.size()) {
+        const QRectF docRect = pageTransform(page).mapRect(rects.first());
+        const QRectF vis = visibleDocRect();
+        if (!vis.adjusted(0, 40, 0, -40).contains(docRect)) {
+            pushHistory();
+            verticalScrollBar()->setValue(qRound(docRect.center().y() - vis.height() / 3));
+            if (docRect.left() < vis.left() || docRect.right() > vis.right())
+                horizontalScrollBar()->setValue(qRound(docRect.center().x() - vis.width() / 2));
         }
+        updateCurrentPage();
     }
     viewport()->update();
 }
 
 // ───────────────────────── Sélection ─────────────────────────
 
-QPdfSelection PdfView::selectOnPage(int page, QPointF start, QPointF end) const
+PdfView::PageSelection PdfView::selectOnPage(int page, QPointF start, QPointF end) const
 {
+    if (m_ocr.contains(page))
+        return selectOcr(page, start, end);
     QPdfSelection sel = m_doc->getSelection(page, start, end);
     if (sel.isValid() && !sel.text().isEmpty())
-        return sel;
+        return fromPdf(page, sel);
     // Qt PDF n'accepte que des extrémités posées sur un caractère : hors du texte (marge, interligne),
     // chaque extrémité est ramenée au caractère le plus proche.
     const QPdfSelection all = m_doc->getAllText(page);
     if (!all.isValid() || all.text().isEmpty())
-        return sel;
+        return {};
     QRectF box;
     QList<QRectF> chars;
     for (const QPolygonF& b : all.bounds()) {
@@ -495,7 +549,7 @@ QPdfSelection PdfView::selectOnPage(int page, QPointF start, QPointF end) const
     }
     const QRectF wanted = QRectF(start, end).normalized();
     if (wanted.contains(box))
-        return all;
+        return fromPdf(page, all);
     const auto nearest = [&chars](QPointF pt) {
         QPointF best = pt;
         qreal bestD = std::numeric_limits<qreal>::max();
@@ -511,8 +565,98 @@ QPdfSelection PdfView::selectOnPage(int page, QPointF start, QPointF end) const
         }
         return best;
     };
-    return m_doc->getSelection(page, nearest(start), nearest(end));
+    return fromPdf(page, m_doc->getSelection(page, nearest(start), nearest(end)));
 }
+
+PdfView::PageSelection PdfView::fromPdf(int page, const QPdfSelection& sel)
+{
+    PageSelection out;
+    out.page = page;
+    if (!sel.isValid())
+        return out;
+    out.text = sel.text();
+    for (const QPolygonF& poly : sel.bounds()) {
+        const QRectF r = poly.boundingRect();
+        if (!r.isEmpty())
+            out.rects << r;
+    }
+    out.start = sel.startIndex();
+    out.end = sel.endIndex();
+    return out;
+}
+
+PdfView::PageSelection PdfView::selectOcr(int page, QPointF start, QPointF end, bool whole) const
+{
+    PageSelection out;
+    out.page = page;
+    const OcrPage& ocr = m_ocr[page];
+    if (ocr.words.isEmpty() || (!whole && QLineF(start, end).length() < 1.0))
+        return out;
+    const QSizeF size = m_pages[page].points;
+    const auto toPoints = [&size](const QRectF& n) {
+        return QRectF(n.x() * size.width(), n.y() * size.height(), n.width() * size.width(), n.height() * size.height());
+    };
+    // Mot sous le point, sinon le plus proche (distance verticale prépondérante : on reste sur la ligne visée).
+    const auto nearest = [&](QPointF pt) {
+        int best = 0;
+        qreal bestD = std::numeric_limits<qreal>::max();
+        for (int i = 0; i < ocr.words.size(); ++i) {
+            const QRectF r = toPoints(ocr.words.at(i).box);
+            const qreal dx = pt.x() < r.left() ? r.left() - pt.x() : pt.x() > r.right() ? pt.x() - r.right() : 0;
+            const qreal dy = pt.y() < r.top() ? r.top() - pt.y() : pt.y() > r.bottom() ? pt.y() - r.bottom() : 0;
+            const qreal d = dy * 4 + dx;
+            if (d < bestD) {
+                bestD = d;
+                best = i;
+            }
+        }
+        return best;
+    };
+    int first = whole ? 0 : nearest(start);
+    int last = whole ? int(ocr.words.size()) - 1 : nearest(end);
+    if (last < first)
+        std::swap(first, last);
+    const QList<int> offsets = ocr.offsets();
+    out.start = offsets.at(first);
+    out.end = offsets.at(last) + int(ocr.words.at(last).text.size());
+    out.text = pageText(page).mid(out.start, out.end - out.start);
+    out.rects = ocrRects(page, out.start, out.end);
+    return out;
+}
+
+QList<QRectF> PdfView::ocrRects(int page, int from, int to) const
+{
+    QList<QRectF> lines;
+    const auto it = m_ocr.constFind(page);
+    if (it == m_ocr.constEnd() || page < 0 || page >= m_pages.size())
+        return lines;
+    const QSizeF size = m_pages[page].points;
+    const QList<int> offsets = it->offsets();
+    for (int i = 0; i < it->words.size(); ++i) {
+        const OcrWord& w = it->words.at(i);
+        const int a = offsets.at(i);
+        const int b = a + int(w.text.size());
+        if (b <= from || a >= to)
+            continue;
+        QRectF r(w.box.x() * size.width(), w.box.y() * size.height(), w.box.width() * size.width(),
+                 w.box.height() * size.height());
+        // Partie d'un mot (terme cherché suivi d'une ponctuation) : largeur au prorata des caractères.
+        if (from > a || to < b) {
+            const qreal perChar = r.width() / std::max(1, b - a);
+            const int lo = std::max(from, a) - a;
+            const int hi = std::min(to, b) - a;
+            r = QRectF(r.x() + lo * perChar, r.y(), (hi - lo) * perChar, r.height());
+        }
+        // Mots d'une même ligne : une seule zone, espaces compris.
+        if (!lines.isEmpty() && w.breakBefore == OcrWord::None && i > 0 && offsets.at(i - 1) >= from)
+            lines.last() = lines.last().united(r);
+        else
+            lines << r;
+    }
+    return lines;
+}
+
+
 
 void PdfView::selectText(int startPage, QPointF start, int endPage, QPointF end)
 {
@@ -528,12 +672,13 @@ void PdfView::selectText(int startPage, QPointF start, int endPage, QPointF end)
     }
     for (int p = startPage; p <= endPage; ++p) {
         const QSizeF size = m_pages[p].points;
-        QPdfSelection sel = startPage == endPage ? selectOnPage(p, start, end)
-                            : p == startPage    ? selectOnPage(p, start, QPointF(size.width(), size.height()))
-                            : p == endPage      ? selectOnPage(p, QPointF(0, 0), end)
-                                                : m_doc->getAllText(p);
-        if (sel.isValid() && !sel.text().isEmpty())
-            m_selection.append({p, sel});
+        const PageSelection sel = startPage == endPage ? selectOnPage(p, start, end)
+                                  : p == startPage    ? selectOnPage(p, start, QPointF(size.width(), size.height()))
+                                  : p == endPage      ? selectOnPage(p, QPointF(0, 0), end)
+                                  : m_ocr.contains(p) ? selectOcr(p, {}, {}, true)
+                                                      : fromPdf(p, m_doc->getAllText(p));
+        if (!sel.isEmpty())
+            m_selection.append(sel);
     }
     emit selectionChanged();
     viewport()->update();
@@ -543,7 +688,7 @@ QString PdfView::selectedText() const
 {
     QStringList parts;
     for (const auto& s : m_selection)
-        parts << s.selection.text();
+        parts << s.text;
     return parts.join(QLatin1Char('\n'));
 }
 
@@ -711,6 +856,16 @@ void PdfView::paintPage(QPainter& p, int page, const QRectF& clipDoc)
                 p.fillRect(r.adjusted(-1, -1, 1, 1), c);
         }
     }
+    const int nativeHits = m_search ? m_search->rowCount({}) : 0;
+    for (int i = 0; i < m_ocrHits.size(); ++i) {
+        if (m_ocrHits.at(i).page != page)
+            continue;
+        const bool isCurrent = m_currentResult == nativeHits + i;
+        QColor c = isCurrent ? QColor(0xF0, 0x9A, 0x3E) : QColor(0xF5, 0xD7, 0x6E);
+        c.setAlpha(isCurrent ? 150 : 110);
+        for (const QRectF& r : m_ocrHits.at(i).rects)
+            p.fillRect(r.adjusted(-1, -1, 1, 1), c);
+    }
 
     // Sélection
     QColor selColor = pal.primary;
@@ -719,8 +874,9 @@ void PdfView::paintPage(QPainter& p, int page, const QRectF& clipDoc)
         if (s.page != page)
             continue;
         QPainterPath path;
-        for (const QPolygonF& poly : s.selection.bounds())
-            path.addPolygon(poly);
+        path.setFillRule(Qt::WindingFill);
+        for (const QRectF& r : s.rects)
+            path.addRect(r);
         p.fillPath(path, selColor);
     }
     // Zone en cours de tracé
@@ -960,7 +1116,9 @@ QString PdfView::pageText(int page) const
 {
     auto it = m_pageText.find(page);
     if (it == m_pageText.end())
-        it = m_pageText.insert(page, m_doc ? m_doc->getAllText(page).text() : QString());
+        it = m_pageText.insert(page, m_ocr.contains(page) ? m_ocr[page].text()
+                                     : m_doc                ? m_doc->getAllText(page).text()
+                                                            : QString());
     return *it;
 }
 
@@ -971,12 +1129,11 @@ QList<PdfSelectionAnchor> PdfView::selectionAnchors() const
         const QSizeF size = m_pages[s.page].points;
         PdfSelectionAnchor a;
         a.page = s.page;
-        a.text = s.selection.text();
+        a.text = s.text;
         // Qt PDF renvoie souvent un rectangle par caractère : on les fusionne en une zone par ligne,
         // pour un surlignage continu et une ancre compacte.
         QList<QRectF> lines;
-        for (const QPolygonF& poly : s.selection.bounds()) {
-            const QRectF r = poly.boundingRect();
+        for (const QRectF& r : s.rects) {
             if (r.isEmpty())
                 continue;
             bool merged = false;
@@ -995,8 +1152,8 @@ QList<PdfSelectionAnchor> PdfView::selectionAnchors() const
         for (const QRectF& r : lines)
             a.rects << QRectF(r.x() / size.width(), r.y() / size.height(), r.width() / size.width(),
                               r.height() / size.height());
-        a.start = s.selection.startIndex();
-        a.end = s.selection.endIndex();
+        a.start = s.start;
+        a.end = s.end;
         const QString text = pageText(s.page);
         if (a.start >= 0 && a.start <= text.size()) {
             const int from = std::max(0, a.start - 32);
@@ -1014,7 +1171,10 @@ QRect PdfView::selectionViewportRect() const
 {
     QRectF box;
     for (const auto& s : m_selection) {
-        const QRectF doc = pageTransform(s.page).mapRect(s.selection.boundingRectangle());
+        QRectF bounds;
+        for (const QRectF& r : s.rects)
+            bounds = bounds.isNull() ? r : bounds.united(r);
+        const QRectF doc = pageTransform(s.page).mapRect(bounds);
         box = box.isNull() ? doc : box.united(doc);
     }
     if (box.isNull())

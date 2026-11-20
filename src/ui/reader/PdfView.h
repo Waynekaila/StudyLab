@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/domain/Annotation.h"
+#include "engines/ocr/OcrPage.h"
 #include "engines/pdf/PdfRenderQueue.h"
 
 #include <QAbstractScrollArea>
@@ -96,8 +97,16 @@ public:
     bool doublePage() const { return m_doublePage; }
     void setDoublePage(bool on);
 
-    // Recherche
+    // Texte reconnu (OCR) des pages numérisées : sélection, copie, annotations et recherche comme le texte natif.
+    void setOcrPages(const QHash<int, OcrPage>& pages);
+    bool hasOcrText(int page) const { return m_ocr.contains(page); }
+
+    // Recherche : résultats du modèle (texte natif) puis ceux du texte OCR.
     void setSearchModel(QPdfSearchModel* model);
+    /// Cherche aussi dans le texte OCR (sans tenir compte de la casse).
+    void setOcrSearchString(const QString& text);
+    int searchResultCount() const;
+    int searchResultPage(int index) const;
     /// Met en évidence un résultat et le fait défiler à l'écran (-1 : aucun).
     void setCurrentSearchResult(int index);
     int currentSearchResult() const { return m_currentResult; }
@@ -163,14 +172,25 @@ protected:
     bool viewportEvent(QEvent* event) override;
 
 private:
-    QPdfSelection selectOnPage(int page, QPointF start, QPointF end) const;
+    struct PageSelection {
+        int page = -1;
+        QString text;
+        QList<QRectF> rects;  ///< points de la page non tournée
+        int start = -1;       ///< positions dans pageText(page)
+        int end = -1;
+        bool isEmpty() const { return text.isEmpty() || rects.isEmpty(); }
+    };
+    struct OcrHit {
+        int page = -1;
+        QList<QRectF> rects;  ///< points
+    };
+    PageSelection selectOnPage(int page, QPointF start, QPointF end) const;
+    PageSelection selectOcr(int page, QPointF start, QPointF end, bool whole = false) const;
+    static PageSelection fromPdf(int page, const QPdfSelection& sel);
+    QList<QRectF> ocrRects(int page, int from, int to) const;  ///< mots couvrant [from, to[ du texte, une zone par ligne
     struct PageSlot {
         QSizeF points;      ///< taille de la page, en points, sans rotation
         QRectF rect;        ///< emplacement dans le document (pixels logiques, après rotation)
-    };
-    struct PageSelection {
-        int page;
-        QPdfSelection selection;
     };
     struct LinkHit {
         bool valid = false;
@@ -236,6 +256,8 @@ private:
     QPointF m_areaStart;   ///< points de la page
     QPointF m_areaEnd;
     mutable QHash<int, QString> m_pageText;
+    QHash<int, OcrPage> m_ocr;
+    QList<OcrHit> m_ocrHits;
 };
 
 }  // namespace studylab::ui

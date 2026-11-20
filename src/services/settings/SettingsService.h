@@ -56,6 +56,8 @@ inline const QString Animations = QStringLiteral("appearance/animations");
 inline const QString ImportMode = QStringLiteral("library/importMode");  ///< "copy" (défaut) ou "link"
 inline const QString LibraryView = QStringLiteral("library/view");       ///< "grid" ou "list"
 inline const QString LibrarySort = QStringLiteral("library/sort");       ///< index de DocumentQuery::Sort
+inline const QString OcrEnabled = QStringLiteral("ocr/enabled");         ///< true par défaut (si Tesseract est là)
+inline const QString OcrLanguages = QStringLiteral("ocr/languages");     ///< codes Tesseract ; absent : par défaut
 }  // namespace SettingKeys
 
 }  // namespace studylab

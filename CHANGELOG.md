@@ -32,6 +32,11 @@
   `[[liens]]` résolus une fois tout importé, fichiers `.bib` importés comme références ; dossiers cachés
   (`.obsidian`, `.trash`) ignorés. Un export StudyLab se réimporte tel quel (mêmes dossiers, types et uuid) ; les
   notes déjà présentes (même uuid, ou même titre, dossier et texte) ne sont pas dupliquées.
+- **OCR facultatif des PDF numérisés** (itération V1-7) : Tesseract 5 chargé à l'exécution s'il est installé (aucune
+  dépendance à la compilation). Les pages sans texte natif sont rendues à 300 dpi et lues en tâche de fond, à basse
+  priorité, une page à la fois ; chaque page est enregistrée aussitôt (reprise après interruption). Le texte reconnu
+  alimente Ctrl + K et la recherche du lecteur, se sélectionne, se copie et s'annote comme un texte natif ; la page
+  est marquée « Texte OCR ». Paramètres › Données : activation, langues installées, état, « Relire ».
 - **Export PDF et HTML des notes** (itération V1-7) : une note, un dossier de notes ou les notes d'une matière (et de
   ses sous-matières), depuis le clic droit. Même rendu que l'aperçu (KaTeX, images, citations, bibliographie), thème
   clair ; PDF A4 par Chromium, une note par page ; HTML autonome (feuilles de style, polices KaTeX et images en data:),
