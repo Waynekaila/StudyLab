@@ -399,7 +399,11 @@ QJsonObject toCslJson(const Reference& r)
         QJsonArray parts{r.year};
         if (r.month >= 1 && r.month <= 12)
             parts.append(r.month);
-        o.insert(QStringLiteral("issued"), QJsonObject{{QStringLiteral("date-parts"), QJsonArray{parts}}});
+        // Tableau imbriqué construit explicitement : selon la version de Qt, QJsonArray{parts} copie au lieu
+        // d'imbriquer.
+        QJsonArray dateParts;
+        dateParts.append(parts);
+        o.insert(QStringLiteral("issued"), QJsonObject{{QStringLiteral("date-parts"), dateParts}});
     } else {
         o.remove(QStringLiteral("issued"));
     }
