@@ -27,6 +27,9 @@ public:
     void setCurrent(const QString& id);
     QString current() const;
     QToolButton* button(const QString& id) const;
+    /// Pastille lavande à droite de l'entrée (révisions dues) ; masquée à 0.
+    void setBadge(const QString& id, int count);
+    QLabel* badge(const QString& id) const;
     QPushButton* searchButton() const { return m_search; }
 
 signals:
@@ -39,6 +42,7 @@ private:
     ThemeManager& m_theme;
     QList<Entry> m_entries;
     QList<QToolButton*> m_buttons;
+    QList<QLabel*> m_badges;
     QButtonGroup* m_group;
     QLabel* m_logo;
     QPushButton* m_search;

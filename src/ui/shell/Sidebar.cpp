@@ -76,6 +76,17 @@ Sidebar::Sidebar(ThemeManager& theme, const QList<Entry>& entries, QWidget* pare
         b->setFocusPolicy(Qt::TabFocus);  // anneau de focus au clavier seulement
         b->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         b->setIconSize(QSize(18, 18));
+        // Pastille (nombre) calée à droite du bouton, masquée tant qu'elle est vide.
+        auto* row = new QHBoxLayout(b);
+        row->setContentsMargins(0, 0, 8, 0);
+        row->addStretch(1);
+        auto* badge = new QLabel(b);
+        badge->setObjectName(QStringLiteral("NavBadge"));
+        badge->setAlignment(Qt::AlignCenter);
+        badge->setAttribute(Qt::WA_TransparentForMouseEvents);
+        badge->hide();
+        row->addWidget(badge, 0, Qt::AlignVCenter);
+        m_badges.append(badge);
         m_group->addButton(b, i);
         m_buttons.append(b);
         layout->addWidget(b);
@@ -125,6 +136,27 @@ QString Sidebar::current() const
 {
     const int id = m_group->checkedId();
     return id >= 0 ? m_entries[id].id : QString();
+}
+
+void Sidebar::setBadge(const QString& id, int count)
+{
+    for (int i = 0; i < m_entries.size(); ++i) {
+        if (m_entries[i].id != id)
+            continue;
+        m_badges[i]->setText(count > 999 ? QStringLiteral("999+") : QString::number(count));
+        m_badges[i]->setVisible(count > 0);
+        m_buttons[i]->setAccessibleName(count > 0 ? tr("%1, %2 à revoir").arg(m_entries[i].label).arg(count)
+                                                  : m_entries[i].label);
+    }
+}
+
+QLabel* Sidebar::badge(const QString& id) const
+{
+    for (int i = 0; i < m_entries.size(); ++i) {
+        if (m_entries[i].id == id)
+            return m_badges[i];
+    }
+    return nullptr;
 }
 
 QToolButton* Sidebar::button(const QString& id) const

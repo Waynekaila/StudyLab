@@ -39,6 +39,8 @@ signals:
     void libraryRequested();
     /// Note créée depuis la lecture : à ouvrir dans l'espace de notes.
     void noteCreated(qint64 noteId);
+    /// Carte mémoire à créer depuis une annotation.
+    void cardRequested(qint64 annotationId, const QString& front, const QString& back);
 
 private:
     void restoreSession();

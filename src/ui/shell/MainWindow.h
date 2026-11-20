@@ -9,11 +9,13 @@
 
 namespace studylab {
 class OcrIndexer;
+class StudyService;
 class TextIndexer;
 }
 
 namespace studylab::ui {
 
+class CardEditorDialog;
 class FadeStackedWidget;
 class SearchPalette;
 class Sidebar;
@@ -34,6 +36,11 @@ public:
     TextIndexer* textIndexer() const { return m_indexer; }
     OcrIndexer* ocrIndexer() const { return m_ocr; }
     Sidebar* sidebar() const { return m_sidebar; }
+    StudyService* study() const { return m_study; }
+    /// Saisie (non bloquante) d'une carte mémoire rattachée à son origine (annotation, note).
+    CardEditorDialog* createCard(int sourceType, qint64 sourceId, const QString& front, const QString& back);
+    /// Pastille « Révisions » : cartes à voir aujourd'hui.
+    void refreshStudyBadge();
 
     /// Ouvre un lien « studylab://open?… » (export Markdown) au bon passage.
     Result<void> openLink(const QString& link);
@@ -51,6 +58,7 @@ private:
     void addPage(const QString& id, QWidget* page);
     TextIndexer* m_indexer = nullptr;
     OcrIndexer* m_ocr = nullptr;
+    StudyService* m_study = nullptr;
 
     AppContext& m_ctx;
     Sidebar* m_sidebar = nullptr;

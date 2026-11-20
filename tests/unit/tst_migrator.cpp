@@ -85,6 +85,21 @@ private slots:
         QCOMPARE(db.queryInt(QStringLiteral("SELECT count(*) FROM fts_documents WHERE fts_documents MATCH 'thermo*'")).value(), 0);
     }
 
+    void cardsStudyColumnsAfterMigration3()
+    {
+        auto opened = Database::openInMemory();
+        Database& db = *opened.value();
+        QVERIFY(Migrator(Migrator::loadFrom().value()).migrate(db).ok());
+        QVERIFY(Migrator::currentVersion(db).value() >= 3);
+        QVERIFY(db.exec(QStringLiteral("INSERT INTO decks(uuid, name, created_at) VALUES ('d', 'Thermo', 'x')")).ok());
+        QVERIFY(db.exec(QStringLiteral("INSERT INTO cards(uuid, deck_id, card_type, front_md, back_md, ordinal, created_at, "
+                                       "updated_at) VALUES ('c', 1, 'cloze', '{{c2::Carnot}}', '', 2, 'x', 'x')")).ok());
+        QVERIFY(db.exec(QStringLiteral("INSERT INTO card_state(card_id) VALUES (1)")).ok());
+        QCOMPARE(db.queryInt(QStringLiteral("SELECT ordinal FROM cards WHERE id = 1")).value(), 2);
+        QCOMPARE(db.queryInt(QStringLiteral("SELECT step FROM card_state WHERE card_id = 1")).value(), 0);
+        QCOMPARE(db.queryInt(QStringLiteral("SELECT count(*) FROM sqlite_master WHERE name = 'ix_card_reviews_at'")).value(), 1);
+    }
+
     void duplicateDocumentHashRejected()
     {
         auto opened = Database::openInMemory();

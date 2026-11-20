@@ -341,6 +341,27 @@ QPushButton#OutlineItem {
 }
 QPushButton#OutlineItem:hover { color: %{primaryStrong}; background: %{sunken}; }
 QPushButton#CreateLinkedNote { color: %{primaryStrong}; padding: %{p2} %{p6}; min-height: 0; }
+QLabel#NavBadge {
+    background: %{lavenderSoft}; color: %{lavenderText}; border-radius: 9px; padding: 0 %{p6};
+    font-size: %{fs11}; font-weight: 600; min-width: 10px; min-height: 18px; max-height: 18px;
+}
+QToolButton[nav="true"]:checked QLabel#NavBadge { background: %{surface}; color: %{primaryStrong}; }
+QListWidget#DeckList { background: transparent; border: none; outline: none; }
+QTreeWidget#CardList { background: %{surface}; border: 1px solid %{borderSoft}; border-radius: 10px; padding: 4px; outline: none; }
+QTreeWidget#CardList::item { padding: %{p4} %{p2}; }
+QTreeWidget#CardList::item:selected { background: %{primarySoft}; color: %{primaryStrong}; }
+QProgressBar#StudyProgress { background: %{sunken}; border: none; border-radius: 3px; }
+QProgressBar#StudyProgress::chunk { background: %{lavender}; border-radius: 3px; }
+QWidget#StudySession, QWidget#StudyFinished { background: %{bg}; }
+QPushButton#RateButton { background: %{surface}; border: 1px solid %{borderSoft}; border-radius: 10px; padding: 0; min-height: %{h50}; }
+QPushButton#RateButton:hover { border-color: %{border}; background: %{surface2}; }
+QPushButton#RateButton[rating="1"]:hover { border-color: %{danger}; }
+QPushButton#RateButton[rating="3"]:hover, QPushButton#RateButton:focus { border-color: %{primary}; }
+QLabel#RateTitle { font-weight: 600; font-size: %{fs13}; }
+QLabel#RateTitle[rating="1"] { color: %{danger}; }
+QLabel#RateTitle[rating="2"] { color: %{amberText}; }
+QLabel#RateTitle[rating="3"] { color: %{primaryStrong}; }
+QLabel#RateTitle[rating="4"] { color: %{sageText}; }
 )QSS");
 
     const QColor sageText = p.dark ? p.sage : p.sage.darker(140);
@@ -369,13 +390,15 @@ QPushButton#CreateLinkedNote { color: %{primaryStrong}; padding: %{p2} %{p6}; mi
         {QStringLiteral("amberSoft"), amberSoft.name()},
         {QStringLiteral("amberText"), (p.dark ? p.amber : p.amber.darker(130)).name()},
         {QStringLiteral("danger"), p.danger.name()},
+        {QStringLiteral("lavenderSoft"), p.lavenderSoft.name()},
+        {QStringLiteral("lavenderText"), (p.dark ? p.lavender : p.lavender.darker(150)).name()},
         {QStringLiteral("lavender"), p.lavender.name()},
     };
     for (const auto& [key, value] : tokens)
         qss.replace(QStringLiteral("%{") + key + QLatin1Char('}'), value);
     for (int v : {2, 4, 5, 6, 7, 8, 10, 12, 24})
         qss.replace(QStringLiteral("%{p%1}").arg(v), s(v));
-    for (int v : {18, 20, 30})
+    for (int v : {18, 20, 30, 50})
         qss.replace(QStringLiteral("%{h%1}").arg(v), s(v));
     for (int v : {11, 12, 13, 15, 22, 30})
         qss.replace(QStringLiteral("%{fs%1}").arg(v), s(v));

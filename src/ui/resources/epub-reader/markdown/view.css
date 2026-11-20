@@ -87,3 +87,19 @@ body.export article.note + article.note { margin-top: 3em; padding-top: 2em; bor
   .md h1, .md h2, .md h3 { break-after: avoid; }
   .md pre { white-space: pre-wrap; }
 }
+
+/* Carte de révision (V2-1) */
+body.flash { padding: 28px 40px; }
+.flashcard { max-width: 760px; margin: 0 auto; text-align: center; }
+.flashcard .fc-label { font-size: .78em; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 4px 0 12px; }
+.flashcard .md { font-size: 1.35em; line-height: 1.5; }
+.flashcard .md.fc-a { font-size: 1.2em; }
+.flashcard .md ul, .flashcard .md ol, .flashcard .md table, .flashcard .md pre { text-align: left; display: inline-block; }
+.flashcard .fc-sep { border: 0; border-top: 1px solid var(--border); margin: 26px 6%; }
+.flashcard .cloze { color: var(--accent); font-weight: 600; }
+.flashcard .cloze-answer { color: var(--accent); font-weight: 600; background: var(--code-bg); border-radius: 4px; padding: 0 3px; }
+.flashcard .fc-extra { margin-top: 12px; font-size: .85em; color: var(--muted); }
+.flashcard .fc-source { display: inline-block; margin-top: 22px; padding: 6px 12px; border-left: 3px solid var(--quote-bar, #e2b93b);
+  background: var(--card); border-radius: 0 8px 8px 0; font-size: .92em; color: var(--muted); text-align: left; }
+.flashcard .fc-quote { font-family: var(--note-font, Georgia, serif); font-style: italic; }
+.flashcard .fc-source a { color: var(--link); text-decoration: none; white-space: nowrap; }

@@ -11,7 +11,8 @@ add_library(studylab_data STATIC
     repositories/OrganizeRepository.h repositories/OrganizeRepository.cpp
     repositories/GraphRepository.h repositories/GraphRepository.cpp
     repositories/PageTextRepository.h repositories/PageTextRepository.cpp
-    repositories/ReferenceRepository.h repositories/ReferenceRepository.cpp)
+    repositories/ReferenceRepository.h repositories/ReferenceRepository.cpp
+    repositories/StudyRepository.h repositories/StudyRepository.cpp)
 target_link_libraries(studylab_data PUBLIC studylab_core studylab_sqlite3 Qt6::Core)
 studylab_set_warnings(studylab_data)
 
@@ -20,4 +21,5 @@ qt_add_resources(studylab_data "migrations"
     BASE migrations
     FILES
         migrations/0001_initial.sql
-        migrations/0002_fts_documents_delete.sql)
+        migrations/0002_fts_documents_delete.sql
+        migrations/0003_cards_study.sql)
