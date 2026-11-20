@@ -1,6 +1,6 @@
 # Historique des versions
 
-## Non publié — V1 « Relier ses connaissances »
+## 0.2.0 — V1 « Relier ses connaissances » (2026-11-20)
 
 - **Mes notes** (itération V1-1) : espace de notes Markdown avec dossiers virtuels, huit types et leurs modèles,
   front matter YAML, tags, éditeur Source / Partagé / Aperçu (KaTeX, tableaux, images collées), liens `[[…]]`

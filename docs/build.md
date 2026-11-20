@@ -39,7 +39,7 @@ sudo apt install ./dist/studylab_*_amd64.deb
 # Windows : dossier autonome puis installateur Inno Setup 6
 cmake --install build/windows-msvc-release --prefix stage
 windeployqt --release --no-system-d3d-compiler --no-opengl-sw stage/studylab.exe
-iscc /DAppVersion=0.1.0 /DSourceDir=$PWD\stage /O$PWD\dist packaging\windows\studylab.iss
+iscc /DAppVersion=0.2.0 /DSourceDir=$PWD\stage /O$PWD\dist packaging\windows\studylab.iss
 ```
 
 Les deux paquets enregistrent le schéma `studylab://` (liens des exports Markdown). `studylab --version` affiche la
