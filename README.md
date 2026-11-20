@@ -13,7 +13,7 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | 1 · Conception | Vision, architecture, choix des bibliothèques, schéma SQLite, maquettes, plan | ✅ Terminée — voir [`docs/design/`](docs/design/README.md) |
 | 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | ✅ Terminée — **version 0.1.0** (7 itérations) |
 | 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | ✅ Terminée — **version 0.2.0** (7 itérations) |
-| 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | 🚧 En cours — V2-1 (cartes et révisions) et V2-2 (FSRS, réglages) faites |
+| 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | 🚧 En cours — V2-1 à V2-3 faites (cartes, FSRS, fiches de révision) |
 | 5 · Finalisation | Optimisation, packaging, documentation | — |
 
 ### Ce qui fonctionne aujourd'hui (version 0.2 : MVP et V1)
@@ -26,6 +26,10 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
   paquet : matière, nouvelles et révisions par jour (20 et 200 par défaut), étapes d'apprentissage et après un
   oubli, intervalle maximal ; journée qui commence à 4 h. Historique de chaque carte (réponses, intervalles,
   stabilité, difficulté, rappel estimé). Statistiques du jour et des 7 derniers jours, pastille des cartes dues.
+- **Fiches de révision** (V2, non publié) : « Générer une fiche de révision » rassemble pour une matière les passages
+  annotés (les commentés d'abord) avec leurs liens, les définitions des notes « Concept », les formules relevées
+  dans les notes et les commentaires, les questions en suspens et celles des cartes. La fiche est un **brouillon**
+  dans « Fiches de révision », rattaché à la matière ; un bandeau invite à la relire puis à la marquer comme relue.
 - **Mes notes** (V1) : notes Markdown rangées dans des dossiers virtuels (« Thermodynamique/Cours »), huit types
   avec leur modèle (note de lecture, fiche de cours, concept, formules, fiche de révision, recherche, compte rendu,
   note personnelle), front matter YAML, tags (`tags:` ou `#tag`) cliquables pour filtrer. Éditeur avec coloration et
@@ -149,6 +153,7 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | ![Coffre Obsidian importé](docs/screenshots/v1-6b-import-coffre.png) | ![Cours en Markdown dans le lecteur](docs/screenshots/v1-6c-markdown.png) |
 | ![Notes exportées en PDF](docs/screenshots/v1-7-export-pdf.png) | ![Page numérisée lue par l'OCR](docs/screenshots/v1-7-ocr.png) |
 | ![Révision d'une carte tirée d'une annotation (V2)](docs/screenshots/v2-1-revisions.png) | ![Réglages d'un paquet : FSRS](docs/screenshots/v2-2-reglages-paquet.png) |
+| ![Fiche de révision générée, brouillon à relire](docs/screenshots/v2-3-fiche-revision.png) | |
 
 Suite : cartes mémoire et répétition espacée (V2) —
 plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md). Historique : [`CHANGELOG.md`](CHANGELOG.md).

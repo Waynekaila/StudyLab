@@ -342,6 +342,8 @@ QPushButton#OutlineItem {
 }
 QPushButton#OutlineItem:hover { color: %{primaryStrong}; background: %{sunken}; }
 QPushButton#CreateLinkedNote { color: %{primaryStrong}; padding: %{p2} %{p6}; min-height: 0; }
+QFrame#DraftBanner { background: %{amberSoft}; border: none; border-bottom: 1px solid %{borderSoft}; }
+QLabel#DraftBannerText { color: %{amberText}; }
 QLabel#NavBadge {
     background: %{lavenderSoft}; color: %{lavenderText}; border-radius: 9px; padding: 0 %{p6};
     font-size: %{fs11}; font-weight: 600; min-width: 10px; min-height: 18px; max-height: 18px;

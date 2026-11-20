@@ -68,6 +68,9 @@ public:
     NoteEditor* editor() const { return m_editor; }
     /// « Créer une carte… » : émet cardRequested avec le titre et la sélection (note ouverte).
     void requestCard(qint64 noteId);
+    /// Fiche de révision générée : retire le statut « brouillon » (bandeau « Marquer comme relue »).
+    bool markSheetReviewed();
+    QFrame* draftBanner() const { return m_draftBanner; }
     QLineEdit* titleEdit() const { return m_title; }
     QLineEdit* filterEdit() const { return m_filter; }
     MarkdownView* preview() const { return m_preview; }
@@ -177,6 +180,8 @@ private:
     QLineEdit* m_title = nullptr;
     QSplitter* m_split = nullptr;
     NoteEditor* m_editor = nullptr;
+    QFrame* m_draftBanner = nullptr;
+    QPushButton* m_draftDone = nullptr;
     MarkdownView* m_preview = nullptr;
 
     // Contexte

@@ -5,7 +5,9 @@
 #include "core/domain/Document.h"
 #include "core/domain/Note.h"
 
+#include <QDate>
 #include <QList>
+#include <QStringList>
 #include <QString>
 
 namespace studylab {
@@ -35,6 +37,40 @@ NoteDraft fromComment(const DocumentRecord& doc, const CommentRecord& c);
 /// Note de lecture du document : fiche, passages annotés et questions en suspens.
 NoteDraft fromDocument(const DocumentRecord& doc, const QList<AnnotationRecord>& annotations,
                        const QList<CommentRecord>& comments);
+
+/// Matière d'une fiche de révision (V2-3) : documents de la matière avec leurs passages annotés et leurs questions,
+/// notes de la matière, questions des cartes mémoire rattachées.
+struct SheetDocument {
+    DocumentRecord doc;
+    QList<AnnotationRecord> annotations;
+    QList<CommentRecord> comments;
+};
+struct SheetMaterial {
+    QString subject;               ///< « Thermodynamique »
+    QDate date;                    ///< jour de la génération
+    QList<SheetDocument> documents;
+    QList<NoteRecord> notes;       ///< hors fiches de révision
+    QStringList cardQuestions;     ///< recto des cartes des paquets de la matière
+};
+struct SheetOptions {
+    bool passages = true;
+    bool concepts = true;
+    bool formulas = true;
+    bool questions = true;
+    int maxPassagesPerDocument = 25;
+};
+
+/// Dossier des fiches de révision.
+QString revisionFolder();
+/// Brouillon de fiche de révision (type « Fiche de révision », statut « brouillon ») : passages annotés par
+/// document (les commentés d'abord), définitions des notes « Concept », formules relevées dans les notes et les
+/// commentaires, questions en suspens et questions des cartes, notes de la matière. Rien n'est inventé : chaque
+/// élément renvoie à son origine.
+NoteDraft revisionSheet(const SheetMaterial& material, const SheetOptions& options = {});
+/// Vrai si la note est une fiche générée encore à relire (front matter « statut: brouillon »).
+bool isDraftSheet(const QString& markdown);
+/// Retire le statut « brouillon » (ligne statut et tag) : la fiche est relue.
+QString markSheetReviewed(const QString& markdown);
 
 }  // namespace NoteDrafts
 

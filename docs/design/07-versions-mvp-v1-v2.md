@@ -81,7 +81,7 @@ Même rythme que le MVP : une PR par itération, testée sur les deux OS par la 
 |---|---|
 | V2-1 ✅ | **Cartes mémoire et révisions** : paquets, cartes basiques / inversées / à trous / formules, création depuis une annotation ou une note, séance de révision au clavier, SM-2, statistiques du jour et des 7 jours, pastille de navigation |
 | V2-2 ✅ | **FSRS** au choix par paquet, réglages par paquet (limites, étapes), historique d'une carte |
-| V2-3 | **Fiches de révision** : brouillon de note généré depuis les annotations et notes d'une matière, à relire |
+| V2-3 ✅ | **Fiches de révision** : brouillon de note généré depuis les annotations et notes d'une matière, à relire |
 | V2-4 | **Tableau de bord** complet (objectifs, progression par matière) et écran **Activité** |
 | V2-5 | Interopérabilité PDF avancée (import des annotations d'un PDF, copie annotée) |
 | V2-6 | Formats supplémentaires (images, DOCX en lecture) ; navigation et raccourcis configurables |

@@ -327,6 +327,110 @@ private slots:
         QVERIFY(notes.save(id, QStringLiteral("Entropie"), QStringLiteral("Fonction d'état ; l'énergie se dégrade.")).ok());
         QCOMPARE(m_db->queryInt(QStringLiteral("SELECT count(*) FROM fts_notes WHERE fts_notes MATCH 'energie'")).value(), 1);
     }
+
+    void revisionSheetDraft()
+    {
+        DocumentRecord doc;
+        doc.id = 7;
+        doc.uuid = QStringLiteral("d-uuid");
+        doc.title = QStringLiteral("Thermodynamique");
+        auto annotation = [&](int page, const QString& text, const QString& note) {
+            AnnotationRecord a;
+            a.uuid = QStringLiteral("a%1").arg(page);
+            a.documentId = doc.id;
+            a.unitIndex = page - 1;
+            a.sortKey = page;
+            a.selectedText = text;
+            a.note = note;
+            return a;
+        };
+        NoteDrafts::SheetMaterial m;
+        m.subject = QStringLiteral("Physique › Thermodynamique");
+        m.date = QDate(2026, 11, 20);
+        NoteDrafts::SheetDocument sd;
+        sd.doc = doc;
+        sd.annotations = {annotation(12, QStringLiteral("Le rendement de Carnot\nne dépend que des températures."),
+                                     QStringLiteral("Retenir : $$\\eta = 1 - \\frac{T_F}{T_C}$$")),
+                          annotation(3, QStringLiteral("Premier principe."), QString())};
+        AnnotationRecord bookmark = annotation(5, QString(), QString());
+        bookmark.type = AnnotationType::Bookmark;
+        sd.annotations << bookmark;
+        CommentRecord q;
+        q.uuid = QStringLiteral("c1");
+        q.kind = CommentKind::Question;
+        q.body = QStringLiteral("Pourquoi des températures absolues ?");
+        CommentRecord done = q;
+        done.uuid = QStringLiteral("c2");
+        done.resolved = true;
+        sd.comments = {q, done};
+        m.documents << sd;
+        NoteRecord conceptNote;
+        conceptNote.title = QStringLiteral("Entropie");
+        conceptNote.type = NoteType::Concept;
+        conceptNote.body = QStringLiteral("---\ntags: [concept]\n---\n\n# Entropie\n\nGrandeur d'état qui mesure le désordre. "
+                                      "Elle croît dans un système isolé.\n");
+        NoteRecord course;
+        course.title = QStringLiteral("Cours 3");
+        course.type = NoteType::Course;
+        course.body = QStringLiteral("Bilan : $$dS = \\frac{\\delta Q}{T}$$");
+        NoteRecord oldSheet;
+        oldSheet.title = QStringLiteral("Fiche de révision · Physique › Thermodynamique");
+        oldSheet.type = NoteType::Revision;
+        m.notes = {conceptNote, course, oldSheet};
+        m.cardQuestions = {QStringLiteral("Unité de l'entropie ?")};
+
+        const NoteDraft d = NoteDrafts::revisionSheet(m);
+        QCOMPARE(d.type, NoteType::Revision);
+        QCOMPARE(d.folder, QStringLiteral("Fiches de révision"));
+        QCOMPARE(d.title, QStringLiteral("Fiche de révision · Physique › Thermodynamique"));
+        QVERIFY(NoteDrafts::isDraftSheet(d.body));
+        const FrontMatter fm = parseFrontMatter(d.body);
+        QCOMPARE(fm.values.value(QStringLiteral("matière")).toString(), QStringLiteral("Physique › Thermodynamique"));
+        QCOMPARE(fm.values.value(QStringLiteral("généré")).toString(), QStringLiteral("2026-11-20"));
+        QVERIFY(noteTags(d.body).contains(QStringLiteral("brouillon")));
+        QVERIFY2(d.body.contains(QStringLiteral("depuis 1 document, 2 passages annotés, 2 notes de « Physique")), qPrintable(d.body));
+        // Passages : ordre de lecture, citation sur une ligne, lien vers le passage, commentaire en retrait.
+        const qsizetype p3 = d.body.indexOf(QStringLiteral("- « Premier principe. » ([p. 3](studylab://open?doc=d-uuid&annotation=a3))"));
+        const qsizetype p12 = d.body.indexOf(QStringLiteral("- « Le rendement de Carnot ne dépend que des températures. » ([p. 12]"));
+        QVERIFY2(p3 > 0 && p12 > p3, qPrintable(d.body));
+        QVERIFY(d.body.contains(QStringLiteral("\n  Retenir : $$")));
+        QVERIFY(d.body.contains(QStringLiteral("### [[Thermodynamique]]")));
+        // Définitions, formules (notes et commentaires), questions, autres notes.
+        QVERIFY(d.body.contains(QStringLiteral("- **[[Entropie]]** : Grandeur d'état qui mesure le désordre.")));
+        QVERIFY(d.body.contains(QStringLiteral("$$\ndS = \\frac{\\delta Q}{T}\n$$\n*[[Cours 3]]*")));
+        QVERIFY(d.body.contains(QStringLiteral("$$\n\\eta = 1 - \\frac{T_F}{T_C}\n$$\n*[Thermodynamique, p. 12]")));
+        QVERIFY(d.body.contains(QStringLiteral("- [ ] Pourquoi des températures absolues ? (Thermodynamique, [")));
+        QVERIFY(!d.body.contains(QStringLiteral("&comment=c2")));
+        QVERIFY(d.body.contains(QStringLiteral("- [ ] Unité de l'entropie ?")));
+        QVERIFY(d.body.contains(QStringLiteral("## Notes de la matière\n\n- [[Cours 3]] · Fiche de cours")));
+        QVERIFY(!d.body.contains(QStringLiteral("[[Fiche de révision")));
+
+        // Rubriques décochées.
+        NoteDrafts::SheetOptions o;
+        o.passages = false;
+        o.formulas = false;
+        const NoteDraft lean = NoteDrafts::revisionSheet(m, o);
+        QVERIFY(!lean.body.contains(QStringLiteral("## Passages clés")));
+        QVERIFY(!lean.body.contains(QStringLiteral("## Formules")));
+        QVERIFY(lean.body.contains(QStringLiteral("## Définitions")));
+
+        // Trop de passages : les commentés d'abord.
+        NoteDrafts::SheetOptions few;
+        few.maxPassagesPerDocument = 1;
+        const NoteDraft one = NoteDrafts::revisionSheet(m, few);
+        QVERIFY(one.body.contains(QStringLiteral("[p. 12]")));
+        QVERIFY(!one.body.contains(QStringLiteral("[p. 3]")));
+
+        // Relue : statut et tag retirés, avertissement supprimé, le reste intact.
+        const QString reviewed = NoteDrafts::markSheetReviewed(d.body);
+        QVERIFY(!NoteDrafts::isDraftSheet(reviewed));
+        QCOMPARE(noteTags(reviewed), QStringList{QStringLiteral("révision")});
+        QVERIFY(!reviewed.contains(QStringLiteral("**Brouillon**")));
+        QVERIFY(reviewed.contains(QStringLiteral("## Définitions")));
+        QCOMPARE(parseFrontMatter(reviewed).values.value(QStringLiteral("matière")).toString(),
+                 QStringLiteral("Physique › Thermodynamique"));
+        QCOMPARE(NoteDrafts::markSheetReviewed(reviewed), reviewed);
+    }
 };
 
 QTEST_GUILESS_MAIN(TstNotes)
