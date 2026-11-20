@@ -12,7 +12,8 @@ add_library(studylab_data STATIC
     repositories/GraphRepository.h repositories/GraphRepository.cpp
     repositories/PageTextRepository.h repositories/PageTextRepository.cpp
     repositories/ReferenceRepository.h repositories/ReferenceRepository.cpp
-    repositories/StudyRepository.h repositories/StudyRepository.cpp)
+    repositories/StudyRepository.h repositories/StudyRepository.cpp
+    repositories/ActivityRepository.h repositories/ActivityRepository.cpp)
 target_link_libraries(studylab_data PUBLIC studylab_core studylab_sqlite3 Qt6::Core)
 studylab_set_warnings(studylab_data)
 

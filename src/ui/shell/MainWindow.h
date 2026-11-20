@@ -59,6 +59,7 @@ private:
     TextIndexer* m_indexer = nullptr;
     OcrIndexer* m_ocr = nullptr;
     StudyService* m_study = nullptr;
+    bool m_ownsActivity = false;
 
     AppContext& m_ctx;
     Sidebar* m_sidebar = nullptr;

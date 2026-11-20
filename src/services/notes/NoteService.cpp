@@ -1,5 +1,7 @@
 #include "services/notes/NoteService.h"
 
+#include "data/repositories/ActivityRepository.h"
+
 #include "core/Uuid.h"
 #include "core/domain/Comment.h"
 #include "data/sqlite/Database.h"
@@ -218,6 +220,7 @@ Result<NoteRecord> NoteService::create(const QString& title, NoteType type, cons
     auto relinked = relinkAll();
     if (!relinked)
         return relinked.error();
+    (void)db::ActivityRepository(m_db).log(QStringLiteral("note_created"), QStringLiteral("note"), note.id);
     if (auto r = tx.commit(); !r)
         return r.error();
     auto stored = m_repo.findById(note.id);
@@ -497,6 +500,7 @@ Result<NoteRecord> NoteService::createDerived(const QString& title, NoteType typ
         return r.error();
     if (auto r = relinkAll(); !r)
         return r.error();
+    (void)db::ActivityRepository(m_db).log(QStringLiteral("note_created"), QStringLiteral("note"), note.id);
     if (auto r = tx.commit(); !r)
         return r.error();
     auto stored = m_repo.findById(note.id);

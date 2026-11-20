@@ -254,6 +254,8 @@ void EpubView::handle(const QString& event, const QJsonObject& d)
         l.page = d.value(QStringLiteral("page")).toInt();
         l.pages = d.value(QStringLiteral("pages")).toInt();
         l.sectionMinutes = d.value(QStringLiteral("sectionMinutes")).toDouble();
+        l.location = d.value(QStringLiteral("location")).toInt();
+        l.locations = d.value(QStringLiteral("locations")).toInt();
         m_location = l;
         emit relocated(l);
     } else if (event == QLatin1String("selection")) {

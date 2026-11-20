@@ -13,7 +13,7 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | 1 · Conception | Vision, architecture, choix des bibliothèques, schéma SQLite, maquettes, plan | ✅ Terminée — voir [`docs/design/`](docs/design/README.md) |
 | 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | ✅ Terminée — **version 0.1.0** (7 itérations) |
 | 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | ✅ Terminée — **version 0.2.0** (7 itérations) |
-| 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | 🚧 En cours — V2-1 à V2-3 faites (cartes, FSRS, fiches de révision) |
+| 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | 🚧 En cours — V2-1 à V2-4 faites (cartes, FSRS, fiches de révision, tableau de bord et Activité) |
 | 5 · Finalisation | Optimisation, packaging, documentation | — |
 
 ### Ce qui fonctionne aujourd'hui (version 0.2 : MVP et V1)
@@ -30,6 +30,14 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
   annotés (les commentés d'abord) avec leurs liens, les définitions des notes « Concept », les formules relevées
   dans les notes et les commentaires, les questions en suspens et celles des cartes. La fiche est un **brouillon**
   dans « Fiches de révision », rattaché à la matière ; un bandeau invite à la relire puis à la marquer comme relue.
+- **Tableau de bord et Activité** (V2, non publié) : l'accueil montre la lecture à reprendre, les cartes du jour par
+  matière, l'objectif de la semaine (pages lues, temps de lecture, comparaison avec la semaine précédente), les
+  lectures en cours, la progression par matière, les dernières annotations et derniers commentaires, les favoris et
+  les notes récentes. Objectifs au choix : pages par semaine, minutes de lecture et cartes par jour. L'écran
+  **Activité** donne les chiffres sur 7 jours, 30 jours ou 12 mois, le temps de lecture par jour ou par mois, la
+  régularité sur six mois et un journal filtrable (lu, annoté, commenté, noté, révisé, importé) dont chaque ligne
+  rouvre ce qu'elle désigne. Le temps n'est compté que si le document est à l'écran et qu'on s'en sert ; la mesure se
+  désactive dans les paramètres et rien ne quitte l'ordinateur.
 - **Mes notes** (V1) : notes Markdown rangées dans des dossiers virtuels (« Thermodynamique/Cours »), huit types
   avec leur modèle (note de lecture, fiche de cours, concept, formules, fiche de révision, recherche, compte rendu,
   note personnelle), front matter YAML, tags (`tags:` ou `#tag`) cliquables pour filtrer. Éditeur avec coloration et
@@ -153,9 +161,10 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | ![Coffre Obsidian importé](docs/screenshots/v1-6b-import-coffre.png) | ![Cours en Markdown dans le lecteur](docs/screenshots/v1-6c-markdown.png) |
 | ![Notes exportées en PDF](docs/screenshots/v1-7-export-pdf.png) | ![Page numérisée lue par l'OCR](docs/screenshots/v1-7-ocr.png) |
 | ![Révision d'une carte tirée d'une annotation (V2)](docs/screenshots/v2-1-revisions.png) | ![Réglages d'un paquet : FSRS](docs/screenshots/v2-2-reglages-paquet.png) |
-| ![Fiche de révision générée, brouillon à relire](docs/screenshots/v2-3-fiche-revision.png) | |
+| ![Fiche de révision générée, brouillon à relire](docs/screenshots/v2-3-fiche-revision.png) | ![Tableau de bord : révisions du jour, objectif de la semaine](docs/screenshots/v2-4-accueil.png) |
+| ![Écran Activité](docs/screenshots/v2-4-activite.png) | ![Activité sur 30 jours, sombre](docs/screenshots/v2-4-activite-sombre.png) |
 
-Suite : cartes mémoire et répétition espacée (V2) —
+Suite : interopérabilité PDF avancée, formats supplémentaires et raccourcis configurables (V2) —
 plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md). Historique : [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Installer

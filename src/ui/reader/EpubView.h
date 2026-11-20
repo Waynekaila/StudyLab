@@ -41,6 +41,8 @@ struct EpubLocation {
     int page = 0;            ///< page dans le chapitre (mode paginé), 0 sinon
     int pages = 0;
     double sectionMinutes = 0;
+    int location = 0;        ///< page équivalente dans le livre (tranche d'environ 1 500 caractères)
+    int locations = 0;
 };
 
 struct EpubSelection {

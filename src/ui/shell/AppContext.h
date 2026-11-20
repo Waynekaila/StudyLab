@@ -3,6 +3,7 @@
 #include "core/AppPaths.h"
 
 namespace studylab {
+class ActivityService;
 class AnnotationService;
 class BackupService;
 class CommentService;
@@ -31,6 +32,8 @@ struct AppContext {
     BackupService& backups;
     NoteService& notes;
     OrganizeService& organize;
+    /// Journal d'activité et temps de lecture (V2-4) ; créé par la fenêtre principale s'il manque.
+    ActivityService* activity = nullptr;
 };
 
 }  // namespace studylab

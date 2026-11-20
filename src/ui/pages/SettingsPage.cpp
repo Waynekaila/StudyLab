@@ -127,7 +127,7 @@ QWidget* SettingsPage::buildAppearance()
 QWidget* SettingsPage::buildLibrary()
 {
     auto* scaffold = new PageScaffold(nullptr, 820);
-    titledSection(tr("Bibliothèque et import"), tr("Comment les fichiers importés sont conservés."), scaffold);
+    titledSection(tr("Bibliothèque et import"), tr("Comment les fichiers importés sont conservés, et ce qui est mesuré pendant la lecture."), scaffold);
 
     auto* card = makeCard();
     auto* v = static_cast<QVBoxLayout*>(card->layout());
@@ -142,6 +142,19 @@ QWidget* SettingsPage::buildLibrary()
         tr("Copier (recommandé) : le fichier est rangé dans la bibliothèque de StudyLab et reste disponible même si "
            "l'original est déplacé. Lier : le fichier reste à sa place, sans copie."),
         m_importMode));
+    v->addWidget(makeSeparator());
+    m_trackReading = new ToggleSwitch;
+    m_trackReading->setAccessibleName(tr("Mesurer le temps de lecture"));
+    m_trackReading->setAnimated(false);
+    m_trackReading->setChecked(m_ctx.settings.value(SettingKeys::TrackReading, true).toBool());
+    m_trackReading->setAnimated(true);
+    connect(m_trackReading, &ToggleSwitch::toggled, this,
+            [this](bool on) { m_ctx.settings.setValue(SettingKeys::TrackReading, on); });
+    v->addWidget(makeSettingRow(
+        tr("Mesurer le temps de lecture"),
+        tr("Temps passé dans un document ouvert (fenêtre au premier plan, sans pause de plus de deux minutes) et "
+           "pages vues, pour l'objectif de la semaine et l'écran Activité. Rien ne quitte cet ordinateur."),
+        m_trackReading));
     scaffold->body()->addWidget(card);
     scaffold->body()->addStretch(1);
     return scaffold;
