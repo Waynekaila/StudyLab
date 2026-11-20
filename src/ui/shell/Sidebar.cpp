@@ -65,9 +65,49 @@ Sidebar::Sidebar(ThemeManager& theme, const QList<Entry>& entries, QWidget* pare
     layout->addSpacing(8);
     connect(m_search, &QPushButton::clicked, this, &Sidebar::searchRequested);
 
+    m_navLayout = new QVBoxLayout;
+    m_navLayout->setContentsMargins(0, 0, 0, 0);
+    m_navLayout->setSpacing(2);
+    layout->addLayout(m_navLayout);
+    m_group->setExclusive(true);
+    connect(m_group, &QButtonGroup::idClicked, this, [this](int id) {
+        m_current = m_entries[id].id;
+        emit navigated(m_entries[id].id);
+    });
+    rebuild();
+
+    layout->addStretch(1);
+    auto* line = new QFrame(this);
+    line->setObjectName(QStringLiteral("SidebarFooterLine"));
+    line->setFixedHeight(1);
+    layout->addWidget(line);
+    auto* footer = new QHBoxLayout;
+    footer->setContentsMargins(10, 10, 10, 2);
+    footer->setSpacing(8);
+    m_footerIcon = new QLabel(this);
+    auto* footerText = new QLabel(tr("Hors ligne · données locales"), this);
+    footerText->setObjectName(QStringLiteral("SidebarFooter"));
+    footer->addWidget(m_footerIcon);
+    footer->addWidget(footerText, 1);
+    layout->addLayout(footer);
+
+    connect(&m_theme, &ThemeManager::themeChanged, this, &Sidebar::refreshIcons);
+    refreshIcons();
+}
+
+void Sidebar::rebuild()
+{
+    for (QToolButton* b : std::as_const(m_buttons)) {
+        m_group->removeButton(b);
+        b->hide();
+        b->deleteLater();
+    }
+    m_buttons.clear();
+    m_badges.clear();
     for (int i = 0; i < m_entries.size(); ++i) {
         auto* b = new QToolButton(this);
         b->setProperty("nav", true);
+        b->setObjectName(QStringLiteral("nav:") + m_entries[i].id);
         b->setText(QStringLiteral("  ") + m_entries[i].label);  // espace entre icône et libellé
         b->setAccessibleName(m_entries[i].label);
         b->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
@@ -89,28 +129,30 @@ Sidebar::Sidebar(ThemeManager& theme, const QList<Entry>& entries, QWidget* pare
         m_badges.append(badge);
         m_group->addButton(b, i);
         m_buttons.append(b);
-        layout->addWidget(b);
+        m_navLayout->addWidget(b);
     }
+    for (auto it = m_badgeCounts.cbegin(); it != m_badgeCounts.cend(); ++it)
+        setBadge(it.key(), it.value());
+    // Aucune entrée cochée si l'espace courant est masqué.
+    m_group->setExclusive(false);
+    for (int i = 0; i < m_entries.size(); ++i)
+        m_buttons[i]->setChecked(m_entries[i].id == m_current);
     m_group->setExclusive(true);
-    connect(m_group, &QButtonGroup::idClicked, this, [this](int id) { emit navigated(m_entries[id].id); });
+}
 
-    layout->addStretch(1);
-    auto* line = new QFrame(this);
-    line->setObjectName(QStringLiteral("SidebarFooterLine"));
-    line->setFixedHeight(1);
-    layout->addWidget(line);
-    auto* footer = new QHBoxLayout;
-    footer->setContentsMargins(10, 10, 10, 2);
-    footer->setSpacing(8);
-    m_footerIcon = new QLabel(this);
-    auto* footerText = new QLabel(tr("Hors ligne · données locales"), this);
-    footerText->setObjectName(QStringLiteral("SidebarFooter"));
-    footer->addWidget(m_footerIcon);
-    footer->addWidget(footerText, 1);
-    layout->addLayout(footer);
-
-    connect(&m_theme, &ThemeManager::themeChanged, this, &Sidebar::refreshIcons);
+void Sidebar::setEntries(const QList<Entry>& entries)
+{
+    m_entries = entries;
+    rebuild();
     refreshIcons();
+}
+
+QStringList Sidebar::entryIds() const
+{
+    QStringList out;
+    for (const Entry& e : m_entries)
+        out << e.id;
+    return out;
 }
 
 void Sidebar::refreshIcons()
@@ -126,20 +168,18 @@ void Sidebar::refreshIcons()
 
 void Sidebar::setCurrent(const QString& id)
 {
-    for (int i = 0; i < m_entries.size(); ++i) {
-        if (m_entries[i].id == id)
-            m_buttons[i]->setChecked(true);
-    }
+    m_current = id;
+    m_group->setExclusive(false);
+    for (int i = 0; i < m_entries.size(); ++i)
+        m_buttons[i]->setChecked(m_entries[i].id == id);
+    m_group->setExclusive(true);
 }
 
-QString Sidebar::current() const
-{
-    const int id = m_group->checkedId();
-    return id >= 0 ? m_entries[id].id : QString();
-}
+QString Sidebar::current() const { return m_current; }
 
 void Sidebar::setBadge(const QString& id, int count)
 {
+    m_badgeCounts.insert(id, count);
     for (int i = 0; i < m_entries.size(); ++i) {
         if (m_entries[i].id != id)
             continue;

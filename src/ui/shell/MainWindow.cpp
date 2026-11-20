@@ -26,10 +26,12 @@
 #include <QLineEdit>
 #include "ui/shell/SearchPalette.h"
 #include "ui/shell/Sidebar.h"
+#include "ui/shell/Shortcuts.h"
 #include "ui/theme/ThemeManager.h"
 
 #include <QCloseEvent>
 #include <QMessageBox>
+#include <QPushButton>
 #include <QShortcut>
 #include <QDragEnterEvent>
 #include <QDropEvent>
@@ -61,22 +63,8 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
-    // Seuls les espaces terminés apparaissent dans la navigation.
-    m_sidebar = new Sidebar(ctx.theme,
-                            {
-                                {QStringLiteral("home"), QStringLiteral("home"), tr("Accueil")},
-                                {QStringLiteral("library"), QStringLiteral("library"), tr("Bibliothèque")},
-                                {QStringLiteral("reader"), QStringLiteral("book"), tr("Lecture")},
-                                {QStringLiteral("notes"), QStringLiteral("note"), tr("Mes notes")},
-                                {QStringLiteral("subjects"), QStringLiteral("folder"), tr("Matières")},
-                                {QStringLiteral("collections"), QStringLiteral("layers"), tr("Collections")},
-                                {QStringLiteral("graph"), QStringLiteral("graph"), tr("Graphe")},
-                                {QStringLiteral("revisions"), QStringLiteral("cards"), tr("Révisions")},
-                                {QStringLiteral("activity"), QStringLiteral("activity"), tr("Activité")},
-                                {QStringLiteral("references"), QStringLiteral("quote"), tr("Références")},
-                                {QStringLiteral("settings"), QStringLiteral("settings"), tr("Paramètres")},
-                            },
-                            root);
+    // Navigation : ordre et entrées masquées choisis dans les paramètres (V2-6).
+    m_sidebar = new Sidebar(ctx.theme, Navigation::visibleEntries(ctx.settings), root);
     m_stack = new FadeStackedWidget(root);
     m_stack->setAnimationsEnabled(ctx.settings.animationsEnabled());
 
@@ -108,8 +96,9 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
     connect(reader, &ReaderPage::libraryRequested, this, [this] { navigateTo(QStringLiteral("library")); });
     connect(reader, &ReaderPage::focusModeChanged, this, [this](bool on) { m_sidebar->setVisible(!on); });
     connect(reader, &ReaderPage::fullScreenRequested, this, &MainWindow::toggleFullScreen);
-    auto* fullScreen = new QShortcut(QKeySequence(Qt::Key_F11), this, this, &MainWindow::toggleFullScreen);
+    auto* fullScreen = Shortcuts::create(ctx.settings, QStringLiteral("app.fullScreen"), this);
     fullScreen->setContext(Qt::WindowShortcut);
+    connect(fullScreen, &QShortcut::activated, this, &MainWindow::toggleFullScreen);
     auto* notes = new NotesPage(ctx, m_stack);
     addPage(QStringLiteral("notes"), notes);
     connect(reader, &ReaderPage::noteCreated, this, [this, notes](qint64 id) {
@@ -252,13 +241,24 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
             reader->openItem(hit.documentId, hit.kind == SearchHit::Kind::Comment, hit.itemId);
     });
     connect(m_sidebar, &Sidebar::searchRequested, this, &MainWindow::showSearch);
-    auto* find = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_K), this, this, &MainWindow::showSearch);
+    auto* find = Shortcuts::create(ctx.settings, QStringLiteral("app.search"), this);
     find->setContext(Qt::WindowShortcut);
+    connect(find, &QShortcut::activated, this, &MainWindow::showSearch);
+    Shortcuts::onChanged(ctx.settings, m_sidebar, [this] {
+        m_sidebar->searchButton()->setToolTip(Shortcuts::withKey(m_ctx.settings, tr("Rechercher partout"), QStringLiteral("app.search")));
+    });
+    for (const Navigation::Entry& e : Navigation::entries()) {
+        auto* go = Shortcuts::create(ctx.settings, QStringLiteral("nav.") + e.id, this);
+        go->setContext(Qt::WindowShortcut);
+        connect(go, &QShortcut::activated, this, [this, id = e.id] { navigateTo(id); });
+    }
 
     connect(m_sidebar, &Sidebar::navigated, this, &MainWindow::navigateTo);
     connect(&ctx.settings, &SettingsService::changed, this, [this](const QString& key) {
         if (key == SettingKeys::Animations)
             m_stack->setAnimationsEnabled(m_ctx.settings.animationsEnabled());
+        if (key == Navigation::kSettingKey)
+            m_sidebar->setEntries(Navigation::visibleEntries(m_ctx.settings));
     });
 
     // Glisser-déposer de fichiers ou de dossiers n'importe où dans la fenêtre → import.

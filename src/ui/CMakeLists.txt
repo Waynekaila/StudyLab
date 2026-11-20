@@ -11,6 +11,8 @@ add_library(studylab_ui STATIC
     components/MarkdownHighlighter.h components/MarkdownHighlighter.cpp
     shell/AppContext.h
     shell/Sidebar.h shell/Sidebar.cpp
+    shell/Navigation.h shell/Navigation.cpp
+    shell/Shortcuts.h shell/Shortcuts.cpp
     shell/MainWindow.h shell/MainWindow.cpp
     shell/SearchPalette.h shell/SearchPalette.cpp
     shell/InstanceChannel.h shell/InstanceChannel.cpp

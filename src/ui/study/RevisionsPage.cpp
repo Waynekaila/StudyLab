@@ -1,4 +1,5 @@
 #include "ui/study/RevisionsPage.h"
+#include "ui/shell/Shortcuts.h"
 
 #include "services/study/StudyService.h"
 #include "ui/components/Widgets.h"
@@ -505,9 +506,18 @@ void RevisionsPage::buildSession()
     m_actions->setFixedHeight(theme.px(60));
     v->addWidget(m_actions);
 
-    auto* hints = makeLabel(tr("Espace : retourner · 1 à 4 : répondre · E : modifier la carte · S : suspendre · "
-                               "Échap : terminer"),
-                            "faint", column);
+    auto* hints = makeLabel(QString(), "faint", column);
+    hints->setObjectName(QStringLiteral("SessionKeyHints"));
+    Shortcuts::onChanged(m_ctx.settings, hints, [this, hints] {
+        const auto k = [this](const char* id) {
+            const QString t = Shortcuts::keyText(m_ctx.settings, QString::fromLatin1(id));
+            return t.isEmpty() ? QStringLiteral("—") : t;
+        };
+        hints->setText(tr("%1 : retourner · %2 %3 %4 %5 : répondre · %6 : modifier la carte · %7 : suspendre · "
+                          "Échap : terminer")
+                           .arg(k("revisions.reveal"), k("revisions.again"), k("revisions.hard"), k("revisions.good"),
+                                k("revisions.easy"), k("revisions.edit"), k("revisions.suspend")));
+    });
     hints->setAlignment(Qt::AlignCenter);
     v->addWidget(hints);
     v->addStretch(2);
@@ -517,7 +527,12 @@ void RevisionsPage::buildSession()
         s->setContext(Qt::WidgetWithChildrenShortcut);
         connect(s, &QShortcut::activated, this, slot);
     };
-    shortcut(QKeySequence(Qt::Key_Space), [this] { revealAnswer(); });
+    const auto configurable = [this](const char* id, auto slot) {
+        auto* s = Shortcuts::create(m_ctx.settings, QString::fromLatin1(id), m_session);
+        s->setContext(Qt::WidgetWithChildrenShortcut);
+        connect(s, &QShortcut::activated, this, slot);
+    };
+    configurable("revisions.reveal", [this] { revealAnswer(); });
     shortcut(QKeySequence(Qt::Key_Return), [this] {
         if (!revealAnswer())
             rate(Rating::Good);
@@ -526,13 +541,14 @@ void RevisionsPage::buildSession()
         if (!revealAnswer())
             rate(Rating::Good);
     });
+    static const char* const rates[] = {"revisions.again", "revisions.hard", "revisions.good", "revisions.easy"};
     for (int i = 0; i < 4; ++i)
-        shortcut(QKeySequence(Qt::Key_1 + i), [this, i] { rate(Rating(i + 1)); });
-    shortcut(QKeySequence(Qt::Key_E), [this] {
+        configurable(rates[i], [this, i] { rate(Rating(i + 1)); });
+    configurable("revisions.edit", [this] {
         if (m_inSession)
             editCard(m_row.card.id);
     });
-    shortcut(QKeySequence(Qt::Key_S), [this] {
+    configurable("revisions.suspend", [this] {
         if (m_inSession && m_study.setSuspended(m_row.card.id, true))
             nextCard();
     });

@@ -1,4 +1,5 @@
 #include "ui/reader/PdfReaderTab.h"
+#include "ui/shell/Shortcuts.h"
 
 #include "ui/reader/ReadingClock.h"
 
@@ -240,17 +241,29 @@ PdfReaderTab::PdfReaderTab(AppContext& ctx, qint64 documentId, QWidget* parent)
 
     initAnnotations();
 
-    auto* find = new QShortcut(QKeySequence::Find, this, this, &PdfReaderTab::showSearch);
+    auto* find = Shortcuts::create(m_settings, QStringLiteral("reader.find"), this);
     find->setContext(Qt::WidgetWithChildrenShortcut);
-    auto* back = new QShortcut(QKeySequence::Back, this, m_view, &PdfView::goBack);
+    connect(find, &QShortcut::activated, this, &PdfReaderTab::showSearch);
+    auto* back = Shortcuts::create(m_settings, QStringLiteral("reader.back"), this);
     back->setContext(Qt::WidgetWithChildrenShortcut);
-    auto* fwd = new QShortcut(QKeySequence::Forward, this, m_view, &PdfView::goForward);
+    connect(back, &QShortcut::activated, m_view, &PdfView::goBack);
+    auto* fwd = Shortcuts::create(m_settings, QStringLiteral("reader.forward"), this);
     fwd->setContext(Qt::WidgetWithChildrenShortcut);
-    auto* goTo = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_G), this, [this] {
+    connect(fwd, &QShortcut::activated, m_view, &PdfView::goForward);
+    auto* goTo = Shortcuts::create(m_settings, QStringLiteral("reader.goToPage"), this);
+    goTo->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(goTo, &QShortcut::activated, this, [this] {
         m_pageEdit->setFocus();
         m_pageEdit->selectAll();
     });
-    goTo->setContext(Qt::WidgetWithChildrenShortcut);
+    Shortcuts::onChanged(m_settings, this, [this] {
+        m_back->setToolTip(Shortcuts::withKey(m_settings, tr("Précédent"), QStringLiteral("reader.back")));
+        m_forward->setToolTip(Shortcuts::withKey(m_settings, tr("Suivant"), QStringLiteral("reader.forward")));
+        m_pageEdit->setToolTip(Shortcuts::withKey(m_settings, tr("Aller à la page"), QStringLiteral("reader.goToPage")));
+        m_searchButton->setToolTip(Shortcuts::withKey(m_settings, tr("Rechercher dans le document"), QStringLiteral("reader.find")));
+        m_fullButton->setToolTip(Shortcuts::withKey(m_settings, tr("Plein écran"), QStringLiteral("app.fullScreen")));
+        updateBookmarkButton();
+    });
 
     refreshIcons();
     updateHistoryButtons();
@@ -1092,7 +1105,8 @@ void PdfReaderTab::updateBookmarkButton()
         on = on || (r.type == AnnotationType::Bookmark && r.unitIndex == m_view->currentPage());
     const QSignalBlocker block(m_bookmarkButton);
     m_bookmarkButton->setChecked(on);
-    m_bookmarkButton->setToolTip(on ? tr("Retirer le signet de cette page (Ctrl+D)") : tr("Signet sur cette page (Ctrl+D)"));
+    m_bookmarkButton->setToolTip(Shortcuts::withKey(
+        m_settings, on ? tr("Retirer le signet de cette page") : tr("Signet sur cette page"), QStringLiteral("reader.bookmark")));
 }
 
 Result<QList<AnnotationRecord>> PdfReaderTab::annotateSelection(AnnotationType type, AnnotationColor color)
