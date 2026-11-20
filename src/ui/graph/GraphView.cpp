@@ -103,18 +103,31 @@ public:
         }
 
         const bool hover = m_view->hovered() == m_index;
-        if (!(m_view->labelsVisible() || sel || hover))
-            return;
-        // Étiquettes lisibles quand on dézoome : taille compensée jusqu'à un certain point.
-        const double z = std::clamp(m_view->zoom(), kMinLabelScale, 1.0);
-        QFont f = painter->font();
-        f.setPixelSize(std::max(1, int(std::lround(m_view->theme().px(12) / z))));
         const bool strong = sel || hover;
+        if (!(m_view->labelsVisible() || strong))
+            return;
+        // Étiquettes lisibles quand on dézoome : taille compensée jusqu'à un certain point. Au-delà, elles feraient
+        // moins de 7 pixels à l'écran : illisibles, et coûteuses à dessiner sur un grand graphe (seules celles du
+        // nœud choisi ou survolé restent).
+        const double zoom = m_view->zoom();
+        const double z = std::clamp(zoom, kMinLabelScale, 1.0);
+        const int pixelSize = std::max(1, int(std::lround(m_view->theme().px(12) / z)));
+        if (!strong && pixelSize * zoom < 7.0)
+            return;
+        QFont f = painter->font();
+        f.setPixelSize(pixelSize);
         f.setWeight(strong ? QFont::DemiBold : QFont::Normal);
         painter->setFont(f);
         const QFontMetricsF fm(f);
         const double width = kLabelWidth / z;
-        const QString text = fm.elidedText(node.title, Qt::ElideRight, width - 6);
+        // Texte raccourci gardé tant que la taille et la police ne changent pas (le calcul est le plus coûteux).
+        if (m_elidedSize != pixelSize || m_elidedStrong != strong || m_elidedFont != f.family()) {
+            m_elided = fm.elidedText(node.title, Qt::ElideRight, width - 6);
+            m_elidedSize = pixelSize;
+            m_elidedStrong = strong;
+            m_elidedFont = f.family();
+        }
+        const QString& text = m_elided;
         painter->setPen(strong ? pal.text : (node.kind == GraphNodeKind::Unresolved ? pal.text3 : pal.text2));
         const QRectF label(-width / 2, r + 5 / z, width, fm.height() + 2);
         painter->drawText(label, Qt::AlignHCenter | Qt::AlignTop, text);
@@ -160,6 +173,10 @@ private:
     GraphView* m_view;
     int m_index;
     QPoint m_press;
+    QString m_elided;
+    QString m_elidedFont;
+    int m_elidedSize = 0;
+    bool m_elidedStrong = false;
 };
 
 // ───────────────────────── Arête ─────────────────────────
@@ -218,6 +235,10 @@ GraphView::GraphView(ThemeManager& theme, QWidget* parent) : QGraphicsView(paren
 {
     setObjectName(QStringLiteral("GraphView"));
     setScene(new QGraphicsScene(this));
+    // Les nœuds bougent sans cesse pendant le calcul de la disposition : l'index BSP par défaut se reconstruit à
+    // chaque étape (plus d'une seconde pour 6 000 nœuds et 9 000 liens). Sans index, le dessin parcourt les
+    // éléments, ce qui reste rapide.
+    scene()->setItemIndexMethod(QGraphicsScene::NoIndex);
     setFrameShape(QFrame::NoFrame);
     setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
     setDragMode(QGraphicsView::ScrollHandDrag);

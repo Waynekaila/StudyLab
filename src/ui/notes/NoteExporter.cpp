@@ -88,6 +88,7 @@ bool NoteExporter::start(const QList<qint64>& noteIds, const QString& heading, c
         m_view = new MarkdownView;
         m_view->setAttribute(Qt::WA_DontShowOnScreen);
         m_view->resize(900, 1200);
+        m_view->start();  // jamais affichée : la page est créée tout de suite
         connect(m_view, &MarkdownView::ready, this, [this] {
             if (m_running)
                 render();

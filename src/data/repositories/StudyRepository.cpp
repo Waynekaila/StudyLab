@@ -321,6 +321,55 @@ Result<DeckCounts> StudyRepository::counts(qint64 deckId, const QString& nowIso,
     return c;
 }
 
+Result<QHash<qint64, DeckCounts>> StudyRepository::allCounts(const QString& nowIso, const QString& dayStartIso,
+                                                             const QString& dayEndIso)
+{
+    QHash<qint64, DeckCounts> out;
+    auto stmt = m_db.prepare(QStringLiteral(
+        "SELECT c.deck_id, COUNT(*), "
+        "COUNT(*) FILTER (WHERE c.suspended = 1), "
+        "COUNT(*) FILTER (WHERE c.suspended = 0 AND s.state = 'new'), "
+        "COUNT(*) FILTER (WHERE c.suspended = 0 AND s.state IN ('learning', 'relearning') AND s.due_at <= ?1), "
+        "COUNT(*) FILTER (WHERE c.suspended = 0 AND s.state = 'review' AND s.due_at <= ?2) "
+        "FROM cards c JOIN card_state s ON s.card_id = c.id WHERE c.deleted_at IS NULL GROUP BY c.deck_id"));
+    if (!stmt)
+        return stmt.error();
+    Statement& s = stmt.value();
+    s.bind(1, nowIso).bind(2, dayEndIso);
+    while (true) {
+        auto row = s.step();
+        if (!row)
+            return row.error();
+        if (!row.value())
+            break;
+        DeckCounts& c = out[s.columnInt64(0)];
+        c.total = int(s.columnInt64(1));
+        c.suspended = int(s.columnInt64(2));
+        c.fresh = int(s.columnInt64(3));
+        c.learningDue = int(s.columnInt64(4));
+        c.reviewDue = int(s.columnInt64(5));
+    }
+    auto done = m_db.prepare(QStringLiteral(
+        "SELECT c.deck_id, COUNT(*) FILTER (WHERE json_extract(r.prev_state_json, '$.state') = 'new'), "
+        "COUNT(*) FILTER (WHERE json_extract(r.prev_state_json, '$.state') = 'review') "
+        "FROM card_reviews r JOIN cards c ON c.id = r.card_id WHERE r.reviewed_at >= ?1 GROUP BY c.deck_id"));
+    if (!done)
+        return done.error();
+    Statement& d = done.value();
+    d.bind(1, dayStartIso);
+    while (true) {
+        auto row = d.step();
+        if (!row)
+            return row.error();
+        if (!row.value())
+            break;
+        DeckCounts& c = out[d.columnInt64(0)];
+        c.newDoneToday = int(d.columnInt64(1));
+        c.reviewsDoneToday = int(d.columnInt64(2));
+    }
+    return out;
+}
+
 Result<QList<CardRow>> StudyRepository::learning(qint64 deckId, const QString& untilIso, int limit)
 {
     auto stmt = m_db.prepare(QStringLiteral("SELECT ") + kCardColumns +

@@ -51,20 +51,36 @@ protected:
 
 MarkdownView::MarkdownView(QWidget* parent) : QWebEngineView(parent), m_bridge(new MarkdownBridge(this))
 {
+    setContextMenuPolicy(Qt::NoContextMenu);
+    setAcceptDrops(false);
+}
+
+void MarkdownView::start()
+{
+    if (m_started)
+        return;
+    m_started = true;
     auto* page = new MarkdownPage(readerProfile(), this);
     setPage(page);
+    if (m_background.isValid())
+        page->setBackgroundColor(m_background);
     auto* channel = new QWebChannel(page);
     channel->registerObject(QStringLiteral("bridge"), m_bridge);
     page->setWebChannel(channel);
-    setContextMenuPolicy(Qt::NoContextMenu);
-    setAcceptDrops(false);
     load(QUrl(QStringLiteral("%1://reader%2").arg(QLatin1String(kEpubScheme), kPage)));
+}
+
+void MarkdownView::showEvent(QShowEvent* event)
+{
+    start();
+    QWebEngineView::showEvent(event);
 }
 
 MarkdownView::~MarkdownView()
 {
-    // La page doit disparaître avant le profil partagé.
-    delete page();
+    // La page doit disparaître avant le profil partagé (page() en créerait une si la vue n'a jamais démarré).
+    if (m_started)
+        delete page();
 }
 
 void MarkdownView::call(const QString& method, const QJsonArray& args)
@@ -79,7 +95,9 @@ void MarkdownView::call(const QString& method, const QJsonArray& args)
 
 void MarkdownView::setThemeVars(const QJsonObject& vars)
 {
-    page()->setBackgroundColor(QColor(vars.value(QStringLiteral("bg")).toString()));
+    m_background = QColor(vars.value(QStringLiteral("bg")).toString());
+    if (m_started)
+        page()->setBackgroundColor(m_background);
     call(QStringLiteral("setTheme"), {vars});
 }
 
@@ -106,6 +124,7 @@ void MarkdownView::scrollToLine(int line) { call(QStringLiteral("scrollToLine"),
 
 void MarkdownView::evaluate(const QString& expression, std::function<void(const QVariant&)> callback)
 {
+    start();
     page()->runJavaScript(QStringLiteral("JSON.stringify([%1])").arg(expression), [callback](const QVariant& v) {
         callback(QJsonDocument::fromJson(v.toString().toUtf8()).array().at(0).toVariant());
     });

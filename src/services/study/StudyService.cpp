@@ -83,13 +83,15 @@ Result<QList<DeckSummary>> StudyService::decks()
     auto list = m_repo.decks();
     if (!list)
         return list.error();
+    // Comptes de tous les paquets en deux requêtes (au lieu de deux par paquet).
+    const QDateTime t = now();
+    const QDateTime start = dayStart(t);
+    auto counts = m_repo.allCounts(iso(t), iso(start), iso(start.addDays(1)));
+    if (!counts)
+        return counts.error();
     QList<DeckSummary> out;
-    for (const Deck& d : list.value()) {
-        auto s = deckSummary(d.id);
-        if (!s)
-            return s.error();
-        out << s.value();
-    }
+    for (const Deck& d : list.value())
+        out << summarize(d, counts.value().value(d.id));
     return out;
 }
 

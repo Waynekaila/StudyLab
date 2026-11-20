@@ -100,7 +100,7 @@ Result<QList<DayActivity>> ActivityService::days(const QDate& from, const QDate&
     auto sessions = m_repo.sessions(fromIso, toIso);
     if (!sessions)
         return sessions.error();
-    auto entries = m_repo.entries(fromIso, toIso);
+    auto entries = m_repo.actionTimes(fromIso, toIso);
     if (!entries)
         return entries.error();
 
@@ -109,9 +109,21 @@ Result<QList<DayActivity>> ActivityService::days(const QDate& from, const QDate&
     for (int i = 0; i < n; ++i)
         out << DayActivity{from.addDays(i)};
     QList<QSet<qint64>> pages(n);
+    // Début (UTC, au format stocké) de chaque journée et de la suivante : une recherche dichotomique sur le texte
+    // range chaque horodatage sans le convertir en heure locale (coûteux sur des dizaines de milliers de lignes).
+    QStringList bounds;
+    bounds.reserve(n + 1);
+    for (int i = 0; i <= n; ++i)
+        bounds << iso(dayStartUtc(from.addDays(i)));
     auto indexOf = [&](const QString& at) {
-        const qint64 i = from.daysTo(activityDay(parseUtc(at)));
-        return i >= 0 && i < n ? int(i) : -1;
+        // Horodatage au format stocké (« …Z », à la seconde) ; sinon, conversion complète.
+        if (at.size() != 20 || !at.endsWith(u'Z')) {
+            const qint64 i = from.daysTo(activityDay(parseUtc(at)));
+            return i >= 0 && i < n ? int(i) : -1;
+        }
+        const auto it = std::upper_bound(bounds.cbegin(), bounds.cend(), at);
+        const int i = int(it - bounds.cbegin()) - 1;
+        return i >= 0 && i < n ? i : -1;
     };
     for (const db::ReadingSessionRow& s : sessions.value()) {
         const int i = indexOf(s.startedAt);
@@ -123,19 +135,19 @@ Result<QList<DayActivity>> ActivityService::days(const QDate& from, const QDate&
     }
     for (int i = 0; i < n; ++i)
         out[i].pages = int(pages[i].size());
-    for (const db::ActivityRow& e : entries.value()) {
-        const int i = indexOf(e.at);
+    for (const auto& [at, action] : entries.value()) {
+        const int i = indexOf(at);
         if (i < 0)
             continue;
-        if (e.action == QLatin1String("annotated"))
+        if (action == QLatin1String("annotated"))
             ++out[i].annotations;
-        else if (e.action == QLatin1String("commented"))
+        else if (action == QLatin1String("commented"))
             ++out[i].comments;
-        else if (e.action == QLatin1String("note_created"))
+        else if (action == QLatin1String("note_created"))
             ++out[i].notes;
-        else if (e.action == QLatin1String("reviewed"))
+        else if (action == QLatin1String("reviewed"))
             ++out[i].reviews;
-        else if (e.action == QLatin1String("imported"))
+        else if (action == QLatin1String("imported"))
             ++out[i].imported;
     }
     return out;
@@ -213,17 +225,27 @@ Result<WeekProgress> ActivityService::week()
 
 Result<int> ActivityService::streak()
 {
+    // Remonte par tranches de 5 semaines jusqu'au premier jour sans activité (au plus 400 jours) : une série est
+    // le plus souvent courte, inutile de relire une année d'activité.
     const QDate t = today();
-    auto list = days(t.addDays(-400), t);
-    if (!list)
-        return list.error();
-    const QList<DayActivity>& d = list.value();
-    int i = int(d.size()) - 1;
-    if (i >= 0 && !d[i].any())
-        --i;  // rien encore aujourd'hui : la série d'hier tient toujours
     int n = 0;
-    for (; i >= 0 && d[i].any(); --i)
-        ++n;
+    bool first = true;
+    for (QDate end = t; end > t.addDays(-400);) {
+        const QDate start = std::max(end.addDays(-34), t.addDays(-400));
+        auto list = days(start, end);
+        if (!list)
+            return list.error();
+        const QList<DayActivity>& d = list.value();
+        int i = int(d.size()) - 1;
+        if (first && i >= 0 && !d[i].any())
+            --i;  // rien encore aujourd'hui : la série d'hier tient toujours
+        first = false;
+        for (; i >= 0 && d[i].any(); --i)
+            ++n;
+        if (i >= 0)
+            return n;
+        end = start.addDays(-1);
+    }
     return n;
 }
 

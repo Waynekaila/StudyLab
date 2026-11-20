@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QColor>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QStringList>
@@ -14,7 +15,9 @@ class MarkdownBridge;
 
 /// Rendu Markdown (markdown-it + KaTeX, ressources embarquées, hors ligne) dans Qt WebEngine.
 /// Deux usages : la liste des commentaires sous forme de cartes et l'aperçu de l'éditeur.
-/// Les appels faits avant le chargement de la page sont rejoués dès qu'elle est prête.
+/// Les appels faits avant le chargement de la page sont rejoués dès qu'elle est prête. La page (et le moteur web
+/// derrière elle) n'est créée qu'au premier affichage, ou par start() pour une vue jamais affichée (export) :
+/// le démarrage de l'application ne paie pas le lancement du moteur pour un écran qu'on n'ouvre pas.
 class MarkdownView : public QWebEngineView {
     Q_OBJECT
 public:
@@ -22,6 +25,8 @@ public:
     ~MarkdownView() override;
 
     bool isReady() const { return m_ready; }
+    /// Crée la page et lance son chargement (sans effet si c'est déjà fait).
+    void start();
 
     /// Variables CSS (sans « -- ») : bg, card, text, muted, border, link, accent…
     void setThemeVars(const QJsonObject& vars);
@@ -49,13 +54,18 @@ signals:
     /// Clic sur un [[lien]] dans l'aperçu d'une note (cible sans « |alias »).
     void wikiLinkActivated(const QString& target);
 
+protected:
+    void showEvent(QShowEvent* event) override;
+
 private:
     friend class MarkdownBridge;
     void handle(const QString& event, const QJsonObject& payload);
     void call(const QString& method, const QJsonArray& args);
 
     MarkdownBridge* m_bridge;
+    bool m_started = false;
     bool m_ready = false;
+    QColor m_background;
     QStringList m_pending;
 };
 

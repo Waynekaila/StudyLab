@@ -3,6 +3,7 @@
 #include "core/Result.h"
 #include "core/domain/Card.h"
 
+#include <QHash>
 #include <QList>
 #include <QPair>
 
@@ -66,6 +67,8 @@ public:
     Result<void> removeCard(qint64 id);
 
     Result<DeckCounts> counts(qint64 deckId, const QString& nowIso, const QString& dayStartIso, const QString& dayEndIso);
+    /// Mêmes comptes pour tous les paquets en deux requêtes (paquet → comptes ; un paquet vide est absent).
+    Result<QHash<qint64, DeckCounts>> allCounts(const QString& nowIso, const QString& dayStartIso, const QString& dayEndIso);
     /// Prochaines cartes candidates, dans l'ordre : apprentissage dû avant `learnAheadIso`, révisions dues avant
     /// `dayEndIso`, nouvelles (ordre de création). Au plus `limit` de chaque.
     Result<QList<CardRow>> learning(qint64 deckId, const QString& untilIso, int limit);

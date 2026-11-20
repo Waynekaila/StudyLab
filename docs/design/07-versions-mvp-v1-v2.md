@@ -85,4 +85,4 @@ Même rythme que le MVP : une PR par itération, testée sur les deux OS par la 
 | V2-4 ✅ | **Tableau de bord** complet (objectifs, progression par matière) et écran **Activité** |
 | V2-5 ✅ | **Interopérabilité PDF** : import des annotations d'un PDF (bandeau à l'ouverture, sans doublon), export d'une copie annotée lisible partout |
 | V2-6 ✅ | Formats supplémentaires (images, DOCX en lecture) ; navigation et raccourcis configurables |
-| V2-7 | Finalisation : profilage, gros volumes, guide utilisateur, dépannage → **V2 1.0.0** |
+| V2-7 ✅ | Finalisation : profilage, gros volumes, guide utilisateur, dépannage → **V2 1.0.0** (2026-11-20) |

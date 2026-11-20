@@ -86,3 +86,7 @@ studylab_add_test(tst_activity SOURCES unit/tst_activity.cpp
 studylab_add_test(tst_activity_ui SOURCES ui/tst_activity_ui.cpp ../src/app/Bootstrap.cpp LIBS studylab_ui studylab_test_support)
 target_include_directories(tst_activity_ui PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
 set_tests_properties(tst_activity_ui PROPERTIES TIMEOUT 300)
+# Campagne « gros volumes » (V2-7) : STUDYLAB_VOLUME_SCALE=5 pour la mesure complète.
+studylab_add_test(tst_volume SOURCES ui/tst_volume.cpp ../src/app/Bootstrap.cpp LIBS studylab_ui studylab_test_support)
+target_include_directories(tst_volume PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
+set_tests_properties(tst_volume PROPERTIES TIMEOUT 900)

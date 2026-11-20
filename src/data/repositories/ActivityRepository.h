@@ -47,6 +47,8 @@ public:
                      const QJsonObject& detail = {}, const QString& atIso = {});
     /// Entrées entre deux instants (ISO UTC, fin exclue), des plus récentes aux plus anciennes.
     Result<QList<ActivityRow>> entries(const QString& fromIso, const QString& toIso, int limit = -1);
+    /// Horodatage et action de chaque entrée de la période, sans ordre ni détail : comptes par jour.
+    Result<QList<QPair<QString, QString>>> actionTimes(const QString& fromIso, const QString& toIso);
 
     /// Crée la séance si son id est 0 (et le renseigne), sinon met à jour fin, durée et pages.
     Result<void> saveSession(ReadingSessionRow& session);

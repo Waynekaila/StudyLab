@@ -70,6 +70,14 @@ private:
 };
 
 namespace {
+/// Couverture enregistrée, image vide sinon (sans tenter d'ouvrir un chemin vide).
+QImage coverImage(const LibraryService& library, const DocumentRecord& doc)
+{
+    return doc.coverPath.isEmpty() ? QImage() : QImage(library.coverFile(doc));
+}
+}  // namespace
+
+namespace {
 
 /// Bouton de ligne : sa taille est celle de son contenu (icône, texte, légende).
 class RowButton : public QPushButton {
@@ -210,7 +218,7 @@ HomePage::HomePage(AppContext& ctx, StudyService* study, QWidget* parent)
         connect(m_study, &StudyService::changed, this, &HomePage::refreshIfVisible);
     if (m_ctx.activity)
         connect(m_ctx.activity, &ActivityService::changed, this, &HomePage::refreshIfVisible);
-    refresh();
+    // Rempli à chaque affichage (showEvent) : pas de double calcul au démarrage.
 }
 
 void HomePage::refreshIfVisible()
@@ -489,7 +497,7 @@ QPixmap HomePage::smallCover(const DocumentRecord& doc, int width, int height) c
     pm.fill(Qt::transparent);
     QPainter p(&pm);
     p.setRenderHint(QPainter::Antialiasing);
-    CoverArt::paintCover(p, QRectF(0, 0, width, height), doc, QImage(m_ctx.library.coverFile(doc)),
+    CoverArt::paintCover(p, QRectF(0, 0, width, height), doc, coverImage(m_ctx.library, doc),
                          m_ctx.theme.palette(), width / 160.0);
     return pm;
 }
@@ -555,7 +563,7 @@ void HomePage::refreshResume()
     m_resumeEmpty->setVisible(!d);
     if (!d)
         return;
-    m_cover->setDocument(*d, QImage(m_ctx.library.coverFile(*d)));
+    m_cover->setDocument(*d, coverImage(m_ctx.library, *d));
     m_resumeTitle->setText(d->title);
     const auto pos = m_ctx.library.readingPosition(d->id);
     const double progress = pos ? pos->progress : d->progress;
