@@ -32,6 +32,10 @@
   `[[liens]]` résolus une fois tout importé, fichiers `.bib` importés comme références ; dossiers cachés
   (`.obsidian`, `.trash`) ignorés. Un export StudyLab se réimporte tel quel (mêmes dossiers, types et uuid) ; les
   notes déjà présentes (même uuid, ou même titre, dossier et texte) ne sont pas dupliquées.
+- **Export PDF et HTML des notes** (itération V1-7) : une note, un dossier de notes ou les notes d'une matière (et de
+  ses sous-matières), depuis le clic droit. Même rendu que l'aperçu (KaTeX, images, citations, bibliographie), thème
+  clair ; PDF A4 par Chromium, une note par page ; HTML autonome (feuilles de style, polices KaTeX et images en data:),
+  liens internes rendus en texte.
 - **Lecture des fichiers TXT et Markdown** (itération V1-6c) : importés dans la bibliothèque (choisis un par un ;
   le parcours d'un dossier reste limité aux PDF et EPUB), mis en forme de livre EPUB en mémoire et lus dans le
   lecteur EPUB avec annotations, commentaires, recherche, plein texte et export. Markdown : titres, listes, tableaux,

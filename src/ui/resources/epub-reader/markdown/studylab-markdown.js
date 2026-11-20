@@ -246,6 +246,38 @@ window.StudyLab = {
     const root = document.getElementById('root')
     root.innerHTML = text && text.trim() ? `<div class="md">${render(text)}</div>` : `<div class="empty">${esc(emptyText || '')}</div>`
   },
+  // Export HTML / PDF : plusieurs notes à la suite, chacune avec ses liens, images et citations ; titre de document facultatif.
+  setNotes (list, heading) {
+    noteMode = true
+    document.body.classList.add('preview', 'note', 'export')
+    let html = heading ? `<header class="export-title"><h1>${esc(heading)}</h1></header>` : ''
+    for (const note of list) {
+      noteState = Object.assign({ unresolved: [], documents: [], images: {}, citations: {}, bibliography: [], lineOffset: 0, unresolvedLabel: '', documentLabel: '', citationMissingLabel: '', bibliographyTitle: '' }, note)
+      const chips = (note.chips || []).map(c => `<span class="chip">${esc(c)}</span>`).join('')
+      let body = note.body && note.body.trim() ? render(note.body) : ''
+      if (noteState.bibliography.length) body += `<section class="bibliography"><h2>${esc(noteState.bibliographyTitle)}</h2><ul>${noteState.bibliography.map(e => `<li>${e}</li>`).join('')}</ul></section>`
+      html += `<article class="md note">${chips ? `<div class="chips">${chips}</div>` : ''}<h1 class="note-title">${esc(note.title)}</h1>${body}</article>`
+    }
+    document.getElementById('root').innerHTML = html
+    return document.querySelectorAll('article.note').length
+  },
+  // Contenu figé pour un fichier HTML autonome : liens internes rendus en texte, attributs de l'éditeur retirés.
+  exportHtml () {
+    const root = document.getElementById('root').cloneNode(true)
+    for (const a of root.querySelectorAll('a.wikilink')) {
+      const span = document.createElement('span')
+      span.className = a.className
+      span.innerHTML = a.innerHTML
+      if (a.title) span.title = a.title
+      a.replaceWith(span)
+    }
+    for (const a of root.querySelectorAll('a[href]')) {
+      const href = a.getAttribute('href')
+      if (!/^(https?:|mailto:)/i.test(href)) a.removeAttribute('href')
+    }
+    for (const el of root.querySelectorAll('[data-line]')) el.removeAttribute('data-line')
+    return root.innerHTML
+  },
   // note : {title, body (sans front matter), lineOffset, chips: [texte], unresolved: [cible], images: {chemin: data:}}
   setNote (note, emptyText) {
     noteMode = true

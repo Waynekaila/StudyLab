@@ -73,4 +73,4 @@ Même rythme que le MVP : une PR par itération, testée sur les deux OS par la 
 | V1-4 ✅ | Graphe de connaissances interactif |
 | V1-5 ✅ | Recherche universelle : texte intégral des PDF/EPUB indexé en tâche de fond, notes, palette Ctrl K enrichie |
 | V1-6 ✅ | Références bibliographiques (CSL-JSON, BibTeX, `[[@clé]]`), import d'un coffre Obsidian, lecture TXT/Markdown |
-| V1-7 | OCR facultatif (Tesseract), export HTML/PDF d'une note ou d'une matière → **V1 0.2** |
+| V1-7 🚧 | Export HTML/PDF d'une note ou d'une matière ✅, OCR facultatif (Tesseract) → **V1 0.2** |

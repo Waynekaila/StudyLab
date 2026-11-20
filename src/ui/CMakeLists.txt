@@ -37,6 +37,8 @@ add_library(studylab_ui STATIC
     reader/CommentsPane.h reader/CommentsPane.cpp
     notes/NoteEditor.h notes/NoteEditor.cpp
     notes/NotesPage.h notes/NotesPage.cpp
+    notes/NotePreview.h notes/NotePreview.cpp
+    notes/NoteExporter.h notes/NoteExporter.cpp
     organize/OrganizeWidgets.h organize/OrganizeWidgets.cpp
     organize/SmartCollectionDialog.h organize/SmartCollectionDialog.cpp
     organize/SubjectsPage.h organize/SubjectsPage.cpp

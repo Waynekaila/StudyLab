@@ -6,6 +6,7 @@
 #include "services/organize/OrganizeService.h"
 #include "ui/components/SegmentedControl.h"
 #include "ui/components/Widgets.h"
+#include "ui/notes/NoteExporter.h"
 #include "ui/organize/OrganizeWidgets.h"
 #include "ui/theme/Icons.h"
 #include "ui/theme/ThemeManager.h"
@@ -507,6 +508,31 @@ void SubjectsPage::confirmRemove(qint64 id)
         QMessageBox::warning(this, tr("Supprimer la matière"), r.error().message);
 }
 
+QList<qint64> SubjectsPage::subjectNoteIds(qint64 id)
+{
+    auto items = m_ctx.organize.subjectItems(id, OrganizeService::Entity::Note);
+    if (!items)
+        return {};
+    QList<NoteRecord> notes;
+    for (qint64 n : items.value())
+        if (auto r = m_ctx.notes.find(n))
+            notes << r.value();
+    std::sort(notes.begin(), notes.end(), [](const NoteRecord& a, const NoteRecord& b) {
+        return QString::localeAwareCompare(a.title, b.title) < 0;
+    });
+    QList<qint64> ids;
+    for (const NoteRecord& n : std::as_const(notes))
+        ids << n.id;
+    return ids;
+}
+
+NoteExporter& SubjectsPage::exporter()
+{
+    if (!m_exporter)
+        m_exporter = new NoteExporter(m_ctx, this);
+    return *m_exporter;
+}
+
 QMenu* SubjectsPage::contextMenuFor(qint64 id)
 {
     auto s = m_ctx.organize.subject(id);
@@ -529,6 +555,19 @@ QMenu* SubjectsPage::contextMenuFor(qint64 id)
     }
     if (subject.parentId > 0)
         m_menu->addAction(tr("Placer au premier niveau"), this, [this, id] { (void)m_ctx.organize.moveSubject(id, 0); });
+    m_menu->addSeparator();
+    const QList<qint64> notes = subjectNoteIds(id);
+    QAction* pdf = m_menu->addAction(Icons::get(QStringLiteral("download"), pal.text2, 16), tr("Exporter les notes en PDF…"),
+                                     this, [this, notes, name = subject.name] {
+                                         exporter().exportWithDialog(this, notes, name, name, NoteExporter::Format::Pdf);
+                                     });
+    pdf->setObjectName(QStringLiteral("export-pdf"));
+    pdf->setEnabled(!notes.isEmpty());
+    QAction* html = m_menu->addAction(tr("Exporter les notes en HTML…"), this, [this, notes, name = subject.name] {
+        exporter().exportWithDialog(this, notes, name, name, NoteExporter::Format::Html);
+    });
+    html->setObjectName(QStringLiteral("export-html"));
+    html->setEnabled(!notes.isEmpty());
     m_menu->addSeparator();
     QAction* archive = m_menu->addAction(subject.archived ? tr("Désarchiver") : tr("Archiver"), this,
                                          [this, id, archived = subject.archived] {

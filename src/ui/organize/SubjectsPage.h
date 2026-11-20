@@ -47,6 +47,9 @@ public:
     QTreeWidgetItem* itemFor(qint64 id) const;
     /// Menu contextuel d'une matière (rempli, non affiché) : pour les tests.
     QMenu* contextMenuFor(qint64 id);
+    /// Notes de la matière et de ses sous-matières, par titre (export).
+    QList<qint64> subjectNoteIds(qint64 id);
+    class NoteExporter& exporter();
 
 signals:
     void openDocumentRequested(qint64 documentId);
@@ -96,6 +99,7 @@ private:
     QList<QPushButton*> m_documentRows;
     QList<QPushButton*> m_noteRows;
     QMenu* m_menu = nullptr;
+    class NoteExporter* m_exporter = nullptr;
 };
 
 }  // namespace studylab::ui

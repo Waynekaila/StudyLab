@@ -12,6 +12,7 @@
 #include "services/search/SearchService.h"
 #include "services/settings/SettingsService.h"
 #include "ui/notes/NoteEditor.h"
+#include "ui/notes/NoteExporter.h"
 #include "ui/notes/NotesPage.h"
 #include "support/Fixtures.h"
 #include "ui/reader/MarkdownView.h"
@@ -24,6 +25,7 @@
 
 #include <QAbstractItemView>
 #include <QApplication>
+#include <QBuffer>
 #include <QCompleter>
 #include <QClipboard>
 #include <QDeadlineTimer>
@@ -35,6 +37,7 @@
 #include <QLineEdit>
 #include <QPainter>
 #include <QPushButton>
+#include <QRegularExpression>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
@@ -437,6 +440,73 @@ private slots:
         QTest::keyClick(completer->popup(), Qt::Key_Return);
         QVERIFY(!completer->popup()->isVisible());
         QVERIFY(notes->editor()->toPlainText().endsWith(QStringLiteral("Voir [[Reflexions sur la puissance motrice du feu]]")));
+    }
+
+    /// V1-7 : export d'une note ou d'un dossier en PDF et en HTML autonome (formules, image, liens).
+    void exportNotesToPdfAndHtml()
+    {
+        Env env;
+        const auto d = env.demo();
+        ui::NotesPage page(*env.ctx);
+        page.resize(1200, 800);
+        page.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&page));
+        // Une image dans la note
+        QImage img(40, 20, QImage::Format_RGB32);
+        img.fill(Qt::red);
+        QByteArray png;
+        QBuffer buf(&png);
+        buf.open(QIODevice::WriteOnly);
+        img.save(&buf, "PNG");
+        const QString rel = env.notes->addImage(d.carnot, png, QStringLiteral("png")).value();
+        env.notes->save(d.carnot, QStringLiteral("Cycle de Carnot"),
+                        QStringLiteral("Le rendement $\\eta = 1 - T_f/T_c$ découle du [[Second principe]].\n\n![schéma](%1)\n").arg(rel))
+            .value();
+
+        const QList<qint64> folder = page.notesInFolder(QStringLiteral("Thermodynamique/Cours"));
+        QCOMPARE(folder.size(), 5);
+        QVERIFY(!page.notesInFolder(QStringLiteral("Thermodynamique")).isEmpty());
+        QCOMPARE(page.notesInFolder(QStringLiteral("Thermodynamique")).size(), 6);
+
+        // HTML d'une note : autonome (styles, polices KaTeX, image en data:), liens internes en texte.
+        const QString html = env.dir.filePath(QStringLiteral("carnot.html"));
+        QSignalSpy finished(&page.exporter(), &ui::NoteExporter::finished);
+        QVERIFY(page.exportNotes({d.carnot}, {}, html));
+        QVERIFY(!page.exportNotes({d.carnot}, {}, html));  // un export à la fois
+        QVERIFY(finished.wait(kTimeout));
+        QVERIFY2(finished.first().at(0).toBool(), qPrintable(finished.first().at(2).toString()));
+        QFile h(html);
+        QVERIFY(h.open(QIODevice::ReadOnly));
+        const QString text = QString::fromUtf8(h.readAll());
+        QVERIFY(text.startsWith(QStringLiteral("<!doctype html>")));
+        QVERIFY(text.contains(QStringLiteral("<title>Cycle de Carnot</title>")));
+        QVERIFY(text.contains(QStringLiteral("class=\"katex\"")));
+        QVERIFY(text.contains(QStringLiteral("data:font/woff2;base64,")));
+        QVERIFY(!text.contains(QStringLiteral("url(fonts/")));
+        QVERIFY(text.contains(QStringLiteral("src=\"data:image/png;base64,")));
+        QVERIFY(text.contains(QStringLiteral("<span class=\"wikilink")));
+        QVERIFY(!text.contains(QStringLiteral("<a class=\"wikilink")));
+        QVERIFY(!text.contains(QStringLiteral("data-line=")));
+
+        // PDF d'un dossier : une note par page, titre du document en tête.
+        finished.clear();
+        const QString pdf = env.dir.filePath(QStringLiteral("cours.pdf"));
+        QVERIFY(page.exportNotes(folder, QStringLiteral("Cours"), pdf));
+        QVERIFY(finished.wait(kTimeout));
+        QVERIFY2(finished.first().at(0).toBool(), qPrintable(finished.first().at(2).toString()));
+        QFile p(pdf);
+        QVERIFY(p.open(QIODevice::ReadOnly));
+        const QByteArray bytes = p.readAll();
+        QVERIFY(bytes.startsWith("%PDF-"));
+        static const QRegularExpression pageRe(QStringLiteral("/Type\\s*/Page[^s]"));
+        QVERIFY2(QString::fromLatin1(bytes).count(pageRe) >= 5, "une page par note");
+        if (const QString dir = qEnvironmentVariable("STUDYLAB_SCREENSHOT_DIR"); !dir.isEmpty()) {
+            QDir().mkpath(dir);
+            QFile::remove(dir + QStringLiteral("/v1-7-export.pdf"));
+            QFile::copy(pdf, dir + QStringLiteral("/v1-7-export.pdf"));
+            QFile::remove(dir + QStringLiteral("/v1-7-export.html"));
+            QFile::copy(html, dir + QStringLiteral("/v1-7-export.html"));
+        }
     }
 
     void importObsidianVault()

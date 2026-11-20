@@ -47,6 +47,9 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 - **Textes et fichiers Markdown** (V1) : un `.txt` ou un `.md` s'importe dans la bibliothèque comme un livre et
   s'ouvre dans le lecteur EPUB : sommaire tiré des titres, mise en forme (listes, tableaux, code, citations, images
   locales), surlignages, commentaires, recherche et export comme pour un EPUB. Front matter `title:` / `author:` repris.
+- **Export PDF et HTML des notes** (V1) : clic droit sur une note, un dossier de notes ou une matière › « Exporter en
+  PDF… » ou « Exporter en HTML… ». Rendu identique à l'aperçu (formules, images, citations et bibliographie), sur fond
+  clair ; PDF A4 avec une note par page ; page HTML autonome (styles, polices des formules et images incluses).
 - **Import d'un coffre Obsidian** (V1) : « + › Importer un coffre Obsidian ou un dossier Markdown… » dans Mes notes.
   Chaque fichier `.md` devient une note (dossiers conservés, front matter et `type:` repris), les images sont
   copiées, les `[[liens]]` résolus et les `.bib` importés comme références. Un export StudyLab se réimporte sans
@@ -132,8 +135,9 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | ![Recherche dans les notes et le texte des documents](docs/screenshots/v1-5-recherche.png) | ![Passage ouvert à la bonne page](docs/screenshots/v1-5-passage.png) |
 | ![Références bibliographiques](docs/screenshots/v1-6-references.png) | ![Citations et bibliographie dans une note](docs/screenshots/v1-6-citations.png) |
 | ![Coffre Obsidian importé](docs/screenshots/v1-6b-import-coffre.png) | ![Cours en Markdown dans le lecteur](docs/screenshots/v1-6c-markdown.png) |
+| ![Notes exportées en PDF](docs/screenshots/v1-7-export-pdf.png) | |
 
-Suite de la V1 : OCR et export HTML/PDF ; puis cartes mémoire et répétition espacée (V2) —
+Suite de la V1 : OCR facultatif (puis version 0.2) ; puis cartes mémoire et répétition espacée (V2) —
 plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md). Historique : [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Installer
