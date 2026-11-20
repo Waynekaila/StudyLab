@@ -137,12 +137,17 @@ DocumentDetailPanel::DocumentDetailPanel(LibraryService& library, ThemeManager& 
         const QString file = m_library.documentFile(m_record);
         QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(file).absolutePath()));
     });
+    m_reference = new QPushButton(tr("Citer"));
+    m_reference->setObjectName(QStringLiteral("DocumentReference"));
+    m_reference->setToolTip(tr("Fiche bibliographique : citation [[@clé]] dans les notes, export BibTeX"));
+    connect(m_reference, &QPushButton::clicked, this, [this] { emit referenceRequested(m_record.id); });
     m_remove = new QPushButton(tr("Retirer"));
     m_remove->setProperty("variant", QStringLiteral("ghost"));
     connect(m_remove, &QPushButton::clicked, this, &DocumentDetailPanel::removeDocument);
     actions->addWidget(m_read);
     actions->addWidget(m_edit);
     actions->addWidget(m_reveal);
+    actions->addWidget(m_reference);
     actions->addStretch(1);
     actions->addWidget(m_remove);
     v->addLayout(actions);

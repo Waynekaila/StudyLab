@@ -51,6 +51,7 @@ public:
     QPushButton* editButton() const { return m_edit; }
     QPushButton* readButton() const { return m_read; }
     QPushButton* removeButton() const { return m_remove; }
+    QPushButton* referenceButton() const { return m_reference; }
     QLabel* titleLabel() const { return m_title; }
     /// Active la section « Matières et collections » (rattachement du document).
     void setOrganize(OrganizeService* organize);
@@ -62,6 +63,8 @@ signals:
     /// Le document a été retiré de la bibliothèque.
     void removed(qint64 id);
     void readRequested(qint64 id);
+    /// Fiche bibliographique du document (créée depuis ses métadonnées au besoin).
+    void referenceRequested(qint64 id);
 
 private:
     void render();
@@ -81,6 +84,7 @@ private:
     QPushButton* m_read;
     QPushButton* m_edit;
     QPushButton* m_remove;
+    QPushButton* m_reference;
     QPushButton* m_reveal;
     QGridLayout* m_fields;
     QWidget* m_tagsBox;

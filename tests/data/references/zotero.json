@@ -1,0 +1,4 @@
+[{"id":"http://zotero.org/x","type":"book","title":"Le Hasard et la Nécessité",
+            "author":[{"family":"Monod","given":"Jacques"}],"issued":{"date-parts":[["1970"]]},
+            "publisher":"Seuil","number-of-pages":"197"},
+            {"id":"k2","type":"webpage","title":"Page","author":[{"literal":"CNRS"}],"issued":{"raw":"mai 2021"}}]

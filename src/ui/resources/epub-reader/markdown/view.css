@@ -64,6 +64,12 @@ body.note { padding: 18px 28px 40px; }
 .md a.wikilink { cursor: pointer; text-decoration: underline dashed; }
 .md a.wikilink.unresolved { color: var(--muted); text-decoration: underline dotted; }
 .md a.wikilink.document { text-decoration: underline solid; text-decoration-thickness: 1px; }
+.md a.wikilink.citation { text-decoration: none; border-bottom: 1px dotted currentColor; }
+.md a.wikilink.citation.unresolved { border-bottom-style: dashed; }
+.md .bibliography { margin-top: 2.2em; padding-top: 0.8em; border-top: 1px solid var(--border, rgba(127,127,127,.25)); }
+.md .bibliography h2 { font-size: 1.05em; margin-top: 0; }
+.md .bibliography ul { list-style: none; padding-left: 0; }
+.md .bibliography li { padding-left: 1.6em; text-indent: -1.6em; margin: 0.35em 0; }
 .md .missing-image { color: var(--muted); font-style: italic; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
 .chip { background: var(--code-bg); color: var(--muted); border-radius: 6px; padding: 2px 9px; font-size: .86em;

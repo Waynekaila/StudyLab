@@ -12,7 +12,7 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 |---|---|---|
 | 1 · Conception | Vision, architecture, choix des bibliothèques, schéma SQLite, maquettes, plan | ✅ Terminée — voir [`docs/design/`](docs/design/README.md) |
 | 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | ✅ Terminée — **version 0.1.0** (7 itérations) |
-| 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | 🚧 En cours — itération 5/7 (recherche plein texte) |
+| 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | 🚧 En cours — itération 6/7 (références bibliographiques) |
 | 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | — |
 | 5 · Finalisation | Optimisation, packaging, documentation | — |
 
@@ -39,6 +39,11 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
   et indexé en tâche de fond, une seule fois par document, sans gêner la lecture. Ctrl + K cherche désormais aussi
   dans les **notes** et **dans le texte des documents** : un passage ouvre le document à la bonne page ou section,
   le terme cherché mis en évidence. L'état de l'index et « Réindexer » se trouvent dans Paramètres › Données.
+- **Références bibliographiques** (V1) : import BibTeX / BibLaTeX et CSL-JSON (Zotero, JabRef, Mendeley…),
+  saisie ou fiche tirée d'un document (« Citer » dans la bibliothèque), rattachement automatique au document par
+  DOI, ISBN ou titre. Dans une note, `[[@clé]]` cite la référence : l'aperçu affiche « (Çengel et Boles, 2019,
+  p. 12) » et ajoute la bibliographie en fin de note ; taper `[[@` propose les clés. Changer une clé met à jour les
+  notes qui la citent. Export BibTeX ou CSL-JSON, et `Références.bib` dans l'export Obsidian.
 - **Matières et collections** (V1) : matières hiérarchiques (« Physique › Thermodynamique ») avec couleur,
   glisser-déposer pour réordonner ou ranger, archivage ; page de matière avec chiffres clés (documents, annotations,
   notes, progression) et listes, sous-matières comprises. Collections manuelles, listes de lecture et projets
@@ -118,8 +123,9 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | ![Matières](docs/screenshots/v1-3-matieres.png) | ![Collection intelligente, sombre](docs/screenshots/v1-3-collections-sombre.png) |
 | ![Graphe de connaissances](docs/screenshots/v1-4-graphe.png) | ![Graphe, sombre](docs/screenshots/v1-4-graphe-sombre.png) |
 | ![Recherche dans les notes et le texte des documents](docs/screenshots/v1-5-recherche.png) | ![Passage ouvert à la bonne page](docs/screenshots/v1-5-passage.png) |
+| ![Références bibliographiques](docs/screenshots/v1-6-references.png) | ![Citations et bibliographie dans une note](docs/screenshots/v1-6-citations.png) |
 
-Suite de la V1 : références bibliographiques, import Obsidian, OCR et export HTML/PDF ; puis cartes mémoire et répétition espacée (V2) —
+Suite de la V1 : import d'un coffre Obsidian, lecture TXT/Markdown, OCR et export HTML/PDF ; puis cartes mémoire et répétition espacée (V2) —
 plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md). Historique : [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Installer

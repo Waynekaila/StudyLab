@@ -65,6 +65,7 @@ signals:
     void exportFinished(const QString& folder);
     /// Demande d'ouverture d'un document dans le lecteur.
     void openDocumentRequested(qint64 id);
+    void referenceRequested(qint64 documentId);
 
 protected:
     void showEvent(QShowEvent* event) override;
