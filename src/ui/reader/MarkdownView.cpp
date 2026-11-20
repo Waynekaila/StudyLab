@@ -100,6 +100,8 @@ void MarkdownView::setNote(const QJsonObject& note, const QString& emptyText)
     call(QStringLiteral("setNote"), {note, emptyText});
 }
 
+void MarkdownView::setFlashcard(const QJsonObject& card) { call(QStringLiteral("setFlashcard"), {card}); }
+
 void MarkdownView::scrollToLine(int line) { call(QStringLiteral("scrollToLine"), {line}); }
 
 void MarkdownView::evaluate(const QString& expression, std::function<void(const QVariant&)> callback)

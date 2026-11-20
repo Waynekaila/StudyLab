@@ -34,6 +34,8 @@
 #include <QLineEdit>
 #include <QMap>
 #include <QMenu>
+
+#include <memory>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRegularExpression>
@@ -439,6 +441,19 @@ void NotesPage::buildEditor()
     m_editor->setObjectName(QStringLiteral("NoteText"));
     m_editor->setAccessibleName(tr("Texte de la note"));
     m_editor->setPlaceholderText(tr("Écrire… Markdown, formules $…$, liens [[…]], #tags"));
+    // Menu contextuel standard, plus la création d'une carte mémoire depuis la sélection.
+    m_editor->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_editor, &QWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
+        std::unique_ptr<QMenu> menu(m_editor->createStandardContextMenu(pos));
+        if (m_currentId > 0) {
+            menu->addSeparator();
+            menu->addAction(Icons::get(QStringLiteral("cards"), m_ctx.theme.palette().text2, 16),
+                            m_editor->textCursor().hasSelection() ? tr("Créer une carte depuis la sélection…")
+                                                                  : tr("Créer une carte…"),
+                            this, [this] { requestCard(m_currentId); });
+        }
+        menu->exec(m_editor->viewport()->mapToGlobal(pos));
+    });
     QFont mono = QFontDatabase::systemFont(QFontDatabase::FixedFont);
     mono.setPixelSize(theme.px(13));  // police réelle : feuille de style (#NoteText)
     m_editor->setTabStopDistance(QFontMetricsF(mono).horizontalAdvance(u' ') * 4);
@@ -962,6 +977,18 @@ void NotesPage::setTagFilter(const QString& tag)
     refreshTree();
 }
 
+void NotesPage::requestCard(qint64 noteId)
+{
+    auto note = m_ctx.notes.find(noteId);
+    if (!note)
+        return;
+    // Recto : titre de la note ; verso : la sélection de l'éditeur quand c'est la note ouverte.
+    QString back;
+    if (noteId == m_currentId && m_editor->textCursor().hasSelection())
+        back = m_editor->textCursor().selectedText().replace(QChar::ParagraphSeparator, u'\n').trimmed();
+    emit cardRequested(noteId, note.value().title, back);
+}
+
 void NotesPage::showTreeMenu(const QPoint& pos)
 {
     QTreeWidgetItem* item = m_tree->itemAt(pos);
@@ -1004,6 +1031,8 @@ void NotesPage::showTreeMenu(const QPoint& pos)
                        });
         menu.addAction(tr("Déplacer vers un dossier…"), this, [this, id] { moveNote(id); });
         addOrganizeMenus(&menu, id);
+        menu.addAction(Icons::get(QStringLiteral("cards"), m_ctx.theme.palette().text2, 16), tr("Créer une carte…"), this,
+                       [this, id] { requestCard(id); });
         menu.addSeparator();
         const QString title = note.value().title;
         menu.addAction(Icons::get(QStringLiteral("download"), m_ctx.theme.palette().text2, 16), tr("Exporter en PDF…"), this,

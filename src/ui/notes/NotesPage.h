@@ -66,6 +66,8 @@ public:
     // Accès pour les tests
     QTreeWidget* tree() const { return m_tree; }
     NoteEditor* editor() const { return m_editor; }
+    /// « Créer une carte… » : émet cardRequested avec le titre et la sélection (note ouverte).
+    void requestCard(qint64 noteId);
     QLineEdit* titleEdit() const { return m_title; }
     QLineEdit* filterEdit() const { return m_filter; }
     MarkdownView* preview() const { return m_preview; }
@@ -100,6 +102,8 @@ signals:
     void appLinkActivated(const QString& link);
     /// Citation [[@clé]] cliquée dans l'aperçu.
     void citationActivated(const QString& citekey);
+    /// Carte mémoire à créer depuis une note (titre, sélection).
+    void cardRequested(qint64 noteId, const QString& front, const QString& back);
 
 protected:
     void hideEvent(QHideEvent* event) override;

@@ -31,6 +31,8 @@ public:
     void setMarkdown(const QString& text, const QString& emptyText);
     /// Aperçu d'une note : {title, body (sans front matter), lineOffset, chips, unresolved, images, unresolvedLabel}.
     void setNote(const QJsonObject& note, const QString& emptyText);
+    /// Carte de révision : {question, answer, cloze, showAnswer, questionLabel, answerLabel, source, sourceLabel}.
+    void setFlashcard(const QJsonObject& card);
     /// Fait défiler l'aperçu de note jusqu'au titre qui précède la ligne (0) du texte complet.
     void scrollToLine(int line);
 

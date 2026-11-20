@@ -71,6 +71,10 @@ target_compile_definitions(tst_references_ui PRIVATE STUDYLAB_TEST_DATA="${CMAKE
 set_tests_properties(tst_references_ui PROPERTIES TIMEOUT 300)
 studylab_add_test(tst_vault_import SOURCES integration/tst_vault_import.cpp
     LIBS studylab_notes studylab_references studylab_export)
+studylab_add_test(tst_study SOURCES unit/tst_study.cpp LIBS studylab_study)
+studylab_add_test(tst_study_ui SOURCES ui/tst_study_ui.cpp ../src/app/Bootstrap.cpp LIBS studylab_ui studylab_test_support)
+target_include_directories(tst_study_ui PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
+set_tests_properties(tst_study_ui PROPERTIES TIMEOUT 300)
 studylab_add_test(tst_textbook SOURCES unit/tst_textbook.cpp LIBS studylab_epub)
 target_compile_definitions(tst_textbook PRIVATE STUDYLAB_TEST_DATA="${CMAKE_CURRENT_SOURCE_DIR}/data")
 studylab_add_test(tst_ocr SOURCES integration/tst_ocr.cpp LIBS studylab_search studylab_test_support)

@@ -103,6 +103,8 @@ public:
 signals:
     /// Une note vient d'être créée depuis la lecture : l'ouvrir dans l'espace de notes.
     void noteCreated(qint64 noteId);
+    /// « Créer une carte… » sur une annotation : carte mémoire préremplie avec le passage.
+    void cardRequested(qint64 annotationId, const QString& front, const QString& back);
     void focusModeToggled(bool on);
     /// Un commentaire ou une annotation a été créé, modifié ou supprimé.
     void contentChanged();

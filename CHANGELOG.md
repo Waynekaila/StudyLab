@@ -1,5 +1,14 @@
 # Historique des versions
 
+## Non publié — V2 « Apprendre et consolider »
+
+- **Cartes mémoire et révisions** (itération V2-1) : paquets ; cartes basiques, basiques et inversées, à trous
+  (une carte par trou) et formules, en Markdown avec KaTeX ; création depuis l'espace Révisions, une annotation
+  (« Créer une carte… ») ou une note (sélection), origine cliquable pendant la révision. Séance au clavier (Espace,
+  1 à 4, E, S, Échap), intervalles affichés sur les boutons, planification SM-2, limites quotidiennes par paquet,
+  journal complet des réponses ; statistiques du jour, histogramme des 7 derniers jours et pastille « Révisions »
+  dans la navigation. Migration `0003` (numéro du trou, étape d'apprentissage, index du journal).
+
 ## 0.2.0 — V1 « Relier ses connaissances » (2026-11-20)
 
 - **Mes notes** (itération V1-1) : espace de notes Markdown avec dossiers virtuels, huit types et leurs modèles,

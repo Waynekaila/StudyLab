@@ -11,7 +11,8 @@ add_library(studylab_core STATIC
     domain/Note.h domain/Note.cpp
     domain/Organize.h domain/Organize.cpp
     domain/Graph.h domain/Graph.cpp
-    domain/Reference.h domain/Reference.cpp)
+    domain/Reference.h domain/Reference.cpp
+    domain/Card.h domain/Card.cpp)
 target_include_directories(studylab_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_link_libraries(studylab_core PUBLIC Qt6::Core)
 studylab_set_warnings(studylab_core)

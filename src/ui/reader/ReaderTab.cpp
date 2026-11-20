@@ -414,6 +414,11 @@ void ReaderTab::showAnnotationMenu(qint64 id, QPoint globalPos)
     if (a.type != AnnotationType::Bookmark)
         menu.addAction(Icons::get(QStringLiteral("note"), pal.text2, 16), tr("Créer une note"), this,
                        [this, id] { createNoteFromAnnotations({id}); });
+    if (a.type != AnnotationType::Bookmark && !a.selectedText.isEmpty())
+        menu.addAction(Icons::get(QStringLiteral("cards"), pal.text2, 16), tr("Créer une carte…"), this,
+                       [this, id, quote = normalizeQuote(a.selectedText), note = a.note] {
+                           emit cardRequested(id, note, quote);
+                       });
     menu.addSeparator();
     QAction* del = menu.addAction(Icons::get(QStringLiteral("trash"), pal.danger, 16), tr("Supprimer"), this,
                                   [this, id] { deleteAnnotation(id); });

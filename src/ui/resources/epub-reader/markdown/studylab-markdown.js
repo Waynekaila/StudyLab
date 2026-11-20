@@ -261,6 +261,30 @@ window.StudyLab = {
     document.getElementById('root').innerHTML = html
     return document.querySelectorAll('article.note').length
   },
+  // Carte de révision : {question, answer, cloze (numéro du trou, 0 sinon), showAnswer, questionLabel,
+  // answerLabel, source: {quote, label} | null, sourceLabel}
+  setFlashcard (c) {
+    noteMode = false
+    document.body.classList.add('preview', 'flash')
+    const cloze = (text, answer) => (text || '').replace(/\{\{c(\d+)::([\s\S]*?)(?:::([^}]*))?\}\}/g, (m, n, inner, hint) => {
+      if (Number(n) !== c.cloze) return inner
+      return answer ? `\uE002${inner}\uE003` : `\uE000${hint || '…'}\uE001`
+    })
+    const marks = html => html.replace(/\uE000/g, '<span class="cloze">[').replace(/\uE001/g, ']</span>')
+      .replace(/\uE002/g, '<span class="cloze-answer">').replace(/\uE003/g, '</span>')
+    const q = c.cloze ? marks(render(cloze(c.question, false))) : render(c.question)
+    let html = `<div class="fc-label">${esc(c.questionLabel || '')}</div><div class="md fc-q">${q}</div>`
+    if (c.showAnswer) {
+      let a = c.cloze ? marks(render(cloze(c.question, true))) : render(c.answer)
+      if (c.cloze && c.answer && c.answer.trim()) a += `<div class="fc-extra">${render(c.answer)}</div>`
+      html += `<hr class="fc-sep"><div class="fc-label">${esc(c.answerLabel || '')}</div><div class="md fc-a">${a}</div>`
+      if (c.source) {
+        const quote = c.source.quote ? `<span class="fc-quote">« ${esc(c.source.quote.length > 140 ? c.source.quote.slice(0, 140) + '…' : c.source.quote)} »</span> ` : ''
+        html += `<div class="fc-source"><span class="fc-source-label">${esc(c.sourceLabel || '')}</span> ${quote}<a href="studylab-card-source:">${esc(c.source.label)} ↗</a></div>`
+      }
+    }
+    document.getElementById('root').innerHTML = `<article class="flashcard">${html}</article>`
+  },
   // Contenu figé pour un fichier HTML autonome : liens internes rendus en texte, attributs de l'éditeur retirés.
   exportHtml () {
     const root = document.getElementById('root').cloneNode(true)

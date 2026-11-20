@@ -74,3 +74,15 @@ Même rythme que le MVP : une PR par itération, testée sur les deux OS par la 
 | V1-5 ✅ | Recherche universelle : texte intégral des PDF/EPUB indexé en tâche de fond, notes, palette Ctrl K enrichie |
 | V1-6 ✅ | Références bibliographiques (CSL-JSON, BibTeX, `[[@clé]]`), import d'un coffre Obsidian, lecture TXT/Markdown |
 | V1-7 ✅ | Export HTML/PDF d'une note ou d'une matière, OCR facultatif (Tesseract) → **V1 0.2.0** (2026-11-20) |
+
+## Plan de développement indicatif de la V2
+
+| Itération | Livrable vérifiable |
+|---|---|
+| V2-1 🚧 | **Cartes mémoire et révisions** : paquets, cartes basiques / inversées / à trous / formules, création depuis une annotation ou une note, séance de révision au clavier, SM-2, statistiques du jour et des 7 jours, pastille de navigation |
+| V2-2 | **FSRS** au choix par paquet, réglages par paquet (limites, étapes), historique d'une carte |
+| V2-3 | **Fiches de révision** : brouillon de note généré depuis les annotations et notes d'une matière, à relire |
+| V2-4 | **Tableau de bord** complet (objectifs, progression par matière) et écran **Activité** |
+| V2-5 | Interopérabilité PDF avancée (import des annotations d'un PDF, copie annotée) |
+| V2-6 | Formats supplémentaires (images, DOCX en lecture) ; navigation et raccourcis configurables |
+| V2-7 | Finalisation : profilage, gros volumes, guide utilisateur, dépannage → **V2 1.0.0** |

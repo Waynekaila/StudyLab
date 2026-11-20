@@ -181,6 +181,7 @@ void ReaderPage::openDocument(qint64 documentId)
     });
     connect(tab, &ReaderTab::fullScreenToggled, this, &ReaderPage::fullScreenRequested);
     connect(tab, &ReaderTab::noteCreated, this, &ReaderPage::noteCreated);
+    connect(tab, &ReaderTab::cardRequested, this, &ReaderPage::cardRequested);
     if (!m_restoring)
         m_tabs->setCurrentIndex(idx);
     updateEmptyState();

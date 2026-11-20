@@ -7,6 +7,7 @@
 #include "ui/reader/PdfReaderTab.h"
 #include "services/search/TextIndexer.h"
 #include "services/settings/SettingsService.h"
+#include "services/study/StudyService.h"
 #include "ui/components/FadeStackedWidget.h"
 #include "ui/graph/GraphPage.h"
 #include "ui/library/LibraryPage.h"
@@ -17,6 +18,8 @@
 #include "ui/pages/HomePage.h"
 #include "ui/pages/SettingsPage.h"
 #include "ui/references/ReferencesPage.h"
+#include "ui/study/CardEditorDialog.h"
+#include "ui/study/RevisionsPage.h"
 
 #include <QLineEdit>
 #include "ui/shell/SearchPalette.h"
@@ -31,6 +34,7 @@
 #include <QMimeData>
 #include <QHBoxLayout>
 #include <QSettings>
+#include <QTimer>
 
 namespace studylab::ui {
 
@@ -59,6 +63,7 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
                                 {QStringLiteral("subjects"), QStringLiteral("folder"), tr("Matières")},
                                 {QStringLiteral("collections"), QStringLiteral("layers"), tr("Collections")},
                                 {QStringLiteral("graph"), QStringLiteral("graph"), tr("Graphe")},
+                                {QStringLiteral("revisions"), QStringLiteral("cards"), tr("Révisions")},
                                 {QStringLiteral("references"), QStringLiteral("quote"), tr("Références")},
                                 {QStringLiteral("settings"), QStringLiteral("settings"), tr("Paramètres")},
                             },
@@ -135,6 +140,29 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
         notes->followLink(title);
     });
     connect(graph, &GraphPage::notesRequested, this, [this] { navigateTo(QStringLiteral("notes")); });
+    // Cartes mémoire et répétition espacée (V2-1)
+    m_study = new StudyService(ctx.db, this);
+    auto* revisions = new RevisionsPage(ctx, *m_study, m_stack);
+    addPage(QStringLiteral("revisions"), revisions);
+    connect(revisions, &RevisionsPage::openDocumentRequested, this, openDoc);
+    connect(revisions, &RevisionsPage::openNoteRequested, this, openNote);
+    connect(revisions, &RevisionsPage::openItemRequested, this, [this, reader](qint64 doc, bool comment, qint64 item) {
+        navigateTo(QStringLiteral("reader"));
+        reader->openItem(doc, comment, item);
+    });
+    connect(reader, &ReaderPage::cardRequested, this, [this](qint64 id, const QString& front, const QString& back) {
+        createCard(int(CardSource::Annotation), id, front, back);
+    });
+    connect(notes, &NotesPage::cardRequested, this, [this](qint64 id, const QString& front, const QString& back) {
+        createCard(int(CardSource::Note), id, front, back);
+    });
+    connect(m_study, &StudyService::changed, this, &MainWindow::refreshStudyBadge);
+    // Le jour de révision change à 4 h : la pastille est recalculée régulièrement.
+    auto* badgeTimer = new QTimer(this);
+    badgeTimer->setInterval(5 * 60 * 1000);
+    connect(badgeTimer, &QTimer::timeout, this, &MainWindow::refreshStudyBadge);
+    badgeTimer->start();
+    refreshStudyBadge();
     auto* references = new ReferencesPage(ctx, m_stack);
     addPage(QStringLiteral("references"), references);
     connect(references, &ReferencesPage::openDocumentRequested, this, openDoc);
@@ -231,6 +259,25 @@ void MainWindow::navigateTo(const QString& pageId)
     m_sidebar->setCurrent(pageId);
     m_stack->fadeTo(m_stack->indexOf(page));
     m_ctx.settings.setValue(kLastPageKey, pageId);
+}
+
+void MainWindow::refreshStudyBadge() { m_sidebar->setBadge(QStringLiteral("revisions"), m_study->dueTotal()); }
+
+CardEditorDialog* MainWindow::createCard(int sourceType, qint64 sourceId, const QString& front, const QString& back)
+{
+    auto* dlg = new CardEditorDialog(m_ctx, *m_study, this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    dlg->setContent(front, back);
+    Card probe;
+    probe.sourceType = CardSource(sourceType);
+    probe.sourceId = sourceId;
+    if (auto src = m_study->source(probe))
+        dlg->setSource(probe.sourceType, sourceId, src.value().label);
+    if (auto* revisions = qobject_cast<RevisionsPage*>(m_pages.value(QStringLiteral("revisions")));
+        revisions && revisions->currentDeckId() > 0)
+        dlg->setDeck(revisions->currentDeckId());
+    dlg->open();
+    return dlg;
 }
 
 QString MainWindow::currentPage() const { return m_pages.key(m_stack->currentWidget()); }
