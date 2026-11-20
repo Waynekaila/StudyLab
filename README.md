@@ -12,11 +12,11 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 |---|---|---|
 | 1 · Conception | Vision, architecture, choix des bibliothèques, schéma SQLite, maquettes, plan | ✅ Terminée — voir [`docs/design/`](docs/design/README.md) |
 | 2 · MVP | Bibliothèque, lecteurs PDF/EPUB, annotations, commentaires, sauvegarde, export Markdown | ✅ Terminée — **version 0.1.0** (7 itérations) |
-| 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | 🚧 En cours — itération 7/7 terminée, version 0.2 en préparation |
+| 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | ✅ Terminée — **version 0.2.0** (7 itérations) |
 | 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord | — |
 | 5 · Finalisation | Optimisation, packaging, documentation | — |
 
-### Ce qui fonctionne aujourd'hui (MVP 0.1 et début de la V1)
+### Ce qui fonctionne aujourd'hui (version 0.2 : MVP et V1)
 
 - **Mes notes** (V1) : notes Markdown rangées dans des dossiers virtuels (« Thermodynamique/Cours »), huit types
   avec leur modèle (note de lecture, fiche de cours, concept, formules, fiche de révision, recherche, compte rendu,
@@ -141,7 +141,7 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | ![Coffre Obsidian importé](docs/screenshots/v1-6b-import-coffre.png) | ![Cours en Markdown dans le lecteur](docs/screenshots/v1-6c-markdown.png) |
 | ![Notes exportées en PDF](docs/screenshots/v1-7-export-pdf.png) | ![Page numérisée lue par l'OCR](docs/screenshots/v1-7-ocr.png) |
 
-Suite : version 0.2 (V1) ; puis cartes mémoire et répétition espacée (V2) —
+Suite : cartes mémoire et répétition espacée (V2) —
 plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v2.md). Historique : [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Installer
@@ -149,8 +149,8 @@ plan : [`docs/design/07-versions-mvp-v1-v2.md`](docs/design/07-versions-mvp-v1-v
 Les paquets sont produits par l'intégration continue (onglet *Actions* du dépôt, artefacts `studylab-deb` et
 `studylab-windows-installer`) :
 
-- **Debian 13** : `sudo apt install ./studylab_0.1.0_amd64.deb` (les dépendances Qt sont installées par apt).
-- **Windows 10/11** : lancer `StudyLab-0.1.0-windows-x64-setup.exe`. L'installation se fait pour l'utilisateur courant,
+- **Debian 13** : `sudo apt install ./studylab_0.2.0_amd64.deb` (les dépendances Qt sont installées par apt).
+- **Windows 10/11** : lancer `StudyLab-0.2.0-windows-x64-setup.exe`. L'installation se fait pour l'utilisateur courant,
   sans droits administrateur ; la désinstallation conserve vos données.
 - **OCR (facultatif)** : Debian `sudo apt install tesseract-ocr tesseract-ocr-fra` ; Windows, l'installateur
   « Tesseract-OCR » (UB Mannheim) dans Program Files, avec les langues voulues. StudyLab le trouve au démarrage
