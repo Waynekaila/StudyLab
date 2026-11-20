@@ -7,6 +7,9 @@
 #include "data/sqlite/Transaction.h"
 
 #include <QJsonDocument>
+#include <QJsonObject>
+
+#include <algorithm>
 
 namespace studylab::db {
 
@@ -14,7 +17,7 @@ namespace {
 
 const QString kCardColumns = QStringLiteral(
     "c.id, c.uuid, c.deck_id, c.card_type, c.front_md, c.back_md, c.ordinal, c.source_type, c.source_id, c.suspended, "
-    "c.created_at, c.updated_at, s.state, s.due_at, s.interval_d, s.ease, s.reps, s.lapses, s.step "
+    "c.created_at, c.updated_at, s.state, s.due_at, s.interval_d, s.ease, s.reps, s.lapses, s.step, s.stability, s.difficulty "
     "FROM cards c LEFT JOIN card_state s ON s.card_id = c.id ");
 
 QDateTime parseIso(const QString& iso)
@@ -52,6 +55,8 @@ CardRow readCard(const Statement& s)
         r.state.reps = int(s.columnInt64(16));
         r.state.lapses = int(s.columnInt64(17));
         r.state.step = int(s.columnInt64(18));
+        r.state.stability = s.isNull(19) ? 0.0 : s.columnDouble(19);
+        r.state.difficulty = s.isNull(20) ? 0.0 : s.columnDouble(20);
     }
     return r;
 }
@@ -357,22 +362,27 @@ Result<void> StudyRepository::recordReview(qint64 cardId, const ScheduleState& b
     if (!tx.isActive())
         return tx.beginError();
     auto upd = m_db.prepare(QStringLiteral(
-        "INSERT INTO card_state(card_id, state, due_at, interval_d, ease, reps, lapses, step) "
-        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8) ON CONFLICT(card_id) DO UPDATE SET state = excluded.state, "
+        "INSERT INTO card_state(card_id, state, due_at, interval_d, ease, reps, lapses, step, stability, difficulty) "
+        "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10) ON CONFLICT(card_id) DO UPDATE SET state = excluded.state, "
         "due_at = excluded.due_at, interval_d = excluded.interval_d, ease = excluded.ease, reps = excluded.reps, "
-        "lapses = excluded.lapses, step = excluded.step"));
+        "lapses = excluded.lapses, step = excluded.step, stability = excluded.stability, "
+        "difficulty = excluded.difficulty"));
     if (!upd)
         return upd.error();
-    if (auto r = upd.value()
-                     .bind(1, cardId)
-                     .bind(2, cardStateKey(after.state))
-                     .bind(3, isoOf(after.due))
-                     .bind(4, after.intervalDays)
-                     .bind(5, after.ease)
-                     .bind(6, after.reps)
-                     .bind(7, after.lapses)
-                     .bind(8, after.step)
-                     .run();
+    upd.value()
+        .bind(1, cardId)
+        .bind(2, cardStateKey(after.state))
+        .bind(3, isoOf(after.due))
+        .bind(4, after.intervalDays)
+        .bind(5, after.ease)
+        .bind(6, after.reps)
+        .bind(7, after.lapses)
+        .bind(8, after.step);
+    if (after.stability > 0)
+        upd.value().bind(9, after.stability).bind(10, after.difficulty);
+    else
+        upd.value().bindNull(9).bindNull(10);
+    if (auto r = upd.value().run();
         !r)
         return r;
     auto log = m_db.prepare(QStringLiteral(
@@ -414,6 +424,33 @@ Result<QPair<int, int>> StudyRepository::reviewsBetween(qint64 deckId, const QSt
     if (!row)
         return row.error();
     return qMakePair(int(stmt.value().columnInt64(0)), int(stmt.value().columnInt64(1)));
+}
+
+Result<QList<ReviewEntry>> StudyRepository::reviews(qint64 cardId)
+{
+    auto stmt = m_db.prepare(QStringLiteral(
+        "SELECT reviewed_at, rating, elapsed_ms, prev_state_json, new_state_json FROM card_reviews WHERE card_id = ?1 "
+        "ORDER BY reviewed_at, id"));
+    if (!stmt)
+        return stmt.error();
+    stmt.value().bind(1, cardId);
+    QList<ReviewEntry> out;
+    for (;;) {
+        auto row = stmt.value().step();
+        if (!row)
+            return row.error();
+        if (!row.value())
+            break;
+        const Statement& s = stmt.value();
+        ReviewEntry e;
+        e.at = parseIso(s.columnText(0));
+        e.rating = Rating(std::clamp(int(s.columnInt64(1)), 1, 4));
+        e.elapsedMs = s.columnInt64(2);
+        e.before = QJsonDocument::fromJson(s.columnText(3).toUtf8()).object();
+        e.after = QJsonDocument::fromJson(s.columnText(4).toUtf8()).object();
+        out << e;
+    }
+    return out;
 }
 
 Result<CardSourceInfo> StudyRepository::source(CardSource type, qint64 id)

@@ -8,6 +8,10 @@
   1 à 4, E, S, Échap), intervalles affichés sur les boutons, planification SM-2, limites quotidiennes par paquet,
   journal complet des réponses ; statistiques du jour, histogramme des 7 derniers jours et pastille « Révisions »
   dans la navigation. Migration `0003` (numéro du trou, étape d'apprentissage, index du journal).
+- **FSRS et réglages par paquet** (itération V2-2) : planificateur FSRS-5 (19 paramètres par défaut, stabilité et
+  difficulté par carte, rétention visée réglable), au choix de SM-2 pour chaque paquet ; les cartes déjà revues
+  passent de l'un à l'autre sans perdre leur échéance. Réglages du paquet : nom, matière, limites quotidiennes,
+  étapes d'apprentissage et après un oubli (« 1 10 », « 10 1h »), intervalle maximal. Historique d'une carte.
 
 ## 0.2.0 — V1 « Relier ses connaissances » (2026-11-20)
 

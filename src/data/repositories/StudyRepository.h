@@ -36,6 +36,15 @@ struct CardSourceInfo {
     QString label;          ///< « Çengel · p. 298 », titre de la note
 };
 
+/// Ligne du journal des révisions d'une carte.
+struct ReviewEntry {
+    QDateTime at;        ///< UTC
+    Rating rating = Rating::Good;
+    qint64 elapsedMs = 0;
+    QJsonObject before;  ///< ScheduleState::toJson()
+    QJsonObject after;
+};
+
 /// Paquets, cartes, état du planificateur et journal des révisions (tables decks, cards, card_state,
 /// card_reviews ; activité « reviewed »).
 class StudyRepository {
@@ -68,6 +77,9 @@ public:
                               qint64 elapsedMs, const QString& atIso);
     /// Révisions entre deux instants (ISO UTC) : nombre, réussies (réponse > 1), par paquet (0 : tous).
     Result<QPair<int, int>> reviewsBetween(qint64 deckId, const QString& fromIso, const QString& toIso);
+
+    /// Journal d'une carte, du plus ancien au plus récent.
+    Result<QList<ReviewEntry>> reviews(qint64 cardId);
 
     Result<CardSourceInfo> source(CardSource type, qint64 id);
 
