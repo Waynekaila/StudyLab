@@ -44,6 +44,16 @@ QColor annotationPageStroke(AnnotationColor c)
     return annotationAccent(light, c);
 }
 
+PdfColorScheme pdfColorScheme()
+{
+    PdfColorScheme s;
+    for (const AnnotationColor c : allAnnotationColors()) {
+        s.fill[size_t(c)] = annotationPageFill(c);
+        s.stroke[size_t(c)] = annotationPageStroke(c);
+    }
+    return s;
+}
+
 QIcon colorSwatchIcon(const QColor& color, const QColor& ring, int size)
 {
     QIcon icon;

@@ -247,6 +247,7 @@ QPushButton[chipButton="true"] { border-radius: 8px; }
 QPushButton[chipButton="true"]:checked { background: %{primarySoft}; color: %{primaryStrong}; border-color: %{primarySoft}; }
 )QSS"  // MSVC : une chaîne littérale de plus de 16 Ko est refusée, la feuille est coupée en deux
     R"QSS(
+QToolButton#ReaderMoreButton::menu-indicator { image: none; width: 0; }
 QToolButton#FavoriteButton {
     background: %{surface}; border: 1px solid %{border}; border-radius: 8px; color: %{amberText};
     font-size: %{fs15}; min-width: %{h30}; min-height: %{h30};

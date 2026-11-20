@@ -2,7 +2,9 @@
 #include "Bootstrap.h"
 
 #include "data/sqlite/Database.h"
+#include "engines/pdf/PdfAnnotationIO.h"
 #include "engines/pdf/PdfRenderQueue.h"
+#include "services/pdfinterop/PdfInteropService.h"
 #include "services/annotations/AnnotationService.h"
 #include "services/backup/BackupService.h"
 #include "services/comments/CommentService.h"
@@ -27,9 +29,13 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLabel>
+#include <QMenu>
+#include <QPushButton>
 #include <QLineEdit>
 #include <QListView>
+#include <QPainter>
 #include <QPdfDocument>
+#include <QPdfDocumentRenderOptions>
 #include <QPdfSearchModel>
 #include <QScrollBar>
 #include <QSettings>
@@ -337,6 +343,150 @@ private slots:
         QCOMPARE(tab.view()->currentPage(), 1200);
     }
 
+    /// PDF annoté « ailleurs » : un surlignage jaune commenté et une note, sur la première page.
+    QString writeForeignAnnotatedPdf(const QString& name)
+    {
+        const QString plain = m_files.filePath(name + QStringLiteral("-brut.pdf"));
+        if (!writePdf(plain, {QStringLiteral("Mécanique des fluides"), 3,
+                              QStringLiteral("Le nombre de Reynolds compare l'inertie et la viscosité.")}))
+            return {};
+        QFile in(plain);
+        if (!in.open(QIODevice::ReadOnly))
+            return {};
+        pdf::PdfAnnotationOut hl;
+        hl.page = 0;
+        hl.type = AnnotationType::Highlight;
+        hl.fill = QColor(255, 236, 64);
+        hl.stroke = QColor(230, 190, 0);
+        hl.rects = {QRectF(0.11, 0.150, 0.70, 0.026)};
+        hl.contents = QStringLiteral("Définition à connaître");
+        pdf::PdfAnnotationOut note;
+        note.page = 0;
+        note.type = AnnotationType::Note;
+        note.fill = QColor(120, 170, 255);
+        note.stroke = QColor(60, 120, 230);
+        note.rects = {QRectF(0.8, 0.2, 0.01, 0.01)};
+        note.contents = QStringLiteral("Revoir l'exemple du tuyau");
+        auto written = pdf::writeAnnotatedCopy(in.readAll(), {hl, note});
+        if (!written)
+            return {};
+        const QString path = m_files.filePath(name + QStringLiteral(".pdf"));
+        QFile out(path);
+        if (!out.open(QIODevice::WriteOnly))
+            return {};
+        out.write(written.value().data);
+        return path;
+    }
+
+    void importsAndExportsFileAnnotations()
+    {
+        Env env;
+        const QString file = writeForeignAnnotatedPdf(QStringLiteral("fluides"));
+        QVERIFY(!file.isEmpty());
+        const qint64 id = env.import(file);
+        QVERIFY(id > 0);
+        {
+            ui::ReaderPage reader(*env.ctx);
+            reader.resize(1200, 800);
+            reader.show();
+            QVERIFY(QTest::qWaitForWindowExposed(&reader));
+            reader.openDocument(id);
+            auto* tab = qobject_cast<ui::PdfReaderTab*>(reader.currentTab());
+            QTRY_VERIFY(tab->isLoaded());
+            // Le bandeau propose l'import ; « Ignorer » le fait disparaître pour ce document.
+            QTRY_VERIFY(tab->fileBanner()->isVisible());
+            QVERIFY(tab->fileBannerText()->text().contains(QStringLiteral("2 annotations")));
+            QVERIFY(tab->fileBannerImportButton()->isVisible());
+            QVERIFY(tab->fileAnnotationsVisible());
+            tab->fileBannerIgnoreButton()->click();
+            QVERIFY(!tab->fileBanner()->isVisible());
+            // Les actions du menu existent et sont actives.
+            QStringList actions;
+            for (QAction* a : tab->moreMenu()->actions())
+                if (!a->isSeparator())
+                    actions << a->text();
+            QCOMPARE(actions.size(), 3);
+            QVERIFY(actions[0].contains(QStringLiteral("Importer")));
+            QVERIFY(actions[1].contains(QStringLiteral("copie annotée")));
+        }
+        {
+            ui::ReaderPage reader(*env.ctx);
+            reader.resize(1200, 800);
+            reader.show();
+            QVERIFY(QTest::qWaitForWindowExposed(&reader));
+            reader.openDocument(id);
+            auto* tab = qobject_cast<ui::PdfReaderTab*>(reader.currentTab());
+            QSignalSpy scanned(tab, &ui::PdfReaderTab::fileAnnotationsScanned);
+            QTRY_VERIFY(tab->isLoaded());
+            QTRY_COMPARE(scanned.size(), 1);
+            QCOMPARE(scanned.first().first().toInt(), 2);
+            QVERIFY(!tab->fileBanner()->isVisible());  // ignoré : plus proposé
+
+            // Import par le menu
+            auto imported = tab->importFileAnnotations();
+            QVERIFY(imported.ok());
+            QCOMPARE(imported.value().imported, 2);
+            QVERIFY(imported.value().fileFullyImported);
+            QVERIFY(tab->fileBanner()->isVisible());
+            QVERIFY(tab->fileBannerText()->text().contains(QStringLiteral("2 annotations importées")));
+            QVERIFY(!tab->fileAnnotationsVisible());  // plus dessinées en double
+            auto list = env.annotations->list(id);
+            QVERIFY(list.ok());
+            QCOMPARE(list.value().size(), 2);
+            bool sawNote = false;
+            for (const auto& r : list.value()) {
+                if (r.type == AnnotationType::Highlight) {
+                    QCOMPARE(r.color, AnnotationColor::Yellow);
+                    QCOMPARE(r.note, QStringLiteral("Définition à connaître"));
+                    QVERIFY2(r.selectedText.contains(QStringLiteral("Reynolds")), qPrintable(r.selectedText));
+                } else {
+                    QCOMPARE(r.type, AnnotationType::Note);
+                    QCOMPARE(r.color, AnnotationColor::Blue);
+                    sawNote = true;
+                }
+            }
+            QVERIFY(sawNote);
+            // Rien de nouveau au second import.
+            QCOMPARE(tab->importFileAnnotations().value().imported, 0);
+
+            // Nouvelle annotation StudyLab, puis copie annotée.
+            QVERIFY(tab->addArea(1, QRectF(0.1, 0.3, 0.5, 0.2)).ok());
+            const QString copy = m_files.filePath(QStringLiteral("fluides (annoté).pdf"));
+            auto exported = tab->exportAnnotatedCopy(copy);
+            QVERIFY2(exported.ok(), qPrintable(exported.ok() ? QString() : exported.error().message));
+            QCOMPARE(exported.value().annotations, 1);
+            QCOMPARE(exported.value().alreadyPresent, 2);
+            QVERIFY(tab->fileBannerText()->text().contains(QStringLiteral("Copie annotée enregistrée")));
+            auto scan = PdfInteropService::readFile(copy);
+            QVERIFY(scan.ok());
+            QCOMPARE(scan.value().annotations.size(), 3);
+            QCOMPARE(scan.value().annotations.last().page, 1);
+            QPdfDocument check;
+            QCOMPARE(check.load(copy), QPdfDocument::Error::None);
+            QCOMPARE(check.pageCount(), 3);
+            // Le fichier de la bibliothèque n'a pas changé.
+            QVERIFY(!tab->exportAnnotatedCopy(env.library->documentFile(env.library->document(id).value())).ok());
+
+            // Afficher de nouveau les annotations du fichier : réglage mémorisé.
+            tab->setFileAnnotationsVisible(true);
+            QVERIFY(tab->fileAnnotationsVisible());
+            tab->setFileAnnotationsVisible(false);
+        }
+        // Réouverture : plus rien à importer, annotations du fichier toujours masquées.
+        ui::ReaderPage reader(*env.ctx);
+        reader.resize(1200, 800);
+        reader.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&reader));
+        reader.openDocument(id);
+        auto* tab = qobject_cast<ui::PdfReaderTab*>(reader.currentTab());
+        QSignalSpy scanned(tab, &ui::PdfReaderTab::fileAnnotationsScanned);
+        QTRY_VERIFY(tab->isLoaded());
+        QTRY_COMPARE(scanned.size(), 1);
+        QCOMPARE(scanned.first().first().toInt(), 0);
+        QVERIFY(!tab->fileAnnotationsVisible());
+        QVERIFY(!tab->fileBanner()->isVisible());
+    }
+
     void screenshots()
     {
         if (qEnvironmentVariableIsEmpty("STUDYLAB_SCREENSHOT_DIR"))
@@ -359,6 +509,31 @@ private slots:
         tab->searchEdit()->setText(QStringLiteral("entropie"));
         QTest::keyClick(tab->searchEdit(), Qt::Key_Return);
         maybeScreenshot(window, QStringLiteral("iteration3-lecteur-pdf-sombre"));
+
+        // V2-5 : PDF annoté ailleurs, bandeau d'import puis annotations importées.
+        env.settings->setThemeMode(ThemeMode::Light);
+        const qint64 annotated = env.import(writeForeignAnnotatedPdf(QStringLiteral("capture")));
+        reader->openDocument(annotated);
+        auto* other = qobject_cast<ui::PdfReaderTab*>(reader->currentTab());
+        QTRY_VERIFY(other->isLoaded());
+        QTRY_VERIFY(other->fileBanner()->isVisible());
+        maybeScreenshot(window, QStringLiteral("v2-5-annotations-du-pdf"));
+        QVERIFY(other->importFileAnnotations().ok());
+        maybeScreenshot(window, QStringLiteral("v2-5-annotations-importees"));
+        // Copie annotée ouverte par le moteur PDF lui-même (ce que montre un autre lecteur).
+        QVERIFY(other->addArea(0, QRectF(0.11, 0.2, 0.5, 0.12)).ok());
+        const QString copy = m_files.filePath(QStringLiteral("capture (annoté).pdf"));
+        QVERIFY(other->exportAnnotatedCopy(copy).ok());
+        maybeScreenshot(window, QStringLiteral("v2-5-copie-annotee-enregistree"));
+        QPdfDocument rendered;
+        QCOMPARE(rendered.load(copy), QPdfDocument::Error::None);
+        QPdfDocumentRenderOptions options;
+        options.setRenderFlags(QPdfDocumentRenderOptions::RenderFlag::Annotations);
+        QImage page = rendered.render(0, (rendered.pagePointSize(0) * 2).toSize(), options);
+        QImage paper(page.size(), QImage::Format_RGB32);
+        paper.fill(Qt::white);
+        QPainter(&paper).drawImage(0, 0, page);
+        paper.save(qEnvironmentVariable("STUDYLAB_SCREENSHOT_DIR") + QStringLiteral("/v2-5-copie-annotee-page.png"));
     }
 };
 

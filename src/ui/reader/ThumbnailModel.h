@@ -23,6 +23,8 @@ public:
     QVariant data(const QModelIndex& index, int role) const override;
     /// Pastille de couleur des pages annotées (couleur de la première annotation de la page).
     void setMarks(const QHash<int, QColor>& marks);
+    /// Les images ont été invalidées (cache du rendu vidé) : les vues redemandent les miniatures.
+    void reloadImages();
 
 private:
     QPdfDocument* m_doc;

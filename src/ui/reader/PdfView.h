@@ -56,6 +56,9 @@ struct PdfSelectionAnchor {
 class PdfView : public QAbstractScrollArea {
     Q_OBJECT
 public:
+    /// Le rendu a été invalidé (réglage du moteur) : redemande les pages visibles.
+    void reloadPages();
+
     enum class ZoomMode { Custom, FitWidth, FitPage };
     /// Outil actif : la sélection de texte, un outil de marquage du texte, la zone ou la note.
     enum class Tool { Select, Highlight, Underline, Strikeout, Marker, Note };

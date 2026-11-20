@@ -19,6 +19,7 @@ studylab_add_test(tst_comments  SOURCES unit/tst_comments.cpp  LIBS studylab_com
 studylab_add_test(tst_backup    SOURCES unit/tst_backup.cpp ../src/app/Bootstrap.cpp LIBS studylab_backup)
 target_include_directories(tst_backup PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
 set_tests_properties(tst_backup PROPERTIES TIMEOUT 180)
+studylab_add_test(tst_pdf_annotations SOURCES unit/tst_pdf_annotations.cpp LIBS studylab_pdfinterop studylab_test_support)
 studylab_add_test(tst_settings   SOURCES unit/tst_settings.cpp   LIBS studylab_settings)
 studylab_add_test(tst_theme      SOURCES unit/tst_theme.cpp      LIBS studylab_ui)
 studylab_add_test(tst_mainwindow SOURCES ui/tst_mainwindow.cpp ../src/app/Bootstrap.cpp LIBS studylab_ui)

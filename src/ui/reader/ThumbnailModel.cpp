@@ -27,6 +27,14 @@ ThumbnailModel::ThumbnailModel(QPdfDocument* document, PdfRenderQueue* queue, QO
     });
 }
 
+void ThumbnailModel::reloadImages()
+{
+    m_pending.clear();
+    m_missing.clear();
+    if (rowCount() > 0)
+        emit dataChanged(index(0), index(rowCount() - 1), {ImageRole});
+}
+
 int ThumbnailModel::rowCount(const QModelIndex& parent) const
 {
     return parent.isValid() || !m_doc ? 0 : m_doc->pageCount();

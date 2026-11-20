@@ -745,6 +745,14 @@ PdfView::LinkHit PdfView::linkAt(QPoint viewportPos) const
 
 // ───────────────────────── Rendu ─────────────────────────
 
+void PdfView::reloadPages()
+{
+    if (!m_queue)
+        return;
+    requestRender();
+    viewport()->update();
+}
+
 void PdfView::requestRender()
 {
     if (!m_queue || m_pages.isEmpty())

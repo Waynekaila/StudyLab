@@ -83,6 +83,6 @@ Même rythme que le MVP : une PR par itération, testée sur les deux OS par la 
 | V2-2 ✅ | **FSRS** au choix par paquet, réglages par paquet (limites, étapes), historique d'une carte |
 | V2-3 ✅ | **Fiches de révision** : brouillon de note généré depuis les annotations et notes d'une matière, à relire |
 | V2-4 ✅ | **Tableau de bord** complet (objectifs, progression par matière) et écran **Activité** |
-| V2-5 | Interopérabilité PDF avancée (import des annotations d'un PDF, copie annotée) |
+| V2-5 ✅ | **Interopérabilité PDF** : import des annotations d'un PDF (bandeau à l'ouverture, sans doublon), export d'une copie annotée lisible partout |
 | V2-6 | Formats supplémentaires (images, DOCX en lecture) ; navigation et raccourcis configurables |
 | V2-7 | Finalisation : profilage, gros volumes, guide utilisateur, dépannage → **V2 1.0.0** |
