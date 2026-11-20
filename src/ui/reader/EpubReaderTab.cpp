@@ -1037,6 +1037,15 @@ CommentTarget EpubReaderTab::positionTarget() const
     return t;
 }
 
+void EpubReaderTab::showPassage(int unit, const QString& query)
+{
+    if (!m_view)
+        return;
+    m_view->goToSection(unit);
+    m_searchBar->show();
+    m_searchEdit->setText(query);  // met les occurrences en évidence sans quitter la section
+}
+
 void EpubReaderTab::revealLocator(const QJsonObject& locator)
 {
     if (const auto loc = EpubLocator::fromJson(locator); loc && m_view)

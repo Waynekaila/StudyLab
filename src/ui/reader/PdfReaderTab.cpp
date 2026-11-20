@@ -990,6 +990,14 @@ CommentTarget PdfReaderTab::positionTarget() const
     return t;
 }
 
+void PdfReaderTab::showPassage(int unit, const QString& query)
+{
+    m_view->goToPage(unit);
+    m_searchBar->show();
+    m_searchEdit->setText(query);
+    findNext();  // premier résultat à partir de cette page, dès que la recherche en trouve un
+}
+
 void PdfReaderTab::revealLocator(const QJsonObject& locator)
 {
     const auto loc = PdfLocator::fromJson(locator);

@@ -16,6 +16,10 @@ namespace studylab {
 struct BackupInfo;
 }
 
+namespace studylab {
+class TextIndexer;
+}
+
 namespace studylab::ui {
 
 /// Propriété de QApplication : relancer StudyLab après la fermeture (restauration d'une sauvegarde).
@@ -42,6 +46,11 @@ public:
     QPushButton* cancelRestoreButton() const { return m_cancelRestore; }
     QLabel* backupStatus() const { return m_backupStatus; }
     QLabel* pendingRestoreLabel() const { return m_pendingLabel; }
+    QPushButton* reindexButton() const { return m_reindexButton; }
+    QLabel* indexStatus() const { return m_indexStatus; }
+
+    /// Indexation du texte intégral (Données) : état et « Réindexer ».
+    void setTextIndexer(TextIndexer* indexer);
 
     /// Confirmation d'une restauration : 0 annuler, 1 au prochain démarrage, 2 redémarrer maintenant.
     /// Par défaut une boîte de dialogue ; les tests fournissent la réponse.
@@ -58,7 +67,12 @@ private:
     void createBackup();
     void restoreSelected();
 
+    void refreshIndexStatus();
+
     AppContext& m_ctx;
+    TextIndexer* m_indexer = nullptr;
+    QPushButton* m_reindexButton = nullptr;
+    QLabel* m_indexStatus = nullptr;
     QListWidget* m_categories = nullptr;
     QStackedWidget* m_stack = nullptr;
     SegmentedControl* m_theme = nullptr;

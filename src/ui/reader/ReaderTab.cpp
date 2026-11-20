@@ -488,8 +488,22 @@ void ReaderTab::revealItem(bool comment, qint64 id)
     }
 }
 
+void ReaderTab::revealPassage(int unit, const QString& query)
+{
+    if (!isReady()) {
+        m_pendingPassage = std::make_pair(unit, query);
+        return;
+    }
+    showPassage(unit, query);
+}
+
 void ReaderTab::flushPendingReveal()
 {
+    if (m_pendingPassage) {
+        const auto [unit, query] = *m_pendingPassage;
+        m_pendingPassage.reset();
+        QTimer::singleShot(0, this, [this, unit, query] { revealPassage(unit, query); });
+    }
     if (!m_pendingReveal)
         return;
     const auto [comment, id] = *m_pendingReveal;

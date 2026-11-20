@@ -1,5 +1,7 @@
 #include "ui/shell/SearchPalette.h"
 
+#include "services/search/TextIndexer.h"
+
 #include "ui/components/Widgets.h"
 #include "ui/reader/AnnotationStyle.h"
 #include "ui/theme/Icons.h"
@@ -12,6 +14,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QRegularExpression>
 #include <QVBoxLayout>
 
 namespace studylab::ui {
@@ -36,7 +39,7 @@ SearchPalette::SearchPalette(SearchService& search, ThemeManager& theme, QWidget
     v->setSpacing(8);
     m_input = new QLineEdit(this);
     m_input->setObjectName(QStringLiteral("SearchInput"));
-    m_input->setPlaceholderText(tr("Rechercher dans les titres, auteurs, annotations et commentaires…"));
+    m_input->setPlaceholderText(tr("Rechercher dans les documents, les notes, les annotations et les commentaires…"));
     m_input->setAccessibleName(tr("Rechercher partout"));
     m_input->setClearButtonEnabled(true);
     v->addWidget(m_input);
@@ -148,8 +151,8 @@ void SearchPalette::run()
     const QString text = m_input->text();
     if (text.trimmed().isEmpty()) {
         m_results = SearchResults{};
-        m_status->setText(tr("Les mots sont cherchés au début des mots, sans tenir compte des accents. "
-                             "Le texte intégral des documents sera indexé dans une prochaine version."));
+        m_status->setText(tr("Les mots sont cherchés au début des mots, sans tenir compte des accents.")
+                          + indexHint());
         return;
     }
     auto r = m_search.search(text, 8);
@@ -208,6 +211,14 @@ void SearchPalette::run()
             row(h, QStringLiteral("highlighter"), annotationAccent(pal, h.color), snippetHtml(h.snippet),
                 QStringLiteral("%1 · %2").arg(h.documentTitle.toHtmlEscaped(), h.location.toHtmlEscaped()));
     }
+    if (!m_results.notes.isEmpty()) {
+        header(tr("Notes"), int(m_results.notes.size()));
+        for (const SearchHit& h : m_results.notes)
+            row(h, QStringLiteral("note"), pal.primary,
+                QStringLiteral("<b>%1</b> <span style=\"color:%2\">· %3</span>")
+                    .arg(h.documentTitle.toHtmlEscaped(), pal.text3.name(), h.location.toHtmlEscaped()),
+                snippetHtml(h.snippet));
+    }
     if (!m_results.comments.isEmpty()) {
         header(tr("Commentaires"), int(m_results.comments.size()));
         for (const SearchHit& h : m_results.comments) {
@@ -218,10 +229,43 @@ void SearchPalette::run()
                 where.join(QStringLiteral(" · ")).toHtmlEscaped());
         }
     }
-    m_status->setText(m_results.isEmpty() ? tr("Aucun résultat pour « %1 ».").arg(text.trimmed())
+    if (!m_results.passages.isEmpty()) {
+        header(tr("Dans le texte des documents"), int(m_results.passages.size()));
+        for (const SearchHit& h : m_results.passages)
+            row(h, QStringLiteral("book-open"), pal.text2, snippetHtml(h.snippet),
+                QStringLiteral("%1 · %2").arg(h.documentTitle.toHtmlEscaped(), h.location.toHtmlEscaped()));
+    }
+    m_status->setText(m_results.isEmpty() ? tr("Aucun résultat pour « %1 ».").arg(text.trimmed()) + indexHint()
                                           : (m_results.total() == 1 ? tr("1 résultat") : tr("%1 résultats").arg(m_results.total()))
                                                 + tr(" · Entrée pour ouvrir · Échap pour fermer"));
     moveSelection(1);
+}
+
+void SearchPalette::setTextIndexer(TextIndexer* indexer)
+{
+    m_indexer = indexer;
+}
+
+QString SearchPalette::indexHint() const
+{
+    if (!m_indexer)
+        return {};
+    const auto [done, total] = m_indexer->progress();
+    if (total == 0 || done >= total)
+        return {};
+    return tr(" Texte intégral en cours d'indexation : %1 sur %2 documents.").arg(done).arg(total);
+}
+
+QString SearchPalette::highlightTerm(const QString& query)
+{
+    static const QRegularExpression separators(QStringLiteral("[^\\w'’-]+"),
+                                               QRegularExpression::UseUnicodePropertiesOption);
+    QString best;
+    for (const QString& w : query.split(separators, Qt::SkipEmptyParts)) {
+        if (w.size() > best.size())
+            best = w;
+    }
+    return best;
 }
 
 void SearchPalette::activate(int row)

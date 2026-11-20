@@ -55,3 +55,9 @@ studylab_add_test(tst_organize_ui SOURCES ui/tst_organize_ui.cpp ../src/app/Boot
 target_include_directories(tst_organize_ui PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
 studylab_add_test(tst_graph_ui SOURCES ui/tst_graph_ui.cpp ../src/app/Bootstrap.cpp LIBS studylab_ui)
 target_include_directories(tst_graph_ui PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
+studylab_add_test(tst_fulltext SOURCES integration/tst_fulltext.cpp
+    LIBS studylab_search studylab_notes studylab_test_support)
+set_tests_properties(tst_fulltext PROPERTIES TIMEOUT 180)
+studylab_add_test(tst_fulltext_ui SOURCES ui/tst_fulltext_ui.cpp ../src/app/Bootstrap.cpp LIBS studylab_ui studylab_test_support)
+target_include_directories(tst_fulltext_ui PRIVATE ${CMAKE_SOURCE_DIR}/src/app)
+set_tests_properties(tst_fulltext_ui PROPERTIES TIMEOUT 300)

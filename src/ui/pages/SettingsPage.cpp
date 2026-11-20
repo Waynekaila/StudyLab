@@ -1,5 +1,7 @@
 #include "ui/pages/SettingsPage.h"
 
+#include "services/search/TextIndexer.h"
+
 #include "data/sqlite/Database.h"
 #include "services/backup/BackupService.h"
 #include "services/settings/SettingsService.h"
@@ -141,6 +143,32 @@ QWidget* SettingsPage::buildLibrary()
     return scaffold;
 }
 
+void SettingsPage::setTextIndexer(TextIndexer* indexer)
+{
+    m_indexer = indexer;
+    m_reindexButton->setEnabled(indexer != nullptr);
+    if (indexer) {
+        connect(indexer, &TextIndexer::progressChanged, this, &SettingsPage::refreshIndexStatus);
+        connect(indexer, &TextIndexer::finished, this, &SettingsPage::refreshIndexStatus);
+    }
+    refreshIndexStatus();
+}
+
+void SettingsPage::refreshIndexStatus()
+{
+    if (!m_indexer) {
+        m_indexStatus->clear();
+        return;
+    }
+    const auto [done, total] = m_indexer->progress();
+    if (total == 0)
+        m_indexStatus->setText(tr("Aucun document PDF ou EPUB dans la bibliothèque."));
+    else if (done >= total)
+        m_indexStatus->setText(tr("Texte de tous les documents indexé (%1).").arg(countLabel(total, tr("document"), tr("documents"))));
+    else
+        m_indexStatus->setText(tr("Indexation en cours : %1 sur %2.").arg(done).arg(countLabel(total, tr("document"), tr("documents"))));
+}
+
 QWidget* SettingsPage::buildData()
 {
     auto* scaffold = new PageScaffold(nullptr, 820);
@@ -153,6 +181,22 @@ QWidget* SettingsPage::buildData()
     connect(openBtn, &QPushButton::clicked, this,
             [this] { QDesktopServices::openUrl(QUrl::fromLocalFile(m_ctx.paths.dataDir())); });
     v->addWidget(makeSettingRow(tr("Dossier des données"), QDir::toNativeSeparators(m_ctx.paths.dataDir()), openBtn));
+    m_reindexButton = new QPushButton(tr("Réindexer"));
+    m_reindexButton->setEnabled(false);
+    connect(m_reindexButton, &QPushButton::clicked, this, [this] {
+        if (!m_indexer)
+            return;
+        if (auto r = m_indexer->reindexAll(); !r)
+            m_indexStatus->setText(tr("Réindexation impossible : %1").arg(r.error().message));
+    });
+    v->addWidget(makeSettingRow(tr("Texte intégral des documents"),
+                                tr("Le texte des PDF et des EPUB est extrait en tâche de fond pour la recherche "
+                                   "(Ctrl + K). Les pages numérisées sans texte ne sont pas encore lues (OCR à venir)."),
+                                m_reindexButton));
+    m_indexStatus = makeLabel(QString(), "faint");
+    m_indexStatus->setObjectName(QStringLiteral("IndexStatus"));
+    m_indexStatus->setWordWrap(true);
+    v->addWidget(m_indexStatus);
     scaffold->body()->addWidget(card);
 
     // Sauvegardes
