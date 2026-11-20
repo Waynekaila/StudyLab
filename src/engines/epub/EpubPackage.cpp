@@ -1,5 +1,6 @@
 #include "engines/epub/EpubPackage.h"
 
+#include "engines/epub/DocxBook.h"
 #include "engines/epub/TextBook.h"
 
 #include <private/qzipreader_p.h>
@@ -50,8 +51,8 @@ EpubPackage::~EpubPackage() = default;
 Result<std::unique_ptr<EpubPackage>> EpubPackage::open(const QString& path)
 {
     std::unique_ptr<EpubPackage> pkg(new EpubPackage);
-    if (TextBook::isTextFile(path)) {
-        auto book = TextBook::build(path);
+    if (TextBook::isTextFile(path) || DocxBook::isDocxFile(path)) {
+        auto book = DocxBook::isDocxFile(path) ? DocxBook::build(path) : TextBook::build(path);
         if (!book)
             return book.error();
         pkg->m_buffer = std::make_unique<QBuffer>();

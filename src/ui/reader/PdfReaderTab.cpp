@@ -418,6 +418,8 @@ QWidget* PdfReaderTab::buildToolbar()
     m_fileAnnotationsAction->setChecked(true);
     connect(m_fileAnnotationsAction, &QAction::toggled, this, &PdfReaderTab::setFileAnnotationsVisible);
     m_moreButton->setMenu(m_moreMenu);
+    // Image : pas de fichier PDF à échanger, le menu n'a rien à proposer.
+    m_moreButton->setVisible(m_record.format == DocumentFormat::Pdf);
     h->addWidget(m_moreButton);
     h->addSpacing(6);
     addPaneToggle(h, bar);
@@ -563,9 +565,13 @@ Result<void> PdfReaderTab::ensureLoaded()
     };
     if (m_record.id == 0)
         return fail(tr("Ce document n'existe plus dans la bibliothèque."));
-    const QString file = m_library.documentFile(m_record);
-    if (!QFileInfo::exists(file))
-        return fail(tr("Le fichier est introuvable :\n%1").arg(QDir::toNativeSeparators(file)));
+    const QString original = m_library.documentFile(m_record);
+    if (!QFileInfo::exists(original))
+        return fail(tr("Le fichier est introuvable :\n%1").arg(QDir::toNativeSeparators(original)));
+    auto readable = m_library.readableFile(m_record);  // image : PDF d'affichage construit à la demande
+    if (!readable)
+        return fail(tr("Cette image ne peut pas être affichée : %1").arg(readable.error().message));
+    const QString file = readable.value();
 
     m_doc = std::make_unique<QPdfDocument>();
     QPdfDocument::Error err = m_doc->load(file);
@@ -642,7 +648,8 @@ Result<void> PdfReaderTab::ensureLoaded()
     updateZoomCombo();
     (void)m_library.markOpened(m_documentId);
     flushPendingReveal();
-    startFileAnnotationScan();
+    if (m_record.format == DocumentFormat::Pdf)
+        startFileAnnotationScan();
     return {};
 }
 

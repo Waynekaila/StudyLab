@@ -1,5 +1,7 @@
 #include "ui/library/LibraryPage.h"
 
+#include "engines/pdf/ImagePages.h"
+
 #include "services/references/ReferenceService.h"
 
 #include "services/export/LibraryExporter.h"
@@ -450,7 +452,7 @@ void LibraryPage::updateEmptyState()
     m_contentStack->setCurrentWidget(noResults ? m_empty : static_cast<QWidget*>(m_view));
     if (libraryEmpty) {
         m_emptyTitle->setText(tr("Votre bibliothèque est vide"));
-        m_emptyText->setText(tr("Importez vos PDF, EPUB, textes et fichiers Markdown, ou glissez-déposez des fichiers ou un dossier "
+        m_emptyText->setText(tr("Importez vos PDF, EPUB, documents Word, textes, fichiers Markdown et images, ou glissez-déposez des fichiers ou un dossier "
                                 "n'importe où dans la fenêtre. Les doublons sont détectés automatiquement."));
     } else {
         m_emptyTitle->setText(tr("Aucun document ne correspond"));
@@ -511,8 +513,15 @@ void LibraryPage::chooseFiles()
     const QString dir = m_ctx.settings
                             .value(kLastImportDir, QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation))
                             .toString();
-    const QStringList files = QFileDialog::getOpenFileNames(window(), tr("Importer des documents"), dir,
-                                                            tr("Documents (*.pdf *.epub *.txt *.md *.markdown);;PDF (*.pdf);;EPUB (*.epub);;Texte (*.txt);;Markdown (*.md *.markdown)"));
+    QStringList images;
+    for (const QString& ext : ImagePages::extensions())
+        images << QStringLiteral("*.") + ext;
+    const QString imageGlob = images.join(u' ');
+    const QStringList files = QFileDialog::getOpenFileNames(
+        window(), tr("Importer des documents"), dir,
+        tr("Documents (*.pdf *.epub *.docx *.txt *.md *.markdown %1);;PDF (*.pdf);;EPUB (*.epub);;Word (*.docx);;"
+           "Texte (*.txt);;Markdown (*.md *.markdown);;Images (%1)")
+            .arg(imageGlob));
     if (files.isEmpty())
         return;
     m_ctx.settings.setValue(kLastImportDir, QFileInfo(files.first()).absolutePath());

@@ -31,7 +31,7 @@ Result<QList<PendingTextDocument>> readPending(Database& db, const QString& sql)
 
 QString ocrPendingWhere()
 {
-    return QStringLiteral("d.deleted_at IS NULL AND d.format = 'pdf' AND d.text_indexed = 1 AND (d.page_count IS NULL "
+    return QStringLiteral("d.deleted_at IS NULL AND d.format IN ('pdf', 'image') AND d.text_indexed = 1 AND (d.page_count IS NULL "
                           "OR d.page_count > (SELECT COUNT(*) FROM page_text p WHERE p.document_id = d.id AND %1))")
         .arg(kHasText);
 }
@@ -80,7 +80,7 @@ Result<QList<PendingTextDocument>> PageTextRepository::pending()
 {
     return readPending(m_db, QStringLiteral(
         "SELECT id, format, file_path, storage_mode FROM documents WHERE deleted_at IS NULL AND text_indexed = 0 "
-        "AND format IN ('pdf', 'epub', 'txt', 'md') ORDER BY added_at DESC, id DESC"));
+        "AND format IN ('pdf', 'epub', 'txt', 'md', 'docx', 'image') ORDER BY added_at DESC, id DESC"));
 }
 
 Result<void> PageTextRepository::resetAll()
@@ -92,7 +92,7 @@ Result<QPair<int, int>> PageTextRepository::progress()
 {
     auto stmt = m_db.prepare(QStringLiteral(
         "SELECT COUNT(*) FILTER (WHERE text_indexed <> 0), COUNT(*) FROM documents "
-        "WHERE deleted_at IS NULL AND format IN ('pdf', 'epub', 'txt', 'md')"));
+        "WHERE deleted_at IS NULL AND format IN ('pdf', 'epub', 'txt', 'md', 'docx', 'image')"));
     if (!stmt)
         return stmt.error();
     auto row = stmt.value().step();
@@ -197,7 +197,7 @@ Result<void> PageTextRepository::resetOcr()
 Result<QPair<int, int>> PageTextRepository::ocrProgress()
 {
     auto stmt = m_db.prepare(QStringLiteral(
-        "SELECT (SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL AND format = 'pdf' AND text_indexed IN (2, -2)), "
+        "SELECT (SELECT COUNT(*) FROM documents WHERE deleted_at IS NULL AND format IN ('pdf', 'image') AND text_indexed IN (2, -2)), "
         "(SELECT COUNT(*) FROM documents d WHERE %1)").arg(ocrPendingWhere()));
     if (!stmt)
         return stmt.error();

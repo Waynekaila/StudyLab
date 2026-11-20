@@ -36,7 +36,7 @@ ImportCandidate prepare(const QString& path, const AppPaths& paths, StorageMode 
                         const QSet<QString>& libraryHashes, QSet<QString>& batchHashes);
 
 /// Chemin relatif (au dossier library/) du fichier géré : « ab/abcdef….pdf ».
-QString managedRelativePath(const QString& sha256, DocumentFormat format);
+QString managedRelativePath(const QString& sha256, DocumentFormat format, const QString& sourceSuffix = {});
 
 }  // namespace ImportWorker
 

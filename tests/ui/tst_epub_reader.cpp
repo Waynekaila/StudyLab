@@ -389,6 +389,40 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!sel2.isEmpty(), kTimeout);
     }
 
+    void opensWordDocument()
+    {
+        Env env;
+        const QString docx = m_files.filePath(QStringLiteral("fluides.docx"));
+        QVERIFY(writeDocx(docx));
+        const qint64 id = env.import(docx);
+        QVERIFY(id > 0);
+        QCOMPARE(env.library->document(id).value().format, DocumentFormat::Docx);
+        ui::ReaderPage page(*env.ctx);
+        page.resize(1400, 900);
+        page.show();
+        auto* tab = openTab(page, id);
+        QVERIFY2(tab, "le document Word ne s'est pas ouvert");
+        QCOMPARE(tab->view()->sectionCount(), 3);
+        QCOMPARE(tab->view()->toc().size(), 3);
+        tab->view()->goTo(tab->view()->toc().at(0).href);
+        QTRY_COMPARE_WITH_TIMEOUT(tab->view()->location().section, 1, kTimeout);
+
+        QSignalSpy sel(tab->view(), &ui::EpubView::selectionMade);
+        QVERIFY(js(tab->view(), QStringLiteral("StudyLab.selectText('force par unité')")).toBool());
+        QTRY_VERIFY_WITH_TIMEOUT(!sel.isEmpty(), kTimeout);
+        QVERIFY(tab->annotateSelection(AnnotationType::Highlight, AnnotationColor::Green).ok());
+        QCOMPARE(tab->annotations().size(), 1);
+        QCOMPARE(tab->chapterOf(tab->annotations().first().unitIndex), QStringLiteral("Statique"));
+        maybeScreenshot(page, QStringLiteral("v2-6-docx"));
+
+        // Réouverture : même livre, l'annotation retrouve sa place.
+        page.closeTab(0);
+        auto* again = openTab(page, id);
+        QVERIFY(again);
+        QCOMPARE(again->annotations().size(), 1);
+        QCOMPARE(again->annotations().first().selectedText, QStringLiteral("force par unité"));
+    }
+
     void searchFindsAndNavigates()
     {
         Env env;

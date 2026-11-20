@@ -21,6 +21,8 @@ public:
     QString coversDir() const;
     QString attachmentsDir() const;
     QString backupsDir() const;
+    /// Fichiers recalculables (PDF construits pour les images…) : jamais sauvegardés, supprimables sans perte.
+    QString cacheDir() const;
     QString runningMarkerFile() const;
 
     /// Crée les dossiers manquants. Retourne false si l'un d'eux ne peut pas être créé.

@@ -7,6 +7,7 @@
 #include "services/library/LibraryService.h"
 #include "support/Fixtures.h"
 
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QSignalSpy>
@@ -188,6 +189,75 @@ private slots:
         QVERIFY(txt.filePath.endsWith(QStringLiteral(".txt")));
         // Le fichier copié dans la bibliothèque se lit comme l'original.
         QVERIFY(EpubPackage::open(lib.documentFile(txt)).ok());
+    }
+
+    void importsWordAndImages()
+    {
+        QTemporaryDir data;
+        AppPaths paths(data.path());
+        QVERIFY(paths.ensureCreated());
+        auto db = db::Database::openInMemory();
+        QVERIFY(db::Migrator(db::Migrator::loadFrom().value()).migrate(*db.value()).ok());
+        LibraryService lib(*db.value(), paths);
+
+        QTemporaryDir src;
+        const QString docx = src.filePath(QStringLiteral("fluides.docx"));
+        const QString png = src.filePath(QStringLiteral("tableau_noir.png"));
+        const QString jpg = src.filePath(QStringLiteral("photo.JPG"));
+        QVERIFY(writeDocx(docx));
+        QVERIFY(writeImage(png, QStringLiteral("Théorème de Bernoulli"), 1200, 900, 150));
+        QVERIFY(writeImage(jpg, QStringLiteral("Photo"), 4000, 3000, 0));  // sans résolution utile
+        QCOMPARE(FileInspector::detectFormat(docx), DocumentFormat::Docx);
+        QCOMPARE(FileInspector::detectFormat(png), DocumentFormat::Image);
+        QCOMPARE(FileInspector::detectFormat(jpg), DocumentFormat::Image);
+
+        const ImportReport r = runImport(lib, {docx, png, jpg});
+        QVERIFY(r.failures.isEmpty());
+        QCOMPARE(r.importedIds.size(), 3);
+        const DocumentRecord word = lib.document(r.importedIds.at(0)).value();
+        QCOMPARE(word.format, DocumentFormat::Docx);
+        QCOMPARE(word.title, QStringLiteral("Physique des fluides"));
+        QCOMPARE(word.authors.size(), 2);
+        QCOMPARE(word.pageCount, 3);  // sections
+        QVERIFY(word.filePath.endsWith(QStringLiteral(".docx")));
+        QCOMPARE(lib.readableFile(word).value(), lib.documentFile(word));  // lu tel quel
+
+        const DocumentRecord image = lib.document(r.importedIds.at(1)).value();
+        QCOMPARE(image.format, DocumentFormat::Image);
+        QVERIFY(isPaged(image.format));
+        QCOMPARE(image.title, QStringLiteral("tableau noir"));
+        QCOMPARE(image.pageCount, 1);
+        QVERIFY(image.filePath.endsWith(QStringLiteral(".png")));  // l'extension de l'image est conservée
+        QVERIFY(QFileInfo::exists(lib.documentFile(image)));
+
+        // Lecture : un PDF d'affichage construit dans le cache, à la taille de l'image (1200 × 900 px à 150 dpi).
+        const QString pdf = LibraryService::imagePdfFile(paths, image);
+        QVERIFY(!QFileInfo::exists(pdf));
+        auto readable = lib.readableFile(image);
+        QVERIFY2(readable.ok(), qPrintable(readable.ok() ? QString() : readable.error().message));
+        QCOMPARE(readable.value(), pdf);
+        QVERIFY(pdf.startsWith(paths.cacheDir()));
+        auto md = PdfMetadataReader::read(pdf);
+        QVERIFY(md.ok());
+        QCOMPARE(md.value().pageCount, 1);
+        const QDateTime built = QFileInfo(pdf).lastModified();
+        QCOMPARE(lib.readableFile(image).value(), pdf);  // réutilisé
+        QCOMPARE(QFileInfo(pdf).lastModified(), built);
+        QFile::remove(pdf);
+        QVERIFY(lib.readableFile(image).ok());  // reconstruit s'il a été effacé
+        QVERIFY(QFileInfo::exists(pdf));
+
+        const DocumentRecord photo = lib.document(r.importedIds.at(2)).value();
+        QVERIFY(photo.filePath.endsWith(QStringLiteral(".jpg")));
+        QVERIFY(lib.readableFile(photo).ok());
+
+        // Parcours d'un dossier : les images n'y sont pas prises (photos, icônes…), le .docx oui.
+        QTemporaryDir folder;
+        QVERIFY(writeDocx(folder.filePath(QStringLiteral("autre.docx")), QStringLiteral("Un autre texte.")));
+        QVERIFY(writeImage(folder.filePath(QStringLiteral("icone.png")), QStringLiteral("i"), 64, 64));
+        const ImportReport f = runImport(lib, {folder.path()});
+        QCOMPARE(f.importedIds.size(), 1);
+        QCOMPARE(lib.document(f.importedIds.first()).value().format, DocumentFormat::Docx);
     }
 
     void linkedModeKeepsFileInPlace()

@@ -60,6 +60,11 @@ public:
     /// Chemin absolu du fichier du document, et de sa couverture (vide si aucune).
     QString documentFile(const DocumentRecord& record) const;
     QString coverFile(const DocumentRecord& record) const;
+    /// Fichier que lisent le lecteur et l'OCR : le fichier du document, ou pour une image le PDF d'affichage
+    /// (construit dans le cache au premier appel, reconstruit si l'image est plus récente).
+    Result<QString> readableFile(const DocumentRecord& record) const;
+    /// Emplacement de ce PDF d'affichage (qu'il existe ou non).
+    static QString imagePdfFile(const AppPaths& paths, const DocumentRecord& record);
 
     /// Importe des fichiers et dossiers. Si un import est en cours, celui-ci est mis en file d'attente.
     void importPaths(const QStringList& paths, StorageMode mode = StorageMode::Managed);

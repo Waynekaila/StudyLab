@@ -1,5 +1,7 @@
 #include "services/search/OcrIndexer.h"
 
+#include "engines/pdf/ImagePages.h"
+
 #include "core/Log.h"
 #include "engines/document/TextUnits.h"
 #include "engines/ocr/TesseractOcr.h"
@@ -81,6 +83,37 @@ Result<void> OcrIndexer::recognizePdf(const QString& path, const QList<int>& pag
     TesseractOcr ocr;
     if (auto r = ocr.init(languages); !r)
         return r;
+    if (ImagePages::isImageFile(path)) {
+        // Image importée : lue telle quelle (pas de rendu intermédiaire), réduite si elle est très grande.
+        for (int page : pages) {
+            if (cancel && cancel->load(std::memory_order_relaxed))
+                return Error::make(Error::Code::Generic, QStringLiteral("OCR interrompu"));
+            QImage img = ImagePages::page(path, page);
+            if (img.isNull())
+                continue;
+            int dpi = qRound(img.dotsPerMeterX() * 0.0254);
+            if (dpi < 50 || dpi > 2400)
+                dpi = 300;
+            if (std::max(img.width(), img.height()) > kMaxSide) {
+                const double k = double(kMaxSide) / std::max(img.width(), img.height());
+                img = img.scaled(img.size() * k, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                dpi = std::max(72, qRound(dpi * k));
+            }
+            QImage canvas(img.size(), QImage::Format_RGB32);
+            canvas.fill(Qt::white);
+            {
+                QPainter p(&canvas);
+                p.drawImage(0, 0, img);
+            }
+            auto result = ocr.recognize(canvas, dpi);
+            if (!result) {
+                qCInfo(lcDb) << "OCR de l'image" << page << ":" << result.error().message;
+                continue;
+            }
+            onPage(page, result.value());
+        }
+        return {};
+    }
     QPdfDocument doc;
     const QPdfDocument::Error err = doc.load(path);
     if (err == QPdfDocument::Error::IncorrectPassword)
@@ -132,7 +165,9 @@ void OcrIndexer::next()
     auto withText = m_repo.unitsWithText(doc.id);
     const QString path = doc.linked ? doc.filePath : QDir(m_libraryDir).filePath(doc.filePath);
     int count = 0;
-    {
+    if (ImagePages::isImageFile(path)) {
+        count = ImagePages::pageCount(path);
+    } else {
         QPdfDocument pdf;
         if (pdf.load(path) == QPdfDocument::Error::None)
             count = pdf.pageCount();

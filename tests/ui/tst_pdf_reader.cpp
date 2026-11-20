@@ -43,6 +43,7 @@
 #include <QTabWidget>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QToolButton>
 
 using namespace studylab;
 using namespace studylab::test;
@@ -298,6 +299,47 @@ private slots:
         reader.closeTab(0);
         QCOMPARE(reader.tabCount(), 0);
         QCOMPARE(env.settings->value(QStringLiteral("reader/openTabs")).toArray().size(), 0);
+    }
+
+    void opensImagesAsPages()
+    {
+        Env env;
+        const QString png = m_files.filePath(QStringLiteral("tableau.png"));
+        QVERIFY(writeImage(png, QStringLiteral("Théorème de Bernoulli : p + ½ρv² + ρgz = constante"), 1600, 1000, 150));
+        const qint64 id = env.import(png);
+        QVERIFY(id > 0);
+        QCOMPARE(env.library->document(id).value().format, DocumentFormat::Image);
+        {
+            ui::ReaderPage reader(*env.ctx);
+            reader.resize(1200, 800);
+            reader.show();
+            QVERIFY(QTest::qWaitForWindowExposed(&reader));
+            reader.openDocument(id);
+            auto* tab = qobject_cast<ui::PdfReaderTab*>(reader.currentTab());
+            QVERIFY(tab);
+            QTRY_VERIFY(tab->isLoaded());
+            QCOMPARE(tab->thumbnails()->model()->rowCount(), 1);
+            // Page à la taille de l'image : 1600 × 1000 px à 150 dpi = 768 × 480 pt.
+            const QSizeF size = tab->view()->document()->pagePointSize(0);
+            QVERIFY2(qAbs(size.width() - 768) < 2 && qAbs(size.height() - 480) < 2,
+                     qPrintable(QStringLiteral("%1 × %2").arg(size.width()).arg(size.height())));
+            // Pas d'annotations « du fichier » pour une image : ni bandeau, ni menu d'import/export.
+            QVERIFY(!tab->fileBanner()->isVisible());
+            auto* more = tab->findChild<QToolButton*>(QStringLiteral("ReaderMoreButton"));
+            QVERIFY(more && more->isHidden());
+            // Zone sur l'image, conservée d'une ouverture à l'autre.
+            QVERIFY(tab->addArea(0, QRectF(0.1, 0.1, 0.5, 0.2)).ok());
+            maybeScreenshot(reader, QStringLiteral("v2-6-image"));
+        }
+        // Le PDF d'affichage effacé (cache vidé) est reconstruit à la réouverture.
+        QVERIFY(QFile::remove(LibraryService::imagePdfFile(env.paths, env.library->document(id).value())));
+        ui::ReaderPage reader(*env.ctx);
+        reader.resize(1200, 800);
+        reader.show();
+        QCOMPARE(reader.tabCount(), 1);
+        auto* tab = qobject_cast<ui::PdfReaderTab*>(reader.currentTab());
+        QTRY_VERIFY(tab->isLoaded());
+        QCOMPARE(env.annotations->list(id).value().size(), 1);
     }
 
     void missingFileShowsMessage()

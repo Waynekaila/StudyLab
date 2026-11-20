@@ -1,11 +1,14 @@
 #include "services/library/LibraryService.h"
 
+#include "engines/pdf/ImagePages.h"
+
 #include "data/repositories/ActivityRepository.h"
 
 #include "core/Log.h"
 #include "data/sqlite/Database.h"
 
 #include <QDir>
+#include <QFileInfo>
 #include <QFile>
 #include <QPromise>
 #include <QtConcurrent/QtConcurrentRun>
@@ -135,6 +138,29 @@ QString LibraryService::documentFile(const DocumentRecord& record) const
     if (record.storageMode == StorageMode::Linked)
         return record.filePath;
     return QDir(m_paths.libraryDir()).filePath(record.filePath);
+}
+
+QString LibraryService::imagePdfFile(const AppPaths& paths, const DocumentRecord& record)
+{
+    return QDir(paths.cacheDir()).filePath(QStringLiteral("pages/%1.pdf").arg(record.fileHash));
+}
+
+Result<QString> LibraryService::readableFile(const DocumentRecord& record) const
+{
+    const QString file = documentFile(record);
+    if (record.format != DocumentFormat::Image)
+        return file;
+    const QFileInfo source(file);
+    if (!source.exists())
+        return Error::make(Error::Code::NotFound, tr("Le fichier est introuvable :\n%1").arg(QDir::toNativeSeparators(file)));
+    const QString pdf = imagePdfFile(m_paths, record);
+    const QFileInfo cached(pdf);
+    if (cached.exists() && cached.size() > 0 && cached.lastModified() >= source.lastModified())
+        return pdf;
+    QDir().mkpath(QFileInfo(pdf).absolutePath());
+    if (auto r = ImagePages::writePdf(file, pdf); !r)
+        return r.error();
+    return pdf;
 }
 
 QString LibraryService::coverFile(const DocumentRecord& record) const
