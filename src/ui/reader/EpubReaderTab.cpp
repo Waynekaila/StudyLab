@@ -7,6 +7,7 @@
 #include "services/annotations/AnnotationService.h"
 #include "services/library/LibraryService.h"
 #include "services/settings/SettingsService.h"
+#include "ui/components/PanelSplitter.h"
 #include "ui/components/SegmentedControl.h"
 #include "ui/components/Widgets.h"
 #include "ui/reader/AnnotationPopup.h"
@@ -236,7 +237,7 @@ EpubReaderTab::EpubReaderTab(AppContext& ctx, qint64 documentId, QWidget* parent
     auto* body = new QHBoxLayout;
     body->setContentsMargins(0, 0, 0, 0);
     body->setSpacing(0);
-    body->addWidget(buildSidePanel());
+    QWidget* toc = buildSidePanel();
 
     m_viewHost = new QWidget(this);
     m_viewHost->setObjectName(QStringLiteral("EpubHost"));
@@ -254,7 +255,12 @@ EpubReaderTab::EpubReaderTab(AppContext& ctx, qint64 documentId, QWidget* parent
     fh->addWidget(m_pageLabel, 1);
     applyFooterColors();
     hv->addWidget(m_footer);
-    body->addWidget(m_viewHost, 1);
+    // Sommaire à gauche, annotations et commentaires à droite : largeurs réglables et mémorisées.
+    m_panels = new PanelSplitter(m_settings, theme, QStringLiteral("reader.epub"), this);
+    m_panels->addPanel(toc, tr("Table des matières"), theme.px(240), theme.px(160), theme.px(420),
+                       PanelSplitter::Mode::External);
+    m_panels->addWorkArea(m_viewHost);
+    body->addWidget(m_panels, 1);
 
     m_errorBox = new QWidget(this);
     auto* ev = new QVBoxLayout(m_errorBox);
@@ -268,7 +274,11 @@ EpubReaderTab::EpubReaderTab(AppContext& ctx, qint64 documentId, QWidget* parent
     m_errorBox->hide();
     body->addWidget(m_errorBox, 1);
 
-    body->addWidget(createSidePanes(true));
+    m_panels->addPanel(createSidePanes(true), tr("Annotations et commentaires"), theme.px(340), theme.px(300),
+                       theme.px(600), PanelSplitter::Mode::External);
+    setNavPaneVisible(m_tocToggle, m_side, m_settings.value(kNavPaneKey).toBool(true));
+    m_panels->setToggleHandler(m_side, [this](bool on) { setNavPaneVisible(m_tocToggle, m_side, on); });
+    m_panels->setToggleHandler(m_sidePanel, [this](bool on) { setPaneVisible(on); });
     v->addLayout(body, 1);
     m_popup = new AnnotationPopup(theme, m_viewHost);
 
@@ -351,7 +361,7 @@ QWidget* EpubReaderTab::buildToolbar()
 
     m_tocToggle = makeToolButton(tr("Table des matières"), bar, true);
     m_tocToggle->setChecked(true);
-    connect(m_tocToggle, &QToolButton::toggled, this, [this](bool on) { m_side->setVisible(on); });
+    connect(m_tocToggle, &QToolButton::toggled, this, [this](bool on) { setNavPaneVisible(m_tocToggle, m_side, on); });
     h->addWidget(m_tocToggle);
     h->addSpacing(6);
     m_back = makeToolButton(tr("Précédent (Alt+←)"), bar);
@@ -440,7 +450,6 @@ QWidget* EpubReaderTab::buildSidePanel()
 {
     m_side = new QFrame(this);
     m_side->setObjectName(QStringLiteral("ReaderSide"));
-    m_side->setFixedWidth(m_theme.px(250));
     auto* v = new QVBoxLayout(m_side);
     v->setContentsMargins(10, 14, 10, 0);
     v->setSpacing(8);

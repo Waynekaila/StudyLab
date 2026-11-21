@@ -107,7 +107,6 @@ QWidget* ReaderTab::createSidePanes(bool unitIsChapter)
 {
     m_sidePanel = new QSplitter(Qt::Vertical, this);
     m_sidePanel->setObjectName(QStringLiteral("ReaderSidePanel"));
-    m_sidePanel->setFixedWidth(m_theme.px(340));
     m_sidePanel->setChildrenCollapsible(false);
     m_sidePanel->setHandleWidth(m_theme.px(6));
     m_pane = new AnnotationsPane(m_theme, m_sidePanel);
@@ -316,6 +315,16 @@ void ReaderTab::setCurrentColor(AnnotationColor color)
     if (QToolButton* b = colorButton(color))
         b->setChecked(true);
     m_settings.setValue(QStringLiteral("reader/annotationColor"), annotationColorKey(color));
+}
+
+void ReaderTab::setNavPaneVisible(QToolButton* toggle, QWidget* pane, bool on)
+{
+    pane->setVisible(on && !m_focusMode);
+    {
+        const QSignalBlocker block(toggle);
+        toggle->setChecked(on);
+    }
+    m_settings.setValue(kNavPaneKey, on);
 }
 
 void ReaderTab::setPaneVisible(bool on)

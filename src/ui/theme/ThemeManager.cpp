@@ -290,6 +290,11 @@ QFrame#AnnotationsPane { background: %{surface2}; border: none; border-left: 1px
 QListView#AnnotationList { background: transparent; border: none; outline: none; }
 QFrame#CommentsPane { background: %{surface2}; border: none; border-left: 1px solid %{borderSoft}; border-top: 1px solid %{borderSoft}; }
 QSplitter#ReaderSidePanel::handle { background: %{surface2}; }
+QSplitter#PanelSplit::handle { background: transparent; }
+QSplitter#PanelSplit::handle:hover, QSplitter#PanelSplit::handle:pressed { background: %{primarySoft}; }
+QFrame#PanelRail { background: %{surface2}; border: none; }
+QFrame#PanelRail[side="left"] { border-right: 1px solid %{borderSoft}; }
+QFrame#PanelRail[side="right"] { border-left: 1px solid %{borderSoft}; }
 QSplitter#ReaderSidePanel::handle:hover { background: %{borderSoft}; }
 QFrame#CommentEditor { background: %{surface}; border: 1px solid %{border}; border-radius: 12px; }
 QPlainTextEdit#CommentText { background: transparent; border: none; padding: 0; selection-background-color: %{primarySoft}; }
@@ -363,6 +368,9 @@ QLabel#NavBadge {
     font-size: %{fs11}; font-weight: 600; min-width: 10px; min-height: 18px; max-height: 18px;
 }
 QToolButton[nav="true"]:checked QLabel#NavBadge { background: %{surface}; color: %{primaryStrong}; }
+QLabel#NavBadge[compact="true"] {
+    border-radius: 7px; padding: 0 %{p4}; font-size: %{fs11}; min-height: 15px; max-height: 15px;
+}
 QListWidget#DeckList { background: transparent; border: none; outline: none; }
 QTreeWidget#CardList { background: %{surface}; border: 1px solid %{borderSoft}; border-radius: 10px; padding: 4px; outline: none; }
 QTreeWidget#CardList::item { padding: %{p4} %{p2}; }

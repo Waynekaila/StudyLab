@@ -4,6 +4,7 @@
 #include "services/library/LibraryService.h"
 #include "services/notes/NoteService.h"
 #include "services/organize/OrganizeService.h"
+#include "ui/components/PanelSplitter.h"
 #include "ui/components/SegmentedControl.h"
 #include "ui/components/ToggleSwitch.h"
 #include "ui/components/Widgets.h"
@@ -140,6 +141,8 @@ GraphPage::GraphPage(AppContext& ctx, QWidget* parent) : QWidget(parent), m_ctx(
     auto* h = new QHBoxLayout(this);
     h->setContentsMargins(0, 0, 0, 0);
     h->setSpacing(0);
+    m_panels = new PanelSplitter(ctx.settings, ctx.theme, QStringLiteral("graph"), this);
+    h->addWidget(m_panels, 1);
     buildFilters();
     buildCenter();
 
@@ -183,7 +186,6 @@ void GraphPage::buildFilters()
     ThemeManager& theme = m_ctx.theme;
     auto* nav = new QFrame(this);
     nav->setObjectName(QStringLiteral("NotesNav"));
-    nav->setFixedWidth(theme.px(280));
     auto* outer = new QVBoxLayout(nav);
     outer->setContentsMargins(0, 0, 0, 0);
     auto* scroll = new QScrollArea(nav);
@@ -196,7 +198,10 @@ void GraphPage::buildFilters()
     v->setContentsMargins(18, 16, 18, 16);
     v->setSpacing(8);
 
-    v->addWidget(makeLabel(tr("Filtres"), "h2", body));
+    m_navHead = new QHBoxLayout;
+    m_navHead->setContentsMargins(0, 0, 0, 0);
+    m_navHead->addWidget(makeLabel(tr("Filtres"), "h2", body), 1);
+    v->addLayout(m_navHead);
     m_find = new QLineEdit(body);
     m_find->setObjectName(QStringLiteral("GraphFind"));
     m_find->setPlaceholderText(tr("Trouver un nœud…"));
@@ -290,7 +295,9 @@ void GraphPage::buildFilters()
 
     scroll->setWidget(body);
     outer->addWidget(scroll);
-    layout()->addWidget(nav);
+    m_panels->addPanel(nav, tr("Filtres"), theme.px(260), theme.px(200), theme.px(420));
+    if (m_navHead)
+        m_navHead->addWidget(m_panels->makeCollapseButton(nav, nav));
 }
 
 void GraphPage::buildCenter()
@@ -311,7 +318,12 @@ void GraphPage::buildCenter()
     ed->setWordWrap(true);
     ed->setAlignment(Qt::AlignCenter);
     ed->setMaximumWidth(theme.px(460));
-    ev->addWidget(ed, 0, Qt::AlignHCenter);
+    // Centré par une rangée, pas par un alignement : un texte replié aligné perd sa hauteur et sa fin est coupée.
+    auto* edRow = new QHBoxLayout;
+    edRow->addStretch(1);
+    edRow->addWidget(ed, 6);
+    edRow->addStretch(1);
+    ev->addLayout(edRow);
     auto* go = new QPushButton(tr("Mes notes"), m_empty);
     go->setProperty("variant", QStringLiteral("primary"));
     go->setCursor(Qt::PointingHandCursor);
@@ -432,7 +444,7 @@ void GraphPage::buildCenter()
     grid->addWidget(barHost, 0, 0, Qt::AlignBottom | Qt::AlignLeft);
 
     m_stack->addWidget(m_canvas);
-    layout()->addWidget(m_stack);
+    m_panels->addWorkArea(m_stack);
 }
 
 void GraphPage::refreshIcons()

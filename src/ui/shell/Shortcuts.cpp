@@ -20,6 +20,12 @@ QList<Action> buildActions()
     QList<Action> out;
     out << Action{QStringLiteral("app.search"), Group::General, tr("Rechercher partout"), QKeySequence(Qt::CTRL | Qt::Key_K)};
     out << Action{QStringLiteral("app.fullScreen"), Group::General, tr("Plein écran"), QKeySequence(Qt::Key_F11)};
+    // Trois touches voisines pour les trois colonnes : navigation, panneau de gauche, panneau de droite.
+    out << Action{QStringLiteral("app.sidebar"), Group::General, tr("Réduire ou déplier la navigation"), QKeySequence(Qt::Key_F8)};
+    out << Action{QStringLiteral("app.leftPanel"), Group::General, tr("Replier ou afficher le panneau de gauche"),
+                  QKeySequence(Qt::Key_F9)};
+    out << Action{QStringLiteral("app.rightPanel"), Group::General, tr("Replier ou afficher le panneau de droite"),
+                  QKeySequence(Qt::Key_F10)};
     // Aller à un espace : Ctrl+1 à Ctrl+9 pour les neuf premiers dans l'ordre par défaut, Ctrl+, pour les paramètres.
     int n = 0;
     for (const Navigation::Entry& e : Navigation::entries()) {

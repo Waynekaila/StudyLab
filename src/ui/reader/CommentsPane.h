@@ -128,6 +128,8 @@ private:
     void updateTarget();
     void updatePreview();
     void updateSubmit();
+    /// Éditeur au repos (vide, sans focus) : une ligne ; il se déploie dès qu'on écrit.
+    void updateComposer();
     void restoreDraft();
     void clearDraft();
     void submit();
@@ -135,6 +137,8 @@ private:
     QString emptyText() const;
 
     ThemeManager& m_theme;
+    bool m_composerActive = true;
+    bool m_composerInit = false;
     SettingsService& m_settings;
     qint64 m_documentId;
     QList<CommentRecord> m_all;

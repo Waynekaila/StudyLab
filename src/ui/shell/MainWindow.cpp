@@ -10,6 +10,7 @@
 #include "services/settings/SettingsService.h"
 #include "services/study/StudyService.h"
 #include "ui/components/FadeStackedWidget.h"
+#include "ui/components/PanelSplitter.h"
 #include "ui/graph/GraphPage.h"
 #include "ui/library/LibraryPage.h"
 #include "ui/notes/NotesPage.h"
@@ -33,6 +34,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QShortcut>
+#include <QToolButton>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QMimeData>
@@ -44,6 +46,7 @@ namespace studylab::ui {
 
 namespace {
 const QString kLastPageKey = QStringLiteral("ui/lastPage");
+const QString kSidebarCompactKey = QStringLiteral("ui/sidebarCompact");
 }
 
 MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), m_ctx(ctx)
@@ -253,6 +256,23 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
         connect(go, &QShortcut::activated, this, [this, id = e.id] { navigateTo(id); });
     }
 
+    // Panneaux : navigation réduite à ses icônes (F8), panneau de gauche (F9) ou de droite (F10) de l'écran.
+    m_sidebar->setCompact(ctx.settings.value(kSidebarCompactKey, false).toBool());
+    connect(m_sidebar, &Sidebar::compactToggled, this,
+            [this](bool compact) { m_ctx.settings.setValue(kSidebarCompactKey, compact); });
+    auto* compact = Shortcuts::create(ctx.settings, QStringLiteral("app.sidebar"), this);
+    compact->setContext(Qt::WindowShortcut);
+    connect(compact, &QShortcut::activated, this, [this] { m_sidebar->compactButton()->click(); });
+    Shortcuts::onChanged(ctx.settings, m_sidebar, [this] {
+        m_sidebar->setCompactShortcut(Shortcuts::keyText(m_ctx.settings, QStringLiteral("app.sidebar")));
+    });
+    auto* leftPanel = Shortcuts::create(ctx.settings, QStringLiteral("app.leftPanel"), this);
+    leftPanel->setContext(Qt::WindowShortcut);
+    connect(leftPanel, &QShortcut::activated, this, [this] { togglePagePanel(true); });
+    auto* rightPanel = Shortcuts::create(ctx.settings, QStringLiteral("app.rightPanel"), this);
+    rightPanel->setContext(Qt::WindowShortcut);
+    connect(rightPanel, &QShortcut::activated, this, [this] { togglePagePanel(false); });
+
     connect(m_sidebar, &Sidebar::navigated, this, &MainWindow::navigateTo);
     connect(&ctx.settings, &SettingsService::changed, this, [this](const QString& key) {
         if (key == SettingKeys::Animations)
@@ -270,6 +290,21 @@ MainWindow::MainWindow(AppContext& ctx, QWidget* parent) : QMainWindow(parent), 
     const QString last = ctx.settings.value(kLastPageKey, QStringLiteral("home")).toString();
     m_stack->setCurrentWidget(m_pages.value(last, m_pages.value(QStringLiteral("home"))));
     m_sidebar->setCurrent(m_pages.contains(last) ? last : QStringLiteral("home"));
+}
+
+void MainWindow::togglePagePanel(bool leading)
+{
+    QWidget* page = m_stack->currentWidget();
+    if (!page)
+        return;
+    for (PanelSplitter* panels : page->findChildren<PanelSplitter*>()) {
+        if (!panels->isVisible())
+            continue;  // onglet de lecture en arrière-plan, sous-écran masqué
+        if (QWidget* panel = leading ? panels->leadingPanel() : panels->trailingPanel()) {
+            panels->togglePanel(panel);
+            return;
+        }
+    }
 }
 
 void MainWindow::addPage(const QString& id, QWidget* page)

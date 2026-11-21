@@ -56,6 +56,8 @@ protected:
 
 private:
     void addPage(const QString& id, QWidget* page);
+    /// F9 / F10 : replie ou affiche le panneau de gauche ou de droite de l'écran affiché.
+    void togglePagePanel(bool leading);
     TextIndexer* m_indexer = nullptr;
     OcrIndexer* m_ocr = nullptr;
     StudyService* m_study = nullptr;

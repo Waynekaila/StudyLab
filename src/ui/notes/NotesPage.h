@@ -21,12 +21,14 @@ class QToolButton;
 class QTreeWidget;
 class QTreeWidgetItem;
 class QVBoxLayout;
+class QHBoxLayout;
 
 namespace studylab::ui {
 
 class FlowLayout;
 class MarkdownView;
 class NoteEditor;
+class PanelSplitter;
 class SegmentedControl;
 
 /// Espace de notes (05-maquettes §5) : arborescence par dossiers virtuels et tags, éditeur Markdown avec
@@ -156,6 +158,9 @@ private:
     QTimer m_undoTimer;
 
     // Navigation
+    PanelSplitter* m_panels = nullptr;
+    QHBoxLayout* m_navHead = nullptr;
+    QHBoxLayout* m_contextHead = nullptr;
     QFrame* m_nav = nullptr;
     QToolButton* m_newButton = nullptr;
     QLineEdit* m_filter = nullptr;

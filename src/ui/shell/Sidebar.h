@@ -7,6 +7,7 @@
 #include <QList>
 
 class QButtonGroup;
+class QHBoxLayout;
 class QLabel;
 class QPushButton;
 class QToolButton;
@@ -35,14 +36,22 @@ public:
     void setBadge(const QString& id, int count);
     QLabel* badge(const QString& id) const;
     QPushButton* searchButton() const { return m_search; }
+    /// Mode réduit : une colonne d'icônes (libellés en infobulle) qui laisse la place au travail.
+    void setCompact(bool compact);
+    bool isCompact() const { return m_compact; }
+    QToolButton* compactButton() const { return m_compactButton; }
+    /// Raccourci affiché dans l'infobulle du bouton de réduction.
+    void setCompactShortcut(const QString& text);
 
 signals:
     void navigated(const QString& id);
     void searchRequested();
+    void compactToggled(bool compact);
 
 private:
     void refreshIcons();
     void rebuild();
+    void applyCompact();
 
     ThemeManager& m_theme;
     QList<Entry> m_entries;
@@ -55,6 +64,13 @@ private:
     QLabel* m_logo;
     QPushButton* m_search;
     QLabel* m_footerIcon;
+    QLabel* m_brand = nullptr;
+    QLabel* m_footerText = nullptr;
+    QHBoxLayout* m_brandRow = nullptr;
+    QHBoxLayout* m_footer = nullptr;
+    QToolButton* m_compactButton = nullptr;
+    QString m_compactShortcut;
+    bool m_compact = false;
 };
 
 }  // namespace studylab::ui

@@ -4,6 +4,7 @@
 #include "services/library/LibraryService.h"
 #include "services/notes/NoteService.h"
 #include "services/organize/OrganizeService.h"
+#include "ui/components/PanelSplitter.h"
 #include "ui/components/SegmentedControl.h"
 #include "ui/components/Widgets.h"
 #include "ui/notes/NoteExporter.h"
@@ -49,6 +50,8 @@ SubjectsPage::SubjectsPage(AppContext& ctx, QWidget* parent) : QWidget(parent), 
     auto* h = new QHBoxLayout(this);
     h->setContentsMargins(0, 0, 0, 0);
     h->setSpacing(0);
+    m_panels = new PanelSplitter(ctx.settings, ctx.theme, QStringLiteral("subjects"), this);
+    h->addWidget(m_panels, 1);
     buildNav();
     buildPage();
 
@@ -78,7 +81,6 @@ void SubjectsPage::buildNav()
     ThemeManager& theme = m_ctx.theme;
     auto* nav = new QFrame(this);
     nav->setObjectName(QStringLiteral("NotesNav"));
-    nav->setFixedWidth(theme.px(280));
     auto* v = new QVBoxLayout(nav);
     v->setContentsMargins(12, 14, 12, 12);
     v->setSpacing(10);
@@ -94,6 +96,7 @@ void SubjectsPage::buildNav()
     add->setAccessibleName(tr("Nouvelle matière"));
     connect(add, &QToolButton::clicked, this, [this] { promptNewSubject(0); });
     head->addWidget(add);
+    m_navHead = head;
     v->addLayout(head);
 
     m_tree = new DragTree(nav);
@@ -133,7 +136,9 @@ void SubjectsPage::buildNav()
         refreshTree();
     });
     v->addWidget(m_archivedToggle, 0, Qt::AlignLeft);
-    layout()->addWidget(nav);
+    m_panels->addPanel(nav, tr("Matières"), theme.px(260), theme.px(200), theme.px(440));
+    if (m_navHead)
+        m_navHead->addWidget(m_panels->makeCollapseButton(nav, nav));
 }
 
 QWidget* SubjectsPage::listCard(const QString& title, QLabel** count, QVBoxLayout** list, QLabel** empty)
@@ -173,7 +178,12 @@ void SubjectsPage::buildPage()
     ed->setWordWrap(true);
     ed->setAlignment(Qt::AlignCenter);
     ed->setMaximumWidth(theme.px(460));
-    ev->addWidget(ed, 0, Qt::AlignHCenter);
+    // Centré par une rangée, pas par un alignement : un texte replié aligné perd sa hauteur et sa fin est coupée.
+    auto* edRow = new QHBoxLayout;
+    edRow->addStretch(1);
+    edRow->addWidget(ed, 6);
+    edRow->addStretch(1);
+    ev->addLayout(edRow);
     auto* create = new QPushButton(tr("Nouvelle matière"), m_empty);
     create->setProperty("variant", QStringLiteral("primary"));
     create->setCursor(Qt::PointingHandCursor);
@@ -262,7 +272,7 @@ void SubjectsPage::buildPage()
     v->addLayout(body);
     scroll->setWidget(m_page);
     m_center->addWidget(scroll);
-    layout()->addWidget(m_center);
+    m_panels->addWorkArea(m_center);
 }
 
 void SubjectsPage::showEvent(QShowEvent* event)

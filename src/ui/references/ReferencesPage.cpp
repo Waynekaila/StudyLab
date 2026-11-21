@@ -2,6 +2,7 @@
 
 #include "services/library/LibraryService.h"
 #include "services/notes/NoteService.h"
+#include "ui/components/PanelSplitter.h"
 #include "ui/components/Widgets.h"
 #include "ui/pages/PageScaffold.h"
 #include "ui/theme/Icons.h"
@@ -68,6 +69,8 @@ ReferencesPage::ReferencesPage(AppContext& ctx, QWidget* parent)
     auto* h = new QHBoxLayout(this);
     h->setContentsMargins(0, 0, 0, 0);
     h->setSpacing(0);
+    m_panels = new PanelSplitter(ctx.settings, ctx.theme, QStringLiteral("references"), this);
+    h->addWidget(m_panels, 1);
     buildNav();
     buildEditor();
 
@@ -102,7 +105,6 @@ void ReferencesPage::buildNav()
     ThemeManager& theme = m_ctx.theme;
     auto* nav = new QFrame(this);
     nav->setObjectName(QStringLiteral("NotesNav"));
-    nav->setFixedWidth(theme.px(300));
     auto* v = new QVBoxLayout(nav);
     v->setContentsMargins(12, 14, 12, 12);
     v->setSpacing(10);
@@ -118,6 +120,7 @@ void ReferencesPage::buildNav()
     add->setAccessibleName(add->toolTip());
     connect(add, &QToolButton::clicked, this, [this] { createReference(); });
     head->addWidget(add);
+    m_navHead = head;
     v->addLayout(head);
 
     m_filter = new QLineEdit(nav);
@@ -157,7 +160,9 @@ void ReferencesPage::buildNav()
     io->addWidget(importBtn, 1);
     io->addWidget(exportBtn, 1);
     v->addLayout(io);
-    layout()->addWidget(nav);
+    m_panels->addPanel(nav, tr("Références"), theme.px(280), theme.px(220), theme.px(480));
+    if (m_navHead)
+        m_navHead->addWidget(m_panels->makeCollapseButton(nav, nav));
 }
 
 void ReferencesPage::buildEditor()
@@ -177,7 +182,12 @@ void ReferencesPage::buildEditor()
     ed->setWordWrap(true);
     ed->setAlignment(Qt::AlignCenter);
     ed->setMaximumWidth(theme.px(480));
-    ev->addWidget(ed, 0, Qt::AlignHCenter);
+    // Centré par une rangée, pas par un alignement : un texte replié aligné perd sa hauteur et sa fin est coupée.
+    auto* edRow = new QHBoxLayout;
+    edRow->addStretch(1);
+    edRow->addWidget(ed, 6);
+    edRow->addStretch(1);
+    ev->addLayout(edRow);
     auto* buttons = new QHBoxLayout;
     buttons->addStretch(1);
     auto* imp = new QPushButton(tr("Importer…"), m_empty);
@@ -363,7 +373,7 @@ void ReferencesPage::buildEditor()
     body->addStretch(1);
 
     m_center->addWidget(scaffold);
-    layout()->addWidget(m_center);
+    m_panels->addWorkArea(m_center);
 }
 
 void ReferencesPage::refresh()

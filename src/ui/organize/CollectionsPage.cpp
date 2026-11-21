@@ -4,6 +4,7 @@
 #include "services/library/LibraryService.h"
 #include "services/notes/NoteService.h"
 #include "services/organize/OrganizeService.h"
+#include "ui/components/PanelSplitter.h"
 #include "ui/components/Widgets.h"
 #include "ui/organize/OrganizeWidgets.h"
 #include "ui/organize/SmartCollectionDialog.h"
@@ -51,6 +52,8 @@ CollectionsPage::CollectionsPage(AppContext& ctx, QWidget* parent) : QWidget(par
     auto* h = new QHBoxLayout(this);
     h->setContentsMargins(0, 0, 0, 0);
     h->setSpacing(0);
+    m_panels = new PanelSplitter(ctx.settings, ctx.theme, QStringLiteral("collections"), this);
+    h->addWidget(m_panels, 1);
     buildNav();
     buildPage();
     const auto changed = [this] {
@@ -79,7 +82,6 @@ void CollectionsPage::buildNav()
     ThemeManager& theme = m_ctx.theme;
     auto* nav = new QFrame(this);
     nav->setObjectName(QStringLiteral("NotesNav"));
-    nav->setFixedWidth(theme.px(280));
     auto* v = new QVBoxLayout(nav);
     v->setContentsMargins(12, 14, 12, 12);
     v->setSpacing(10);
@@ -107,6 +109,7 @@ void CollectionsPage::buildNav()
     }
     m_new->setMenu(menu);
     head->addWidget(m_new);
+    m_navHead = head;
     v->addLayout(head);
 
     m_list = new QTreeWidget(nav);
@@ -148,7 +151,9 @@ void CollectionsPage::buildNav()
                            "faint", nav);
     hint->setWordWrap(true);
     v->addWidget(hint);
-    layout()->addWidget(nav);
+    m_panels->addPanel(nav, tr("Collections"), theme.px(260), theme.px(200), theme.px(440));
+    if (m_navHead)
+        m_navHead->addWidget(m_panels->makeCollapseButton(nav, nav));
 }
 
 void CollectionsPage::buildPage()
@@ -169,7 +174,12 @@ void CollectionsPage::buildPage()
     ed->setWordWrap(true);
     ed->setAlignment(Qt::AlignCenter);
     ed->setMaximumWidth(theme.px(480));
-    ev->addWidget(ed, 0, Qt::AlignHCenter);
+    // Centré par une rangée, pas par un alignement : un texte replié aligné perd sa hauteur et sa fin est coupée.
+    auto* edRow = new QHBoxLayout;
+    edRow->addStretch(1);
+    edRow->addWidget(ed, 6);
+    edRow->addStretch(1);
+    ev->addLayout(edRow);
     auto* buttons = new QHBoxLayout;
     buttons->addStretch(1);
     auto* manual = new QPushButton(tr("Nouvelle collection"), m_empty);
@@ -248,7 +258,7 @@ void CollectionsPage::buildPage()
     v->addStretch(1);
     scroll->setWidget(m_page);
     m_center->addWidget(scroll);
-    layout()->addWidget(m_center);
+    m_panels->addWorkArea(m_center);
 }
 
 void CollectionsPage::showEvent(QShowEvent* event)

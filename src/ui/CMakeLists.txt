@@ -9,6 +9,7 @@ add_library(studylab_ui STATIC
     components/FlowLayout.h components/FlowLayout.cpp
     components/Charts.h components/Charts.cpp
     components/MarkdownHighlighter.h components/MarkdownHighlighter.cpp
+    components/PanelSplitter.h components/PanelSplitter.cpp
     shell/AppContext.h
     shell/Sidebar.h shell/Sidebar.cpp
     shell/Navigation.h shell/Navigation.cpp

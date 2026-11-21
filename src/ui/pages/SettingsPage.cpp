@@ -7,6 +7,7 @@
 #include "data/sqlite/Database.h"
 #include "services/backup/BackupService.h"
 #include "services/settings/SettingsService.h"
+#include "ui/components/PanelSplitter.h"
 #include "ui/components/SegmentedControl.h"
 #include "ui/components/ToggleSwitch.h"
 #include "ui/components/Widgets.h"
@@ -34,6 +35,7 @@
 #include <QSignalBlocker>
 #include <QStackedWidget>
 #include <QUrl>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 #include <QStyle>
@@ -68,9 +70,8 @@ SettingsPage::SettingsPage(AppContext& ctx, QWidget* parent) : QWidget(parent), 
 
     auto* side = new QFrame(this);
     side->setObjectName(QStringLiteral("SubSidebar"));
-    side->setFixedWidth(232);
     auto* sideLayout = new QVBoxLayout(side);
-    sideLayout->setContentsMargins(12, 22, 12, 12);
+    sideLayout->setContentsMargins(12, 14, 12, 12);
     m_categories = new QListWidget(side);
     m_categories->setObjectName(QStringLiteral("Categories"));
     m_categories->addItems({tr("Apparence"), tr("Bibliothèque et import"), tr("Données"), tr("Navigation et raccourcis"),
@@ -84,8 +85,16 @@ SettingsPage::SettingsPage(AppContext& ctx, QWidget* parent) : QWidget(parent), 
     m_stack->addWidget(buildKeyboard());
     m_stack->addWidget(buildAbout());
 
-    h->addWidget(side);
-    h->addWidget(m_stack, 1);
+    // Catégories : panneau redimensionnable et rétractable, comme les autres listes latérales.
+    auto* panels = new PanelSplitter(ctx.settings, ctx.theme, QStringLiteral("settings"), this);
+    panels->addPanel(side, tr("Catégories"), ctx.theme.px(220), ctx.theme.px(170), ctx.theme.px(360));
+    panels->addWorkArea(m_stack);
+    auto* head = new QHBoxLayout;
+    head->setContentsMargins(6, 0, 0, 4);
+    head->addWidget(makeLabel(tr("Paramètres"), "h2", side), 1);
+    head->addWidget(panels->makeCollapseButton(side, side));
+    sideLayout->insertLayout(0, head);
+    h->addWidget(panels, 1);
 
     connect(m_categories, &QListWidget::currentRowChanged, m_stack, &QStackedWidget::setCurrentIndex);
     m_categories->setCurrentRow(0);

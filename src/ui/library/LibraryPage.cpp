@@ -8,6 +8,7 @@
 #include "services/library/LibraryService.h"
 #include "services/notes/NoteService.h"
 #include "services/settings/SettingsService.h"
+#include "ui/components/PanelSplitter.h"
 #include "ui/components/SegmentedControl.h"
 #include "ui/components/Widgets.h"
 #include "ui/library/CoverArt.h"
@@ -59,8 +60,8 @@ LibraryPage::LibraryPage(AppContext& ctx, QWidget* parent)
     auto* main = new QWidget(this);
     main->setObjectName(QStringLiteral("PageBody"));
     auto* v = new QVBoxLayout(main);
-    v->setContentsMargins(36, 28, 28, 0);
-    v->setSpacing(16);
+    v->setContentsMargins(24, 18, 20, 0);
+    v->setSpacing(12);
     v->addWidget(buildHeader());
     v->addWidget(buildBanner());
     v->addWidget(buildFilters());
@@ -80,13 +81,23 @@ LibraryPage::LibraryPage(AppContext& ctx, QWidget* parent)
     m_contentStack->addWidget(m_view);
     m_contentStack->addWidget(buildEmptyState());
     v->addWidget(m_contentStack, 1);
-    h->addWidget(main, 1);
-
+    // Fiche du document : s'ouvre à la sélection, largeur réglable et mémorisée.
+    auto* panels = new PanelSplitter(ctx.settings, ctx.theme, QStringLiteral("library"), this);
+    panels->addWorkArea(main);
     m_detail = new DocumentDetailPanel(ctx.library, ctx.theme, this);
     m_detail->setOrganize(&ctx.organize);
-    m_detail->setFixedWidth(ctx.theme.px(352));
     m_detail->hide();
-    h->addWidget(m_detail);
+    panels->addPanel(m_detail, tr("Détails du document"), ctx.theme.px(340), ctx.theme.px(280), ctx.theme.px(560),
+                     PanelSplitter::Mode::External);
+    panels->setToggleHandler(m_detail, [this](bool on) {
+        if (!on) {
+            m_detail->hide();
+        } else if (m_selectedId > 0) {
+            m_detail->showDocument(m_selectedId);
+            m_detail->show();
+        }
+    });
+    h->addWidget(panels, 1);
 
     setViewMode(ctx.settings.value(SettingKeys::LibraryView).toString() == QLatin1String("list"));
 
@@ -118,7 +129,6 @@ LibraryPage::LibraryPage(AppContext& ctx, QWidget* parent)
     connect(&lib, &LibraryService::importProgress, this, &LibraryPage::onImportProgress);
     connect(&lib, &LibraryService::importFinished, this, &LibraryPage::onImportFinished);
     connect(&ctx.theme, &ThemeManager::themeChanged, this, [this] {
-        m_detail->setFixedWidth(m_ctx.theme.px(352));
         setViewMode(m_delegate->mode() == LibraryDelegate::Mode::List);
     });
 
