@@ -1,4 +1,4 @@
-# Documentation technique (version 1.0.0)
+# Documentation technique (version 1.1.0)
 
 Ce document décrit StudyLab **tel qu'il est construit**. La conception d'origine est dans
 [`docs/design/`](../design/README.md) ; chaque écart y est consigné dans

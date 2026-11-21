@@ -27,8 +27,8 @@ En cas de problème, voir le [guide de dépannage](../troubleshooting.md).
 
 ## 1. Premier lancement
 
-- **Debian 13** : `sudo apt install ./studylab_1.0.0_amd64.deb`, puis StudyLab dans le menu des applications.
-- **Windows 10/11** : lancez `StudyLab-1.0.0-windows-x64-setup.exe`. L'installation se fait pour votre compte, sans
+- **Debian 13** : `sudo apt install ./studylab_1.1.0_amd64.deb`, puis StudyLab dans le menu des applications.
+- **Windows 10/11** : lancez `StudyLab-1.1.0-windows-x64-setup.exe`. L'installation se fait pour votre compte, sans
   droits administrateur. La désinstallation conserve vos données.
 
 Au premier lancement, la bibliothèque est vide : l'accueil propose **Importer**. Pour lire les scans et les images,

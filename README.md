@@ -15,6 +15,7 @@ Plateformes cibles : **Windows 10/11 x64** et **Debian 13 x64**.
 | 3 · Connaissances (V1) | Notes Markdown, liens, matières, collections, graphe, recherche universelle | ✅ Terminée — **version 0.2.0** (7 itérations) |
 | 4 · Apprentissage (V2) | Cartes mémoire, répétition espacée, fiches, tableau de bord, formats Word et images, raccourcis | ✅ Terminée — **version 1.0.0** (7 itérations) |
 | 5 · Finalisation | Profilage gros volume, packaging, guide utilisateur, documentation technique, dépannage | ✅ Faite avec la V2-7 |
+| Ergonomie | Panneaux latéraux redimensionnables et rétractables, navigation réductible, lecteur plus spacieux | ✅ **version 1.1.0** |
 
 ### Ce qui fonctionne (version 1.0)
 
@@ -190,8 +191,8 @@ Documentation : [guide utilisateur](docs/user-guide/README.md), [dépannage](doc
 Les paquets sont produits par l'intégration continue (onglet *Actions* du dépôt, artefacts `studylab-deb` et
 `studylab-windows-installer`) :
 
-- **Debian 13** : `sudo apt install ./studylab_1.0.0_amd64.deb` (les dépendances Qt sont installées par apt).
-- **Windows 10/11** : lancer `StudyLab-1.0.0-windows-x64-setup.exe`. L'installation se fait pour l'utilisateur courant,
+- **Debian 13** : `sudo apt install ./studylab_1.1.0_amd64.deb` (les dépendances Qt sont installées par apt).
+- **Windows 10/11** : lancer `StudyLab-1.1.0-windows-x64-setup.exe`. L'installation se fait pour l'utilisateur courant,
   sans droits administrateur ; la désinstallation conserve vos données.
 - **OCR (facultatif)** : Debian `sudo apt install tesseract-ocr tesseract-ocr-fra` ; Windows, l'installateur
   « Tesseract-OCR » (UB Mannheim) dans Program Files, avec les langues voulues. StudyLab le trouve au démarrage

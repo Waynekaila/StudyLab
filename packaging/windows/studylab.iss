@@ -1,9 +1,9 @@
 ; Installateur Windows de StudyLab (Inno Setup 6).
 ; Compilation (voir .github/workflows/build-windows.yml) :
-;   iscc /DAppVersion=1.0.0 /DSourceDir=<dossier préparé par cmake --install + windeployqt> /O<sortie> studylab.iss
+;   iscc /DAppVersion=1.1.0 /DSourceDir=<dossier préparé par cmake --install + windeployqt> /O<sortie> studylab.iss
 
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.1.0"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\..\build\stage"

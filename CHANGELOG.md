@@ -1,6 +1,6 @@
 # Historique des versions
 
-## Non publié
+## 1.1.0 — Ergonomie (2026-11-21)
 
 - **Ergonomie** : navigation réductible en colonne d'icônes (bouton à côté du nom, F8) ; listes et panneaux latéraux
   de tous les espaces redimensionnables en tirant leur bord et rétractables (bouton, F9 / F10, ou en les tirant
