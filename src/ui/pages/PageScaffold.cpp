@@ -15,13 +15,13 @@ PageScaffold::PageScaffold(QWidget* parent, int maxContentWidth) : QScrollArea(p
     auto* outer = new QWidget(this);
     outer->setObjectName(QStringLiteral("PageBody"));
     auto* h = new QHBoxLayout(outer);
-    h->setContentsMargins(32, 24, 32, 32);
+    h->setContentsMargins(24, 18, 24, 20);  // marges serrées : plus de contenu visible sans défiler
 
     auto* content = new QWidget(outer);
     content->setMaximumWidth(maxContentWidth);
     m_body = new QVBoxLayout(content);
     m_body->setContentsMargins(0, 0, 0, 0);
-    m_body->setSpacing(18);
+    m_body->setSpacing(14);
 
     h->addWidget(content, 1);
     h->addStretch(0);

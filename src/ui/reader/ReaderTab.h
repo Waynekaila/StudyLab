@@ -28,6 +28,7 @@ namespace studylab::ui {
 
 class AnnotationPopup;
 class AnnotationsPane;
+class PanelSplitter;
 class ReadingClock;
 class ThemeManager;
 
@@ -151,6 +152,9 @@ protected:
     void reportError(const Error& error);
     std::optional<QString> askNote(const QString& quote, const QString& current);
     void setPaneVisible(bool on);
+    /// Volet de navigation (miniatures, sommaire) : affiché ou masqué, choix mémorisé pour les prochains documents.
+    void setNavPaneVisible(QToolButton* toggle, QWidget* pane, bool on);
+    static inline const QString kNavPaneKey = QStringLiteral("reader/navPane");
     void showAnnotationMenu(qint64 id, QPoint globalPos);
     void exportWithDialog();
 
@@ -174,6 +178,7 @@ protected:
     QList<CommentRecord> m_commentRecords;
     CommentsPane* m_comments = nullptr;
     QSplitter* m_sidePanel = nullptr;
+    PanelSplitter* m_panels = nullptr;
     std::optional<std::pair<bool, qint64>> m_pendingReveal;
     std::optional<std::pair<int, QString>> m_pendingPassage;
     AnnotationColor m_color = AnnotationColor::Yellow;

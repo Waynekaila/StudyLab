@@ -21,9 +21,12 @@ class QLineEdit;
 class QPushButton;
 class QStackedWidget;
 class QToolButton;
+class QHBoxLayout;
 class QVBoxLayout;
 
 namespace studylab::ui {
+
+class PanelSplitter;
 
 class GraphView;
 class SegmentedControl;
@@ -95,6 +98,8 @@ private:
     int depth() const;
 
     AppContext& m_ctx;
+    PanelSplitter* m_panels = nullptr;
+    QHBoxLayout* m_navHead = nullptr;
     KnowledgeService m_knowledge;
     KnowledgeGraph m_full;
     KnowledgeGraph m_shown;

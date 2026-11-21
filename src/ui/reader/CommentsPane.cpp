@@ -9,6 +9,7 @@
 #include "ui/theme/Icons.h"
 #include "ui/theme/ThemeManager.h"
 
+#include <QApplication>
 #include <QButtonGroup>
 #include <QEvent>
 #include <QFontDatabase>
@@ -241,7 +242,7 @@ CommentsPane::CommentsPane(ThemeManager& theme, SettingsService& settings, qint6
     m_editor->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
     new MarkdownHighlighter(theme, m_editor->document());
     m_editorStack->addWidget(m_editor);
-    // Hauteur fixe et modeste : la liste des commentaires garde la place restante.
+    // Hauteur modeste, et une seule ligne au repos : la liste des commentaires garde la place restante.
     m_editorStack->setFixedHeight(theme.px(104));
     m_editorFrame->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
     ev->addWidget(m_editorStack);
@@ -276,7 +277,8 @@ CommentsPane::CommentsPane(ThemeManager& theme, SettingsService& settings, qint6
     m_submit = new QPushButton(tr("Ajouter"), m_editorFrame);
     m_submit->setProperty("variant", QStringLiteral("primary"));
     m_submit->setToolTip(tr("Ajouter le commentaire (Ctrl+Entrée)"));
-    bottom->addWidget(m_kind);
+    // Type sur sa propre ligne : le volet reste lisible quand on le rétrécit.
+    ev->addWidget(m_kind);
     bottom->addStretch(1);
     bottom->addWidget(m_cancel);
     bottom->addWidget(m_submit);
@@ -308,6 +310,8 @@ CommentsPane::CommentsPane(ThemeManager& theme, SettingsService& settings, qint6
     updateTarget();
     updateSubmit();
     rebuild();
+    connect(qApp, &QApplication::focusChanged, this, [this] { updateComposer(); });
+    connect(m_mode, &SegmentedControl::currentIndexChanged, this, [this] { updateComposer(); });
 }
 
 CommentsPane::~CommentsPane()
@@ -535,6 +539,8 @@ void CommentsPane::updateTarget()
     m_pageTarget->setToolTip(pageTip);
     m_pageTarget->setAccessibleName(pageTip);
     m_submit->setText(editing ? tr("Enregistrer") : tr("Ajouter"));
+    if (m_composerInit)
+        updateComposer();
     m_cancel->setVisible(editing || !m_editor->toPlainText().isEmpty() || m_target.anchor != CommentAnchor::Free);
 }
 
@@ -548,6 +554,24 @@ void CommentsPane::updateSubmit()
 {
     m_submit->setEnabled(!m_editor->toPlainText().trimmed().isEmpty());
     m_cancel->setVisible(m_editingId != 0 || !m_editor->toPlainText().isEmpty() || m_target.anchor != CommentAnchor::Free);
+    updateComposer();
+}
+
+void CommentsPane::updateComposer()
+{
+    const QWidget* focus = QApplication::focusWidget();
+    const bool active = m_editingId != 0 || !m_editor->toPlainText().isEmpty() || m_target.anchor != CommentAnchor::Free
+                        || m_mode->currentIndex() == 1 || (focus && m_editorFrame->isAncestorOf(focus));
+    if (active == m_composerActive && m_composerInit)
+        return;
+    m_composerInit = true;
+    m_composerActive = active;
+    m_mode->setVisible(active);
+    m_kind->setVisible(active);
+    m_submit->setVisible(active);
+    if (!active)
+        m_cancel->setVisible(false);
+    m_editorStack->setFixedHeight(m_theme.px(active ? 104 : 36));
 }
 
 CommentKind CommentsPane::kind() const

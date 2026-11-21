@@ -16,6 +16,7 @@ class QPushButton;
 class QStackedWidget;
 class QToolButton;
 class QTreeWidget;
+class QHBoxLayout;
 class QVBoxLayout;
 
 namespace studylab {
@@ -23,6 +24,8 @@ class StudyService;
 }
 
 namespace studylab::ui {
+
+class PanelSplitter;
 
 class CardEditorDialog;
 class CardHistoryDialog;
@@ -128,6 +131,8 @@ private:
     void pushTheme();
 
     AppContext& m_ctx;
+    PanelSplitter* m_panels = nullptr;
+    QHBoxLayout* m_navHead = nullptr;
     StudyService& m_study;
     qint64 m_deckId = 0;
     bool m_stale = true;

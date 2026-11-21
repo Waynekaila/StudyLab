@@ -27,8 +27,8 @@ En cas de problème, voir le [guide de dépannage](../troubleshooting.md).
 
 ## 1. Premier lancement
 
-- **Debian 13** : `sudo apt install ./studylab_1.0.0_amd64.deb`, puis StudyLab dans le menu des applications.
-- **Windows 10/11** : lancez `StudyLab-1.0.0-windows-x64-setup.exe`. L'installation se fait pour votre compte, sans
+- **Debian 13** : `sudo apt install ./studylab_1.1.0_amd64.deb`, puis StudyLab dans le menu des applications.
+- **Windows 10/11** : lancez `StudyLab-1.1.0-windows-x64-setup.exe`. L'installation se fait pour votre compte, sans
   droits administrateur. La désinstallation conserve vos données.
 
 Au premier lancement, la bibliothèque est vide : l'accueil propose **Importer**. Pour lire les scans et les images,
@@ -44,6 +44,18 @@ Ctrl + , aux Paramètres. L'ordre des espaces et ceux qui sont affichés se règ
 
 Les documents ouverts sont des onglets de l'espace **Lecture** ; ils sont rouverts au lancement suivant, chacun à
 la position où vous l'avez laissé. F11 passe en plein écran.
+
+**Faire de la place.** Le bouton à côté du nom StudyLab (ou F8) réduit la navigation à une colonne d'icônes ; le
+nom de chaque espace s'affiche au survol. Les listes et panneaux latéraux des espaces (Mes notes, Matières,
+Collections, Graphe, Révisions, Références, Paramètres, fiche d'un document, miniatures et volet Annotations du
+lecteur) :
+
+- s'élargissent ou se rétrécissent en tirant leur bord ;
+- se replient par leur bouton en haut à droite, par F9 (panneau de gauche) ou F10 (panneau de droite), ou en les
+  tirant jusqu'au bord. Un panneau replié laisse une fine bande : son bouton le rouvre à la même largeur.
+
+Largeurs et panneaux repliés sont retrouvés au lancement suivant. Dans le lecteur, le choix vaut pour tous les
+documents. La zone de saisie d'un commentaire tient sur une ligne tant qu'on n'y écrit pas.
 
 ## 3. Importer des documents
 
@@ -272,6 +284,8 @@ Touches par défaut (modifiables dans Paramètres › Navigation et raccourcis) 
 |---|---|---|
 | Partout | Rechercher partout | Ctrl + K |
 | Partout | Plein écran | F11 |
+| Partout | Réduire ou déplier la navigation | F8 |
+| Partout | Replier ou afficher le panneau de gauche / de droite | F9 / F10 |
 | Partout | Aller aux espaces 1 à 9 | Ctrl + 1 … Ctrl + 9 |
 | Partout | Paramètres | Ctrl + , |
 | Lecture | Rechercher dans le document | Ctrl + F |

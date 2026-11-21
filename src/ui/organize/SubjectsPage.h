@@ -14,9 +14,12 @@ class QPushButton;
 class QStackedWidget;
 class QToolButton;
 class QTreeWidgetItem;
+class QHBoxLayout;
 class QVBoxLayout;
 
 namespace studylab::ui {
+
+class PanelSplitter;
 
 class DragTree;
 class SegmentedControl;
@@ -71,6 +74,8 @@ private:
     QWidget* listCard(const QString& title, QLabel** count, QVBoxLayout** list, QLabel** empty);
 
     AppContext& m_ctx;
+    PanelSplitter* m_panels = nullptr;
+    QHBoxLayout* m_navHead = nullptr;
     qint64 m_currentId = 0;
     bool m_showArchived = false;
     bool m_dirty = true;

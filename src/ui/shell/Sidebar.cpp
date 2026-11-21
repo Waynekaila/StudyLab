@@ -44,15 +44,27 @@ Sidebar::Sidebar(ThemeManager& theme, const QList<Entry>& entries, QWidget* pare
     layout->setContentsMargins(10, 14, 10, 10);
     layout->setSpacing(2);
 
-    auto* brandRow = new QHBoxLayout;
-    brandRow->setContentsMargins(8, 4, 8, 14);
+    auto* brandRow = m_brandRow = new QHBoxLayout;
+    brandRow->setContentsMargins(8, 0, 0, 10);
     brandRow->setSpacing(10);
     m_logo = new QLabel(this);
     m_logo->setFixedSize(28, 28);
-    auto* brand = new QLabel(QStringLiteral("StudyLab"), this);
+    auto* brand = m_brand = new QLabel(QStringLiteral("StudyLab"), this);
     brand->setObjectName(QStringLiteral("Brand"));
+    // Réduire la navigation : en haut, à côté du nom, là où l'œil cherche ce réglage.
+    m_compactButton = new QToolButton(this);
+    m_compactButton->setObjectName(QStringLiteral("SidebarCompact"));
+    m_compactButton->setProperty("readerTool", true);
+    m_compactButton->setAutoRaise(true);
+    m_compactButton->setCursor(Qt::PointingHandCursor);
+    m_compactButton->setFocusPolicy(Qt::TabFocus);
+    connect(m_compactButton, &QToolButton::clicked, this, [this] {
+        setCompact(!m_compact);
+        emit compactToggled(m_compact);
+    });
     brandRow->addWidget(m_logo);
     brandRow->addWidget(brand, 1);
+    brandRow->addWidget(m_compactButton);
     layout->addLayout(brandRow);
 
     m_search = new QPushButton(tr("Rechercher…"), this);
@@ -81,18 +93,19 @@ Sidebar::Sidebar(ThemeManager& theme, const QList<Entry>& entries, QWidget* pare
     line->setObjectName(QStringLiteral("SidebarFooterLine"));
     line->setFixedHeight(1);
     layout->addWidget(line);
-    auto* footer = new QHBoxLayout;
+    auto* footer = m_footer = new QHBoxLayout;
     footer->setContentsMargins(10, 10, 10, 2);
     footer->setSpacing(8);
     m_footerIcon = new QLabel(this);
-    auto* footerText = new QLabel(tr("Hors ligne · données locales"), this);
-    footerText->setObjectName(QStringLiteral("SidebarFooter"));
+    m_footerText = new QLabel(tr("Hors ligne · données locales"), this);
+    m_footerText->setObjectName(QStringLiteral("SidebarFooter"));
     footer->addWidget(m_footerIcon);
-    footer->addWidget(footerText, 1);
+    footer->addWidget(m_footerText, 1);
     layout->addLayout(footer);
 
     connect(&m_theme, &ThemeManager::themeChanged, this, &Sidebar::refreshIcons);
     refreshIcons();
+    applyCompact();
 }
 
 void Sidebar::rebuild()
@@ -108,9 +121,10 @@ void Sidebar::rebuild()
         auto* b = new QToolButton(this);
         b->setProperty("nav", true);
         b->setObjectName(QStringLiteral("nav:") + m_entries[i].id);
-        b->setText(QStringLiteral("  ") + m_entries[i].label);  // espace entre icône et libellé
+        b->setText(m_compact ? QString() : QStringLiteral("  ") + m_entries[i].label);  // espace icône / libellé
         b->setAccessibleName(m_entries[i].label);
-        b->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+        b->setToolButtonStyle(m_compact ? Qt::ToolButtonIconOnly : Qt::ToolButtonTextBesideIcon);
+        b->setToolTip(m_entries[i].label);
         b->setCheckable(true);
         b->setCursor(Qt::PointingHandCursor);
         b->setFocusPolicy(Qt::TabFocus);  // anneau de focus au clavier seulement
@@ -118,14 +132,15 @@ void Sidebar::rebuild()
         b->setIconSize(QSize(18, 18));
         // Pastille (nombre) calée à droite du bouton, masquée tant qu'elle est vide.
         auto* row = new QHBoxLayout(b);
-        row->setContentsMargins(0, 0, 8, 0);
+        row->setContentsMargins(0, m_compact ? 2 : 0, m_compact ? 2 : 8, 0);
         row->addStretch(1);
         auto* badge = new QLabel(b);
         badge->setObjectName(QStringLiteral("NavBadge"));
         badge->setAlignment(Qt::AlignCenter);
         badge->setAttribute(Qt::WA_TransparentForMouseEvents);
         badge->hide();
-        row->addWidget(badge, 0, Qt::AlignVCenter);
+        badge->setProperty("compact", m_compact);
+        row->addWidget(badge, 0, m_compact ? Qt::AlignTop : Qt::AlignVCenter);
         m_badges.append(badge);
         m_group->addButton(b, i);
         m_buttons.append(b);
@@ -163,7 +178,40 @@ void Sidebar::refreshIcons()
     m_logo->setPixmap(logoPixmap(p, 28, devicePixelRatioF()));
     m_search->setIcon(Icons::get(QStringLiteral("search"), p.text3, 16));
     m_footerIcon->setPixmap(Icons::get(QStringLiteral("shield"), p.text3, 14).pixmap(14, 14));
-    setFixedWidth(m_theme.px(228));
+    m_compactButton->setIcon(Icons::get(QStringLiteral("panel-left"), p.text3, 16));
+    setFixedWidth(m_theme.px(m_compact ? 60 : 228));
+}
+
+void Sidebar::setCompactShortcut(const QString& text)
+{
+    m_compactShortcut = text;
+    applyCompact();
+}
+
+void Sidebar::setCompact(bool compact)
+{
+    if (compact == m_compact)
+        return;
+    m_compact = compact;
+    rebuild();
+    refreshIcons();
+    applyCompact();
+}
+
+void Sidebar::applyCompact()
+{
+    // Réduite, la colonne garde le bouton pour se déplier à la place du logo.
+    m_brand->setVisible(!m_compact);
+    m_logo->setVisible(!m_compact);
+    m_footerIcon->setVisible(!m_compact);
+    m_footerText->setVisible(!m_compact);
+    m_brandRow->setContentsMargins(m_compact ? 0 : 8, 0, 0, 10);
+    m_brandRow->setAlignment(m_compactButton, m_compact ? Qt::AlignHCenter : Qt::Alignment());
+    m_search->setText(m_compact ? QString() : tr("Rechercher…"));
+    const QString key = m_compactShortcut.isEmpty() ? QString() : QStringLiteral(" (%1)").arg(m_compactShortcut);
+    m_compactButton->setToolTip((m_compact ? tr("Déplier la navigation") : tr("Réduire la navigation")) + key);
+    m_compactButton->setAccessibleName(m_compact ? tr("Déplier la navigation") : tr("Réduire la navigation"));
+    setFixedWidth(m_theme.px(m_compact ? 60 : 228));
 }
 
 void Sidebar::setCurrent(const QString& id)

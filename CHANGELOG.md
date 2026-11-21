@@ -1,5 +1,14 @@
 # Historique des versions
 
+## 1.1.0 — Ergonomie (2026-11-21)
+
+- **Ergonomie** : navigation réductible en colonne d'icônes (bouton à côté du nom, F8) ; listes et panneaux latéraux
+  de tous les espaces redimensionnables en tirant leur bord et rétractables (bouton, F9 / F10, ou en les tirant
+  jusqu'au bord), avec une bande pour les rouvrir ; largeurs et panneaux repliés retrouvés au lancement suivant.
+  Lecteur : volets plus étroits par défaut et réglables, choix des volets valable pour tous les documents, saisie
+  de commentaire sur une ligne au repos. Marges des écrans resserrées. Textes d'accueil des écrans vides (Références,
+  Graphe, Matières, Collections, Révisions) affichés en entier.
+
 ## 1.0.0 — V2 « Apprendre et consolider » (2026-11-20)
 
 - **Cartes mémoire et révisions** (itération V2-1) : paquets ; cartes basiques, basiques et inversées, à trous

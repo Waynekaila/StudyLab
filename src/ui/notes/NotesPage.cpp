@@ -10,6 +10,7 @@
 #include "services/settings/SettingsService.h"
 #include "ui/components/FlowLayout.h"
 #include "ui/components/MarkdownHighlighter.h"
+#include "ui/components/PanelSplitter.h"
 #include "ui/components/SegmentedControl.h"
 #include "ui/components/Widgets.h"
 #include "ui/notes/NoteEditor.h"
@@ -138,12 +139,17 @@ NotesPage::NotesPage(AppContext& ctx, QWidget* parent) : QWidget(parent), m_ctx(
     root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(0);
 
+    // Liste des notes et contexte : redimensionnables et rétractables, état mémorisé.
+    m_panels = new PanelSplitter(ctx.settings, ctx.theme, QStringLiteral("notes"), this);
     buildNav();
     buildEditor();
     buildContext();
-    root->addWidget(m_nav);
-    root->addWidget(m_center, 1);
-    root->addWidget(m_context);
+    m_panels->addPanel(m_nav, tr("Mes notes"), ctx.theme.px(264), ctx.theme.px(200), ctx.theme.px(440));
+    m_panels->addWorkArea(m_center);
+    m_panels->addPanel(m_context, tr("Contexte de la note"), ctx.theme.px(272), ctx.theme.px(220), ctx.theme.px(460));
+    m_navHead->addWidget(m_panels->makeCollapseButton(m_nav, m_nav));
+    m_contextHead->addWidget(m_panels->makeCollapseButton(m_context, m_context));
+    root->addWidget(m_panels, 1);
 
     m_saveTimer.setSingleShot(true);
     m_saveTimer.setInterval(700);
@@ -240,7 +246,6 @@ void NotesPage::buildNav()
     ThemeManager& theme = m_ctx.theme;
     m_nav = new QFrame(this);
     m_nav->setObjectName(QStringLiteral("NotesNav"));
-    m_nav->setFixedWidth(theme.px(264));
     auto* v = new QVBoxLayout(m_nav);
     v->setContentsMargins(12, 14, 12, 12);
     v->setSpacing(10);
@@ -269,6 +274,7 @@ void NotesPage::buildNav()
     connect(importAction, &QAction::triggered, this, &NotesPage::chooseVault);
     m_newButton->setMenu(menu);
     head->addWidget(m_newButton);
+    m_navHead = head;
     v->addLayout(head);
 
     m_filter = new QLineEdit(m_nav);
@@ -523,7 +529,6 @@ void NotesPage::buildContext()
     ThemeManager& theme = m_ctx.theme;
     m_context = new QFrame(this);
     m_context->setObjectName(QStringLiteral("NoteContext"));
-    m_context->setFixedWidth(theme.px(280));
     auto* outer = new QVBoxLayout(m_context);
     outer->setContentsMargins(0, 0, 0, 0);
     auto* scroll = new QScrollArea(m_context);
@@ -533,8 +538,12 @@ void NotesPage::buildContext()
     auto* body = new QWidget(scroll);
     body->setObjectName(QStringLiteral("NoteContextBody"));
     auto* v = new QVBoxLayout(body);
-    v->setContentsMargins(14, 16, 14, 16);
+    v->setContentsMargins(14, 10, 10, 16);
     v->setSpacing(8);
+    m_contextHead = new QHBoxLayout;
+    m_contextHead->setContentsMargins(0, 0, 0, 0);
+    m_contextHead->addWidget(makeLabel(tr("CONTEXTE"), "caption", body), 1);
+    v->addLayout(m_contextHead);
 
     // Sources : seulement pour les notes tirées de la lecture.
     m_sourcesSection = new QWidget(body);
@@ -603,7 +612,7 @@ void NotesPage::pushPreviewTheme()
 void NotesPage::showEmpty(bool empty)
 {
     m_center->setCurrentWidget(empty ? m_emptyState : m_editorPane);
-    m_context->setVisible(!empty);
+    m_context->setVisible(!empty && m_panels->isPanelOpen(m_context));
 }
 
 void NotesPage::setSaveState(const QString& text, bool error)

@@ -16,9 +16,12 @@ class QPlainTextEdit;
 class QPushButton;
 class QStackedWidget;
 class QToolButton;
+class QHBoxLayout;
 class QVBoxLayout;
 
 namespace studylab::ui {
+
+class PanelSplitter;
 
 /// Références bibliographiques (V1-6) : liste filtrable, fiche modifiable (enregistrée au fil de la saisie),
 /// entrée de bibliographie mise en forme, notes qui la citent, import BibTeX / CSL-JSON et export.
@@ -87,6 +90,8 @@ private:
     void chooseExport();
 
     AppContext& m_ctx;
+    PanelSplitter* m_panels = nullptr;
+    QHBoxLayout* m_navHead = nullptr;
     ReferenceService m_refs;
     Reference m_current;
     QList<Reference> m_all;

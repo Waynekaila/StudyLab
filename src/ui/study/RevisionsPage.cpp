@@ -2,6 +2,7 @@
 #include "ui/shell/Shortcuts.h"
 
 #include "services/study/StudyService.h"
+#include "ui/components/PanelSplitter.h"
 #include "ui/components/Widgets.h"
 #include "ui/pages/PageScaffold.h"
 #include "ui/reader/MarkdownView.h"
@@ -223,9 +224,11 @@ RevisionsPage::RevisionsPage(AppContext& ctx, StudyService& study, QWidget* pare
     auto* h = new QHBoxLayout(this);
     h->setContentsMargins(0, 0, 0, 0);
     h->setSpacing(0);
+    m_panels = new PanelSplitter(ctx.settings, ctx.theme, QStringLiteral("revisions"), this);
+    h->addWidget(m_panels, 1);
     buildNav();
     m_center = new QStackedWidget(this);
-    h->addWidget(m_center, 1);
+    m_panels->addWorkArea(m_center);
 
     // Aucun paquet
     m_empty = new QWidget(m_center);
@@ -241,7 +244,12 @@ RevisionsPage::RevisionsPage(AppContext& ctx, StudyService& study, QWidget* pare
     ed->setWordWrap(true);
     ed->setAlignment(Qt::AlignCenter);
     ed->setMaximumWidth(ctx.theme.px(480));
-    ev->addWidget(ed, 0, Qt::AlignHCenter);
+    // Centré par une rangée, pas par un alignement : un texte replié aligné perd sa hauteur et sa fin est coupée.
+    auto* edRow = new QHBoxLayout;
+    edRow->addStretch(1);
+    edRow->addWidget(ed, 6);
+    edRow->addStretch(1);
+    ev->addLayout(edRow);
     auto* eb = new QPushButton(tr("Créer un paquet"), m_empty);
     eb->setObjectName(QStringLiteral("CreateFirstDeck"));
     eb->setProperty("variant", QStringLiteral("primary"));
@@ -282,7 +290,6 @@ void RevisionsPage::buildNav()
     ThemeManager& theme = m_ctx.theme;
     auto* nav = new QFrame(this);
     nav->setObjectName(QStringLiteral("NotesNav"));
-    nav->setFixedWidth(theme.px(300));
     auto* v = new QVBoxLayout(nav);
     v->setContentsMargins(12, 14, 12, 12);
     v->setSpacing(10);
@@ -298,6 +305,7 @@ void RevisionsPage::buildNav()
     add->setAccessibleName(add->toolTip());
     connect(add, &QToolButton::clicked, this, &RevisionsPage::chooseNewDeck);
     head->addWidget(add);
+    m_navHead = head;
     v->addLayout(head);
 
     m_deckList = new QListWidget(nav);
@@ -346,7 +354,9 @@ void RevisionsPage::buildNav()
     m_sheet->setToolTip(tr("Brouillon de note tiré des annotations et des notes d'une matière, à relire"));
     connect(m_sheet, &QPushButton::clicked, this, [this] { openSheetDialog(); });
     v->addWidget(m_sheet);
-    layout()->addWidget(nav);
+    m_panels->addPanel(nav, tr("Paquets"), theme.px(260), theme.px(200), theme.px(440));
+    if (m_navHead)
+        m_navHead->addWidget(m_panels->makeCollapseButton(nav, nav));
 }
 
 void RevisionsPage::buildOverview()

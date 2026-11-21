@@ -14,6 +14,7 @@
 #include "ui/reader/AnnotationStyle.h"
 #include "ui/reader/AnnotationsPane.h"
 #include "ui/shell/AppContext.h"
+#include "ui/components/PanelSplitter.h"
 #include "ui/components/SegmentedControl.h"
 #include "ui/components/Widgets.h"
 #include "ui/reader/ThumbnailModel.h"
@@ -143,9 +144,18 @@ PdfReaderTab::PdfReaderTab(AppContext& ctx, qint64 documentId, QWidget* parent)
     body->setContentsMargins(0, 0, 0, 0);
     body->setSpacing(0);
     m_view = new PdfView(theme, this);
-    body->addWidget(buildSidePanel());
-    body->addWidget(m_view, 1);
-    body->addWidget(createSidePanes(false));
+    // Miniatures à gauche, annotations et commentaires à droite : largeurs réglables et mémorisées,
+    // affichés ou masqués par les boutons de la barre d'outils (état mémorisé lui aussi).
+    m_panels = new PanelSplitter(m_settings, theme, QStringLiteral("reader.pdf"), this);
+    m_panels->addPanel(buildSidePanel(), tr("Miniatures et sommaire"), theme.px(210), theme.px(190), theme.px(360),
+                       PanelSplitter::Mode::External);
+    m_panels->addWorkArea(m_view);
+    m_panels->addPanel(createSidePanes(false), tr("Annotations et commentaires"), theme.px(340), theme.px(300),
+                       theme.px(600), PanelSplitter::Mode::External);
+    body->addWidget(m_panels, 1);
+    setNavPaneVisible(m_sideToggle, m_side, m_settings.value(kNavPaneKey).toBool(true));
+    m_panels->setToggleHandler(m_side, [this](bool on) { setNavPaneVisible(m_sideToggle, m_side, on); });
+    m_panels->setToggleHandler(m_sidePanel, [this](bool on) { setPaneVisible(on); });
     v->addLayout(body, 1);
     m_popup = new AnnotationPopup(theme, m_view->viewport());
 
@@ -297,7 +307,7 @@ QWidget* PdfReaderTab::buildToolbar()
 
     m_sideToggle = toolButton(tr("Miniatures et sommaire"), bar, true);
     m_sideToggle->setChecked(true);
-    connect(m_sideToggle, &QToolButton::toggled, this, [this](bool on) { m_side->setVisible(on); });
+    connect(m_sideToggle, &QToolButton::toggled, this, [this](bool on) { setNavPaneVisible(m_sideToggle, m_side, on); });
     h->addWidget(m_sideToggle);
     h->addSpacing(6);
 
@@ -443,7 +453,6 @@ QWidget* PdfReaderTab::buildSidePanel()
 {
     m_side = new QFrame(this);
     m_side->setObjectName(QStringLiteral("ReaderSide"));
-    m_side->setFixedWidth(m_theme.px(224));
     auto* v = new QVBoxLayout(m_side);
     v->setContentsMargins(10, 10, 10, 0);
     v->setSpacing(8);

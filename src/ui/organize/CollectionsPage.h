@@ -14,9 +14,12 @@ class QMenu;
 class QPushButton;
 class QStackedWidget;
 class QToolButton;
+class QHBoxLayout;
 class QVBoxLayout;
 
 namespace studylab::ui {
+
+class PanelSplitter;
 
 /// Collections (05-maquettes §6) : collections manuelles, listes de lecture et projets (documents et notes, dans
 /// l'ordre choisi), collections intelligentes (documents qui respectent des règles, recalculées à l'affichage).
@@ -60,6 +63,8 @@ private:
     void moveItem(int row, int delta);
 
     AppContext& m_ctx;
+    PanelSplitter* m_panels = nullptr;
+    QHBoxLayout* m_navHead = nullptr;
     qint64 m_currentId = 0;
     bool m_dirty = true;
     std::function<qint64(qint64)> m_smartEditor;
